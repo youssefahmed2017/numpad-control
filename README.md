@@ -8,6 +8,16 @@ Everything is set up in a GTK4 / libadwaita settings window. No code needed.
 Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland).
 Linux only for now.
 
+![The settings window: a numpad on the left, the selected key's "Go live" macro on the right](docs/screenshots/macro.png)
+
+## Screenshots
+| | |
+|---|---|
+| ![If a mode is on: different steps depending on "Stream mode"](docs/screenshots/if-mode.png) | ![Hold slot with the rapid-fire switch](docs/screenshots/hold.png) |
+| **If a mode is on…** runs one of two step lists | **Press / Hold / Double tap** per key, with rapid-fire |
+| ![Settings: device, layer key, modes and OBS](docs/screenshots/settings.png) | ![The on-screen "Recording" popup after pressing the record key](docs/screenshots/popup.png) |
+| **Settings**: numpad, layer key, modes, OBS | **On-screen confirmation** when a key runs |
+
 ## How it works
 - A **background service** (systemd user service) reads the numpad directly with
   evdev and grabs it, so its keys only trigger actions and never type digits.
