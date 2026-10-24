@@ -147,22 +147,39 @@ Window steps use `hyprctl` on Hyprland and kdotool on KDE Plasma.
     while running, so a bar module can list it as a hidden app.
 
 ## Install
-Needs Python 3, GTK4 + libadwaita + python-gobject (from the distro), and
-optionally OBS 28+, ydotool, playerctl, wpctl + pactl (PipeWire) and wl-clipboard,
-plus per desktop: Hyprland → SwayOSD, grim + slurp, dunst, hyprlock;
-KDE Plasma 6 → kdotool and Spectacle.
+One command (as your normal user; it asks for your password when it needs sudo):
 
-    git clone https://github.com/youssefahmed2017/numpad-control ~/numpad-control
-    cd ~/numpad-control
-    python -m venv --system-site-packages .venv
-    .venv/bin/pip install evdev obsws-python
-    ./install.sh          # udev rule (sudo), user service, launcher + app-menu entry
+    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.sh | bash
+
+It:
+1. installs the system packages (pacman, apt or dnf): Python, GTK 4, libadwaita,
+   python-gobject, git, ydotool, playerctl, PipeWire tools, wl-clipboard, plus the
+   extras for each desktop it finds (Hyprland: SwayOSD, grim, slurp, dunst, hyprlock;
+   KDE Plasma: Spectacle, and kdotool from the AUR via yay/paru)
+2. clones the code to `~/numpad-control` (or updates it if it's already there)
+3. creates the Python environment (`.venv`, with `requirements.txt`)
+4. asks you to press a key on your numpad, to find it
+5. installs a udev rule so you can read that numpad (and only that one)
+6. installs and starts the background service (and ydotool's service)
+7. adds the `numpad-control` command, the app-menu entry and KDE autostart
+8. optionally installs the boot/sleep re-detect fix (below)
+
+Running `./install.sh` again from the clone updates everything. Options:
+`--dir PATH` (install somewhere else), `--no-deps` (skip system packages),
+`--yes` (no questions), `--dry-run` (only show what it would change).
 
 Then open **Numpad Control** from your launcher, click a key, pick an action, Save.
+On Hyprland, add `~/.local/bin/numpad-control --hidden` to your autostart to have the
+settings window start hidden at login.
 
-The project currently expects to live in `~/numpad-control`, and the udev rule in
-`dist/70-numpad-control.rules` matches one numpad model (USB ID `c0f4:05f5`).
-For a different numpad, use "Detect…" in Settings and change the IDs in that rule.
+### Numpads that need replugging after boot or sleep
+Some cheap numpads aren't detected at boot (the kernel logs `device descriptor
+read/64, error -71`) or go silent after waking from sleep until they're replugged.
+`install-usb-fix.sh` (offered by the installer) adds a "virtual replug": at boot, if
+the numpad is missing, its USB port is switched off and on (up to 3 times); after
+sleep, the numpad is re-detected. It installs `/usr/local/bin/numpad-control-usb-kick`,
+`numpad-control-usb.service` and a systemd sleep hook, and remembers the numpad's port
+in `/etc/numpad-control/usb.conf`. (New; not yet confirmed on real hardware.)
 
 ## OBS
 In OBS: Tools → WebSocket Server Settings → Enable WebSocket server. Put the

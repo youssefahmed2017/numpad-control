@@ -1,0 +1,4 @@
+#!/bin/sh
+# systemd runs this around sleep; after waking, re-detect the numpad.
+[ "$1" = post ] && exec /usr/local/bin/numpad-control-usb-kick resume
+exit 0

@@ -1,0 +1,10 @@
+[Unit]
+Description=Numpad Control: re-detect the numpad if it was missed at boot
+After=systemd-udevd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/numpad-control-usb-kick boot
+
+[Install]
+WantedBy=multi-user.target

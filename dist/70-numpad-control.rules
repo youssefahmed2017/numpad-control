@@ -1,2 +1,2 @@
 # Give the logged-in user access to the numpad only (not every keyboard).
-SUBSYSTEM=="input", KERNEL=="event*", ATTRS{idVendor}=="c0f4", ATTRS{idProduct}=="05f5", TAG+="uaccess"
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{idVendor}=="@VENDOR@", ATTRS{idProduct}=="@PRODUCT@", TAG+="uaccess"

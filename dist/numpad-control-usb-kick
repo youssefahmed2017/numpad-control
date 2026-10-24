@@ -1,0 +1,74 @@
+#!/bin/sh
+# Numpad Control: "virtual replug" for a USB numpad that isn't detected at boot
+# (the kernel logs "device descriptor read/64, error -71" and gives up) or goes
+# silent after waking from sleep. Runs as root, from numpad-control-usb.service
+# (boot) and the systemd sleep hook (resume).
+#
+# Usage: numpad-control-usb-kick boot|resume
+# Settings: /etc/numpad-control/usb.conf with VENDOR=, PRODUCT= and PORT= (e.g. 1-8)
+
+. /etc/numpad-control/usb.conf || exit 1
+
+log() { logger -t numpad-control "$*"; }
+
+find_numpad() {
+    for dev in /sys/bus/usb/devices/*; do
+        if [ "$(cat "$dev/idVendor" 2>/dev/null):$(cat "$dev/idProduct" 2>/dev/null)" = "$VENDOR:$PRODUCT" ]; then
+            echo "$dev"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Switch a port off and on (like unplugging), e.g. 1-8 or 1-8.2 (behind a hub).
+replug_port() {
+    port=$1
+    number=${port##*[.-]}
+    parent=${port%.*}
+    if [ "$parent" = "$port" ]; then
+        bus=${port%%-*}
+        switch=/sys/bus/usb/devices/$bus-0:1.0/usb$bus-port$number/disable
+    else
+        switch=/sys/bus/usb/devices/$parent:1.0/$parent-port$number/disable
+    fi
+    [ -w "$switch" ] || { log "can't switch port $port ($switch)"; return 1; }
+    log "re-detecting USB port $port"
+    echo 1 > "$switch"
+    sleep 1
+    echo 0 > "$switch"
+}
+
+# Ports where detection failed this boot (in case the numpad moved to another one).
+failed_ports() {
+    journalctl -k -b --no-pager -o cat 2>/dev/null \
+        | sed -n 's/^usb \([0-9][0-9.-]*\): device descriptor read.*error -71.*/\1/p' | sort -u
+}
+
+case "$1" in
+    boot)
+        for attempt in 1 2 3; do
+            sleep 3
+            find_numpad > /dev/null && exit 0
+            for port in $PORT $(failed_ports); do
+                replug_port "$port"
+            done
+        done
+        find_numpad > /dev/null || log "numpad still not detected after 3 tries"
+        ;;
+    resume)
+        sleep 1
+        if dev=$(find_numpad); then
+            log "re-detecting the numpad after sleep"
+            echo 0 > "$dev/authorized"
+            sleep 1
+            echo 1 > "$dev/authorized"
+        else
+            replug_port "$PORT"
+        fi
+        ;;
+    *)
+        echo "usage: $0 boot|resume" >&2
+        exit 2
+        ;;
+esac

@@ -1,4 +1,4 @@
-"""numpadctl [gui [--hidden]|run|detect|list]"""
+"""numpadctl [gui [--hidden]|run|detect [--json]|list|usb-info]"""
 
 import sys
 
@@ -13,13 +13,31 @@ def main():
         daemon.run()
     elif command == "detect":
         from . import daemon
-        print("Press a key on your numpad…")
-        print(daemon.detect_device() or "nothing pressed")
+        if "--json" in sys.argv:  # for install.sh
+            import json
+            print(json.dumps(daemon.detect_device()))
+        else:
+            print("Press a key on your numpad…")
+            print(daemon.detect_device() or "nothing pressed")
     elif command == "list":
         import evdev
         for path in evdev.list_devices():
             d = evdev.InputDevice(path)
             print(f"{path}  {d.info.vendor:04x}:{d.info.product:04x}  {d.name}")
+    elif command == "usb-info":
+        # For install-usb-fix.sh: which USB port the configured numpad is on.
+        from pathlib import Path
+        from . import config
+        device = config.load()["device"]
+        print(f"VENDOR={device['vendor']}\nPRODUCT={device['product']}")
+        for dev in Path("/sys/bus/usb/devices").iterdir():
+            try:
+                if ((dev / "idVendor").read_text().strip(), (dev / "idProduct").read_text().strip()) \
+                        == (device["vendor"], device["product"]):
+                    print(f"PORT={dev.name}")
+                    break
+            except OSError:
+                continue
     else:
         print(__doc__)
         sys.exit(1)

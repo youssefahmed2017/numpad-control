@@ -2,8 +2,8 @@
 Description=Numpad Control (turns a USB numpad into a control pad)
 
 [Service]
-ExecStart=%h/numpad-control/.venv/bin/python -m numpadctl run
-WorkingDirectory=%h/numpad-control
+ExecStart=@DIR@/.venv/bin/python -m numpadctl run
+WorkingDirectory=@DIR@
 Restart=on-failure
 # Apps opened by a key (browser, etc.) must survive a service restart.
 KillMode=process
