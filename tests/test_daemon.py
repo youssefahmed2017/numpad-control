@@ -180,23 +180,31 @@ if __name__ == "__main__":
 
 
 class SocketTest(unittest.IsolatedAsyncioTestCase):
+    """Window <-> service messages, over the Linux Unix socket."""
+    transport = "unix"
+
     async def asyncSetUp(self):
+        import os
         import tempfile
         from pathlib import Path
+        from numpadctl.platform import ipc, paths
         self.tmp = tempfile.TemporaryDirectory()
-        self.path_patch = mock.patch.object(daemon, "SOCKET_PATH", Path(self.tmp.name) / "s.sock")
+        self.path_patch = mock.patch.object(paths, "runtime_dir", lambda: Path(self.tmp.name))
         self.path_patch.start()
+        self.env_patch = mock.patch.dict(os.environ, {"NUMPADCTL_IPC": self.transport})
+        self.env_patch.start()
         self.reload_patch = mock.patch.object(daemon.Daemon, "reload_if_changed", lambda self: None)
         self.reload_patch.start()
         self.fired = []
         self.d = daemon.Daemon(run_action=lambda key, binding, slot: self.fired.append(binding["action"]))
         self.d.cfg = make_cfg({"5": {"tap": b("media_play_pause")}})
         await self.d.serve()
-        self.reader, self.writer = await asyncio.open_unix_connection(str(daemon.SOCKET_PATH))
+        self.reader, self.writer = await asyncio.open_connection(sock=ipc.connect())
 
     async def asyncTearDown(self):
         self.writer.close()
         self.path_patch.stop()
+        self.env_patch.stop()
         self.reload_patch.stop()
         self.tmp.cleanup()
 
@@ -248,4 +256,20 @@ class SocketTest(unittest.IsolatedAsyncioTestCase):
             await self.message()  # the key event
             self.assertEqual(await self.message(), {"event": "detected", "spec": {
                 "vendor": "c0f4", "product": "05f5", "name": "Usb KeyBoard"}})
+
+
+class SocketOverTCPTest(SocketTest):
+    """The same messages over the localhost connection Windows will use."""
+    transport = "tcp"
+
+    async def test_wrong_key_is_rejected(self):
+        import json
+        from numpadctl.platform import ipc
+        await self.message()  # the real client got its status
+        info = json.loads(ipc._tcp_info_path().read_text())
+        reader, writer = await asyncio.open_connection("127.0.0.1", info["port"])
+        writer.write(b"not-the-key\n")
+        await writer.drain()
+        self.assertEqual(await asyncio.wait_for(reader.read(), 2), b"", "connection closed, nothing sent")
+        writer.close()
 

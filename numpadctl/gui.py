@@ -3,7 +3,6 @@
 import copy
 import json
 import os
-import socket
 import subprocess
 import threading
 import time
@@ -15,12 +14,12 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
 from . import actions, config, desktop, modes, obs, sandbox  # noqa: E402
+from .platform import ipc, paths  # noqa: E402
 
 APP_ID = "dev.numpadctl.NumpadControl"
-RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
-SOCKET_PATH = os.path.join(RUNTIME_DIR, "numpad-control.sock")
+
 # Lets other tools (e.g. a "hidden apps" bar module) see that the window app is running.
-PID_PATH = os.path.join(RUNTIME_DIR, "numpad-control-window.pid")
+PID_PATH = paths.runtime_dir() / "numpad-control-window.pid"
 
 LAYOUT = [  # (key, row, column, rowspan)
     ("NumLock", 0, 0, 1), ("/", 0, 1, 1), ("*", 0, 2, 1), ("Backspace", 0, 3, 1),
@@ -86,8 +85,7 @@ class ServiceLink:
     def loop(self):
         while True:
             try:
-                sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                sock.connect(SOCKET_PATH)
+                sock = ipc.connect()
             except OSError:
                 GLib.idle_add(self.on_message, {"event": "status", "running": False})
                 time.sleep(2)

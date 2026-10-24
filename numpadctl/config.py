@@ -12,9 +12,10 @@ Layout:
 
 import json
 import os
-from pathlib import Path
 
-CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "numpad-control"
+from .platform import paths
+
+CONFIG_DIR = paths.config_dir()
 CONFIG_PATH = CONFIG_DIR / "config.json"
 
 # Logical key name -> evdev key code names that produce it.

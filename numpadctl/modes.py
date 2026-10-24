@@ -6,22 +6,17 @@ the state survives restarts. A lock keeps two key presses at once from
 overwriting each other.
 """
 
-import fcntl
 import json
 import os
-from contextlib import contextmanager
-from pathlib import Path
 
-STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state")) / "numpad-control"
+from .platform import paths
+
+STATE_DIR = paths.state_dir()
 STATE_PATH = STATE_DIR / "modes.json"
 
 
-@contextmanager
 def _locked():
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    with open(STATE_DIR / "modes.lock", "w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        yield
+    return paths.file_lock(STATE_DIR / "modes.lock")
 
 
 def _read():

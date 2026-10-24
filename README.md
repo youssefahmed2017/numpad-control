@@ -213,6 +213,17 @@ don't trust.
     .venv/bin/python -m numpadctl list      # list input devices
     journalctl --user -u numpad-control -f  # service log
 
+## Code layout
+- `numpadctl/daemon.py`: the background service: key timing (press / hold / double
+  tap, repeat, rapid-fire, layer key, `000`), profiles, and the link to the window
+- `numpadctl/actions.py`: every action, plus macros and modes logic
+- `numpadctl/gui.py`: the settings window; `tray.py`: KDE tray icon
+- `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
+- `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
+- `numpadctl/platform/`: everything that differs between operating systems
+  (file locations, file locking, the service ↔ window connection). Groundwork for a
+  future Windows version: the rest of the code only talks to the OS through it.
+
 ## Tests
     .venv/bin/python -m unittest discover -s tests -t .
 

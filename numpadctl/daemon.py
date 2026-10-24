@@ -7,17 +7,16 @@ service is running, light up keys as they're pressed, and use "learn" mode.
 import asyncio
 import json
 import logging
-import os
 import select
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 
 import evdev
 from evdev import ecodes
 
 from . import actions, config
+from .platform import ipc
 
 log = logging.getLogger("numpadctl")
 
@@ -28,8 +27,6 @@ REPEAT_DELAY = 0.4        # repeating actions start after this...
 REPEAT_INTERVAL = 0.08    # ...and then run this often
 RAPID_DELAY = 2.0         # a Hold action with rapid-fire on starts repeating after this much more holding
 
-SOCKET_PATH = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) \
-    / "numpad-control.sock"
 
 CODE_TO_KEY = {ecodes.ecodes[name]: key
                for key, names in config.KEYS.items() for name in names}
@@ -365,9 +362,7 @@ class Daemon:
         self.send(writer, {"event": "detected", "spec": spec})
 
     async def serve(self):
-        SOCKET_PATH.unlink(missing_ok=True)
-        await asyncio.start_unix_server(self.handle_client, path=str(SOCKET_PATH))
-        os.chmod(SOCKET_PATH, 0o600)
+        await ipc.start_server(self.handle_client)
 
     # ------------------------------------------------------------ device loop
     async def read(self, dev):
@@ -434,4 +429,4 @@ def run():
     except KeyboardInterrupt:
         pass
     finally:
-        SOCKET_PATH.unlink(missing_ok=True)
+        ipc.stop_server()
