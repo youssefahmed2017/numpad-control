@@ -143,3 +143,46 @@ def toggle_source(s, scene, source):
     enabled = c.get_scene_item_enabled(scene, item).scene_item_enabled
     c.set_scene_item_enabled(scene, item, not enabled)
     return f"{source} {'hidden' if enabled else 'shown'}"
+
+
+def toggle_filter(s, source, filter):
+    c = _client(s)
+    enabled = c.get_source_filter(source, filter).filter_enabled
+    c.set_source_filter_enabled(source, filter, not enabled)
+    return f"{filter} {'off' if enabled else 'on'}"
+
+
+# Name lists for the settings window's pickers. Lists inside responses keep
+# OBS's camelCase keys (only top-level fields are converted by obsws-python).
+
+def list_scenes(s):
+    scenes = _client(s).get_scene_list().scenes
+    return [scene["sceneName"] for scene in reversed(scenes)]  # OBS's top-to-bottom order
+
+
+def list_scene_sources(s, scene):
+    if not scene:
+        raise OBSError("enter the scene name first")
+    return [item["sourceName"] for item in _client(s).get_scene_item_list(scene).scene_items]
+
+
+def list_inputs(s):
+    return [item["inputName"] for item in _client(s).get_input_list().inputs]
+
+
+def list_audio_inputs(s):
+    c = _client(s)
+    names = []
+    for item in c.get_input_list().inputs:
+        try:
+            c.get_input_mute(item["inputName"])  # only works for inputs with audio
+        except Exception:
+            continue
+        names.append(item["inputName"])
+    return names
+
+
+def list_filters(s, source):
+    if not source:
+        raise OBSError("enter the source name first")
+    return [f["filterName"] for f in _client(s).get_source_filter_list(source).filters]

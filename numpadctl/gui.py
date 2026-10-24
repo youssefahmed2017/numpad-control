@@ -347,6 +347,7 @@ class Window(Adw.ApplicationWindow):
             if p.kind == "text":
                 row = Adw.EntryRow(title=p.label, text=value)
                 row.connect("changed", lambda *_: self.mark_dirty())
+                self.decorate_entry(row, p, lambda: {n: self.widget_value(w) for n, w in widgets.items()})
                 group.add(row)
                 widgets[p.name] = row
             elif p.kind == "app":
@@ -373,6 +374,78 @@ class Window(Adw.ApplicationWindow):
             test.connect("activated", lambda *_: self.test(slot))
             group.add(test)
         return group
+
+    # ---------------------------------------------------------------- field helpers
+    def decorate_entry(self, entry, param, get_params):
+        """Add a "pick from a list" and/or "insert placeholder" button to a text field."""
+        if param.suggest:
+            entry.add_suffix(self.picker_button(entry, param.suggest, get_params))
+        if param.placeholders:
+            entry.add_suffix(self.placeholder_button(entry))
+
+    @staticmethod
+    def popover_list(button_icon, tooltip):
+        listbox = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, css_classes=["navigation-sidebar"])
+        status = Gtk.Label(wrap=True, max_width_chars=32, css_classes=["dim-label"],
+                           margin_top=6, margin_bottom=6, margin_start=6, margin_end=6)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        box.append(status)
+        box.append(Gtk.ScrolledWindow(child=listbox, max_content_height=320, propagate_natural_height=True,
+                                      hscrollbar_policy=Gtk.PolicyType.NEVER))
+        popover = Gtk.Popover(child=box)
+        button = Gtk.MenuButton(icon_name=button_icon, popover=popover, tooltip_text=tooltip,
+                                valign=Gtk.Align.CENTER, css_classes=["flat"])
+        return button, popover, listbox, status
+
+    @staticmethod
+    def list_row(title, subtitle="", value=None):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, margin_top=4, margin_bottom=4)
+        box.append(Gtk.Label(label=title, xalign=0))
+        if subtitle:
+            box.append(Gtk.Label(label=subtitle, xalign=0, css_classes=["dim-label", "caption"]))
+        row = Gtk.ListBoxRow(child=box)
+        row.value = title if value is None else value
+        return row
+
+    def picker_button(self, entry, suggest, get_params):
+        button, popover, listbox, status = self.popover_list("view-list-symbolic", "Pick from OBS")
+
+        def on_show(_popover):
+            listbox.remove_all()
+            status.set_label("Loading from OBS…")
+            status.set_visible(True)
+            params = get_params()
+
+            def done(names, error):
+                if error:
+                    status.set_label(str(error))
+                elif not names:
+                    status.set_label("Nothing found in OBS")
+                else:
+                    status.set_visible(False)
+                    for name in names:
+                        listbox.append(self.list_row(name))
+            in_background(lambda: actions.SUGGESTIONS[suggest](self.cfg, params), done)
+
+        def on_pick(_listbox, row):
+            entry.set_text(row.value)
+            popover.popdown()
+        popover.connect("show", on_show)
+        listbox.connect("row-activated", on_pick)
+        return button
+
+    def placeholder_button(self, entry):
+        button, popover, listbox, status = self.popover_list("insert-text-symbolic", "Insert a placeholder")
+        status.set_label("Filled in when the key runs:")
+        for token, description in actions.PLACEHOLDERS.items():
+            listbox.append(self.list_row(token, description))
+
+        def on_pick(_listbox, row):
+            position = entry.get_position()
+            entry.set_position(entry.insert_text(row.value, position))  # returns the new cursor position
+            popover.popdown()
+        listbox.connect("row-activated", on_pick)
+        return button
 
     # ---------------------------------------------------------------- macro editor
     def macro_editor(self, steps):
@@ -436,6 +509,7 @@ class Window(Adw.ApplicationWindow):
             else:
                 widget = Adw.EntryRow(title=p.label, text=value)
                 widget.connect("changed", lambda w, n=p.name: self.on_step_param(params, n, w, row, step, action))
+                self.decorate_entry(widget, p, lambda: dict(params))
             row.add_row(widget)
 
         if len(steps) > 1:

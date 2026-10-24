@@ -21,6 +21,8 @@ class Param:
     label: str
     kind: str = "text"  # "text", "code", "app" (a .desktop id) or "macro" (a list of steps)
     default: object = ""
+    suggest: str = ""          # key into SUGGESTIONS: a list of names to pick from
+    placeholders: bool = False # {time}, {date}, {clipboard} are filled in when it runs
 
 
 @dataclass
@@ -151,8 +153,30 @@ def _launch_app(cfg, app):
     _detached("gio", "launch", info.get_filename())
 
 
+PLACEHOLDERS = {
+    "{time}": "Current time, e.g. 14:05",
+    "{date}": "Today's date, e.g. 2026-10-24",
+    "{clipboard}": "Whatever text is on the clipboard",
+}
+
+
+def fill_placeholders(text):
+    """Replace only the exact placeholders above; other braces stay as typed."""
+    if "{time}" in text:
+        text = text.replace("{time}", time.strftime("%H:%M"))
+    if "{date}" in text:
+        text = text.replace("{date}", time.strftime("%Y-%m-%d"))
+    if "{clipboard}" in text:
+        clip = ""
+        if shutil.which("wl-paste"):
+            clip = subprocess.run(["wl-paste", "--no-newline", "--type", "text"],
+                                  capture_output=True, text=True, timeout=5).stdout
+        text = text.replace("{clipboard}", clip)
+    return text
+
+
 def _copy_text(cfg, text):
-    _command("wl-copy", "--", text)
+    _command("wl-copy", "--", fill_placeholders(text))
     return "Copied"
 
 
@@ -163,7 +187,7 @@ def _toggle_dnd(cfg):
 
 
 def _show_notification(cfg, title, body):
-    notify(title or "Numpad", body)
+    notify(fill_placeholders(title) or "Numpad", fill_placeholders(body))
 
 
 def _lock_screen(cfg):
@@ -288,7 +312,9 @@ def _press_keys(cfg, keys):
 def _type_text(cfg, text):
     if not text:
         raise ActionError("no text set")
-    _ydotool("type", "--escape", "0", "--file", "-", stdin=text)
+    text = fill_placeholders(text)
+    if text:
+        _ydotool("type", "--escape", "0", "--file", "-", stdin=text)
 
 
 def _workspace_number(value):
@@ -455,11 +481,11 @@ ACTIONS = [
     Action("launch_app", "Launch an app", _launch_app,
            [Param("app", "App", kind="app")]),
     Action("copy_text", "Copy text to clipboard", _copy_text,
-           [Param("text", "Text")], osd_icon="edit-copy-symbolic"),
+           [Param("text", "Text", placeholders=True)], osd_icon="edit-copy-symbolic"),
     Action("show_notification", "Show a notification", _show_notification,
-           [Param("title", "Title"), Param("body", "Message")]),
+           [Param("title", "Title", placeholders=True), Param("body", "Message", placeholders=True)]),
 
-    Action("type_text", "Type text", _type_text, [Param("text", "Text to type")],
+    Action("type_text", "Type text", _type_text, [Param("text", "Text to type", placeholders=True)],
            group="Keyboard", check=lambda text: None if text else _raise("no text set")),
     Action("press_keys", "Press keys", _press_keys,
            [Param("keys", "Keys (e.g. Enter, Down Down, ctrl+shift+t)", default="Enter")],
@@ -499,11 +525,18 @@ ACTIONS = [
     Action("obs_start_both", "Start streaming AND recording", _obs(obs.start_both), group="OBS", osd_icon="media-record-symbolic"),
     Action("obs_stop_both", "Stop streaming AND recording", _obs(obs.stop_both), group="OBS", osd_icon="media-playback-stop-symbolic"),
     Action("obs_switch_scene", "Switch scene", _obs(obs.switch_scene),
-           [Param("scene", "Scene name")], group="OBS", osd_icon="view-grid-symbolic"),
+           [Param("scene", "Scene name", suggest="obs_scenes")], group="OBS", osd_icon="view-grid-symbolic"),
     Action("obs_toggle_source", "Show / hide a source", _obs(obs.toggle_source),
-           [Param("scene", "Scene name"), Param("source", "Source name")], group="OBS", osd_icon="view-reveal-symbolic"),
+           [Param("scene", "Scene name", suggest="obs_scenes"),
+            Param("source", "Source name", suggest="obs_scene_sources")],
+           group="OBS", osd_icon="view-reveal-symbolic"),
     Action("obs_toggle_mute", "Mute / unmute audio source", _obs(obs.toggle_mute),
-           [Param("source", "Source name", default="Mic/Aux")], group="OBS", osd_icon="audio-input-microphone-symbolic"),
+           [Param("source", "Audio source", default="Mic/Aux", suggest="obs_audio_inputs")],
+           group="OBS", osd_icon="audio-input-microphone-symbolic"),
+    Action("obs_toggle_filter", "Turn a filter on / off", _obs(obs.toggle_filter),
+           [Param("source", "Source (or scene) with the filter", suggest="obs_filter_sources"),
+            Param("filter", "Filter name", suggest="obs_filters")],
+           group="OBS", osd_icon="view-reveal-symbolic"),
     Action("obs_toggle_virtual_cam", "Toggle virtual camera", _obs(obs.toggle_virtual_cam), group="OBS", osd_icon="camera-web-symbolic"),
     Action("obs_toggle_replay_buffer", "Toggle replay buffer", _obs(obs.toggle_replay_buffer), group="OBS", osd_icon="media-playlist-repeat-symbolic"),
     Action("obs_save_replay", "Save replay buffer", _obs(obs.save_replay), group="OBS", osd_icon="document-save-symbolic"),
@@ -559,6 +592,17 @@ STEP_ACTIONS = [WAIT, WAIT_FOR_WINDOW] + [a for a in ACTIONS
 STEP_IDS = {a.id for a in STEP_ACTIONS}
 
 BY_ID = {a.id: a for a in ACTIONS + [WAIT, WAIT_FOR_WINDOW]}
+
+# Name lists the settings window offers next to a field: fn(cfg, params) -> [names].
+# params holds the action's other fields, e.g. the scene for its source list.
+SUGGESTIONS = {
+    "obs_scenes": lambda cfg, p: obs.list_scenes(cfg["obs"]),
+    "obs_scene_sources": lambda cfg, p: obs.list_scene_sources(cfg["obs"], p.get("scene", "").strip()),
+    "obs_audio_inputs": lambda cfg, p: obs.list_audio_inputs(cfg["obs"]),
+    # filters can sit on any input (mic, webcam, …) or on a scene itself
+    "obs_filter_sources": lambda cfg, p: obs.list_inputs(cfg["obs"]) + obs.list_scenes(cfg["obs"]),
+    "obs_filters": lambda cfg, p: obs.list_filters(cfg["obs"], p.get("source", "").strip()),
+}
 
 
 def perform(cfg, binding, trigger="tap"):

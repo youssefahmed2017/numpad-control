@@ -23,12 +23,22 @@ Built and tested on Arch Linux + Hyprland (Wayland). Linux only for now.
 | Keyboard | Type text · Press keys (`Enter`, `Down Down`, `ctrl+shift+t`, …), via ydotool |
 | Screenshot | Full screen · Select a region (saved to `~/Pictures/Screenshots` and copied) |
 | Window (Hyprland) | Go to workspace N · Move window to workspace N · Next / previous workspace · Close window · Toggle fullscreen · Toggle floating · Focus a window (by class) · Show / hide scratchpad |
-| OBS | Start / stop / toggle / pause / resume recording · Start / stop / toggle streaming · Start / stop streaming AND recording · Switch scene · Show / hide a source in a scene · Mute / unmute an audio source · Toggle virtual camera · Toggle replay buffer · Save replay buffer |
+| OBS | Start / stop / toggle / pause / resume recording · Start / stop / toggle streaming · Start / stop streaming AND recording · Switch scene · Show / hide a source in a scene · Mute / unmute an audio source · Turn a filter on / off (voice changer, camera effect, …) · Toggle virtual camera · Toggle replay buffer · Save replay buffer |
 | Media | Play / pause · Stop · Next / previous track · Volume up / down · Set volume to N% · Mute speakers · Mute microphone |
 | System | Do not disturb on / off (dunst) · Lock screen · Sleep · Shut down · Restart |
 | Advanced | Macro · Run Python (sandboxed) |
 
 Volume up/down and next/previous workspace repeat while the key is held.
+
+**Picking OBS names:** every OBS scene, source, audio source and filter field has a
+list button that fetches the real names from OBS (it must be running). The lists
+follow each other: the source list shows the sources in the scene you entered, the
+filter list the filters on the source you entered. You can still type names by hand.
+
+**Placeholders:** Type text, Copy text to clipboard and Show a notification fill in
+`{time}` (e.g. 14:05), `{date}` (e.g. 2026-10-24) and `{clipboard}` (the clipboard's
+text) when the key runs; the insert button next to the field adds them at the cursor.
+Only these exact names are replaced; other text in braces stays as written.
 
 **Shut down / Restart need confirming:** the first trigger only shows "Press again
 to shut down" (or "Hold again" / "Double-tap again", matching the key); repeating it
@@ -55,7 +65,8 @@ Run Python, another macro, or shut down / restart. Problems (unknown key names,
 bad window classes, …) are reported when you Save, not when the macro runs.
 
 Example: Launch an app → kitty, Wait for window `kitty`, Type text `claude -r`,
-Press keys `Enter`. Text is typed literally (`$HOME` and `\n` stay as written).
+Press keys `Enter`. Text is typed literally (`$HOME` and `\n` stay as written),
+apart from the placeholders above.
 kdotool is KDE-only, so window control uses Hyprland's `hyprctl` instead.
 
 ## Feedback
