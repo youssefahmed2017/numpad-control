@@ -120,6 +120,35 @@ window on Windows yet; that comes later.
 5. Send back what didn't work, and the window's text (it shows an error line for
    any key that failed).
 
+## Test 4: in the background, with a tray icon
+Instead of a PowerShell window, Numpad Control can run quietly in the background
+with an icon in the system tray (bottom right, maybe under the **^** arrow).
+
+1. Update and install what's new (in PowerShell):
+
+       cd ~\numpad-control
+       git pull
+       python -m pip install -r requirements.txt
+
+2. Stop the PowerShell test from Test 3 if it's still running (Ctrl+C in its window).
+3. **Double-click `numpad-control.pyw`** in the `numpad-control` folder (in Explorer:
+   `C:\Users\<name>\numpad-control`). No window opens; a small numpad icon appears in
+   the tray instead. The numpad works as in Test 3.
+4. **Right-click the tray icon** and try:
+   - the first line shows the status ("Numpad connected")
+   - **Open settings file**: opens the settings in Notepad (a left click on the icon
+     does the same). Changes take effect when you save the file.
+   - **Pause**: the numpad does nothing until you click Pause again
+   - **Show log**: what happened, including any errors
+   - **Start at login**: tick it, then log out and back in (or restart); the icon
+     should come back by itself
+   - **Quit**: the icon goes away and the numpad stops (it types digits again)
+5. Double-clicking `numpad-control.pyw` again while it's running says it's already
+   running instead of starting a second copy.
+
+If it can't start (for example if `interception.dll` is missing), a message box
+says why. Send that text, or the log from **Show log**.
+
 ## If something goes wrong
 - If the keyboard stops responding while the test runs, **close the black window
   with the mouse**; that ends the test and gives the keys back.

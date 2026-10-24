@@ -17,6 +17,7 @@ SIMULATION = textwrap.dedent("""
     sys.meta_path.insert(0, Block())
     from numpadctl.platform import numpad_input, system
     import numpadctl.daemon, numpadctl.actions, numpadctl.config, numpadctl.modes
+    from numpadctl.platform import windows_tray
     print(numpad_input.open_numpad.__module__, system.press_keys.__module__)
 """)
 

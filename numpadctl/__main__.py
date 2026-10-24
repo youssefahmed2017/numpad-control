@@ -1,4 +1,4 @@
-"""numpadctl [gui [--hidden]|run|detect [--json]|list|usb-info]"""
+"""numpadctl [gui [--hidden]|run|tray|detect [--json]|list|usb-info]"""
 
 import sys
 
@@ -13,6 +13,13 @@ def main():
                      f"For now, edit {CONFIG_PATH} and run: python -m numpadctl run")
         from . import gui
         gui.run(sys.argv[2:])
+    elif command == "tray":
+        from .platform import IS_WINDOWS
+        if not IS_WINDOWS:
+            sys.exit("The tray app is for Windows; on Linux the service runs under systemd "
+                     "(systemctl --user status numpad-control).")
+        from .platform import windows_tray
+        windows_tray.main()
     elif command == "run":
         from . import daemon
         daemon.run()

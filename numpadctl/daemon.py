@@ -50,6 +50,7 @@ class Daemon:
         self.zero_events = []
         self.zero_timer = None
         self.numpad = None
+        self.paused = False  # Windows tray "Pause": keys are still captured, but do nothing
         self.clients = set()
         self.capturing = set()
         self.detect_future = None
@@ -135,7 +136,7 @@ class Daemon:
             if down:
                 self.detect_future.set_result(self.current_device_spec())
             return
-        if self.capturing:  # the settings window is in learn mode
+        if self.capturing or self.paused:  # learn mode in the settings window, or paused
             return
         if key == self.cfg.get("layer_key"):
             self.layer_held = down
@@ -317,6 +318,15 @@ class Daemon:
 
     async def main(self):
         await self.serve()
+        try:
+            await self._device_loop()
+        finally:  # quitting (the task is cancelled): let the numpad and the connection go
+            if self.numpad is not None:
+                self.numpad.close()
+                self.numpad = None
+            ipc.stop_server()
+
+    async def _device_loop(self):
         waiting_logged = False
         while True:
             self.reload_if_changed()

@@ -248,7 +248,9 @@ don't trust.
   for later. It will read the numpad through the Interception driver, so it can
   tell an external numpad apart from a main keyboard that has its own number pad.
   [`tools/windows-poc/`](tools/windows-poc/) has the tests for a Windows PC. Working
-  so far: reading the numpad, and the background service with most actions (no
-  settings window yet; it's configured by editing the settings file). Not on Windows
-  yet: window/workspace actions, per-app profiles, per-app audio, microphone mute,
-  screenshots, Run Python, the tray icon and the settings window.
+  so far: reading the numpad, the background service with most actions, and a tray
+  app (`numpad-control.pyw`: runs without a console window, with Open settings file,
+  Pause, Start at login, Show log and Quit; `numpadctl/platform/windows_tray.py`).
+  There's no settings window on Windows yet; it's configured by editing the settings
+  file. Not on Windows yet: window/workspace actions, per-app profiles, per-app
+  audio, microphone mute, screenshots, Run Python, the settings window, an installer.
