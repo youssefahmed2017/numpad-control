@@ -182,6 +182,22 @@ Then open **Numpad Control** from your launcher, click a key, pick an action, Sa
 On Hyprland, add `~/.local/bin/numpad-control --hidden` to your autostart to have the
 settings window start hidden at login.
 
+### Windows
+Paste this into PowerShell (as your normal user):
+
+    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.ps1 | iex
+
+It installs Python if needed (winget), downloads Numpad Control (git, or a zip if git
+isn't installed), creates the Python environment, installs the
+[Interception](https://github.com/oblitum/Interception) driver from its official
+release (Windows asks for administrator permission once; a restart is needed the
+first time), adds **Numpad Control** and **Numpad Control Settings** to the Start
+menu, and starts it at login with a tray icon. Running it again updates everything.
+Options (set them before pasting): `$env:NUMPAD_DRYRUN = "1"` only shows what it
+would do; `$env:NUMPAD_NOAUTOSTART = "1"`; `$env:NUMPAD_UNINSTALL = "1"` removes the
+shortcuts and autostart (settings stay). From a copy of the project:
+`powershell -ExecutionPolicy Bypass -File install.ps1 -DryRun`.
+
 ### Numpads that need replugging after boot or sleep
 Some cheap numpads aren't detected at boot (the kernel logs `device descriptor
 read/64, error -71`) or go silent after waking from sleep until they're replugged.
@@ -258,5 +274,5 @@ don't trust.
   settings file, Pause, Start at login, Show log and Quit;
   `numpadctl/platform/windows_tray.py`). Settings… opens the same Qt settings window
   as on Linux (new; not yet tried on Windows). Not on Windows yet: window/workspace
-  actions, per-app profiles, per-app audio, microphone mute, screenshots, Run Python,
-  an installer.
+  actions, per-app profiles, per-app audio, microphone mute, screenshots, Run Python.
+  Install with `install.ps1` (see Install → Windows).
