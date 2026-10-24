@@ -72,7 +72,15 @@ class PowerConfirmTest(unittest.TestCase):
         self.press(trigger="hold", after=1.5)
         self.command.assert_called_once_with("systemctl", "poweroff")
 
+    def test_sleep_needs_confirming_too(self):
+        self.press("suspend")
+        self.command.assert_not_called()
+        self.assertEqual(self.osd.call_args.args[1], "Press again to sleep")
+        self.press("suspend", after=1.0)
+        self.command.assert_called_once_with("systemctl", "suspend")
+
     def test_not_allowed_in_macros(self):
+        self.assertNotIn("suspend", actions.STEP_IDS)
         self.assertNotIn("shutdown", actions.STEP_IDS)
         self.assertNotIn("reboot", actions.STEP_IDS)
         self.assertTrue(actions.macro_problems([{"action": "shutdown", "params": {}}]))

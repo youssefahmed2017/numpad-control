@@ -14,7 +14,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import actions, config, modes, obs, sandbox  # noqa: E402
+from . import actions, config, desktop, modes, obs, sandbox  # noqa: E402
 
 APP_ID = "dev.numpadctl.NumpadControl"
 RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
@@ -68,21 +68,6 @@ def in_background(work, done):
             result, error = None, e
         GLib.idle_add(done, result, error)
     threading.Thread(target=runner, daemon=True).start()
-
-
-def open_windows():
-    """[(class, title)] of open Hyprland windows, for picking a profile's app."""
-    try:
-        out = subprocess.run(["hyprctl", "clients", "-j"], capture_output=True,
-                             text=True, timeout=2).stdout
-        seen, result = set(), []
-        for c in json.loads(out):
-            if c.get("class") and c["class"] not in seen:
-                seen.add(c["class"])
-                result.append((c["class"], c.get("title", "")))
-        return result
-    except (OSError, subprocess.SubprocessError, ValueError):
-        return []
 
 
 class ServiceLink:
@@ -660,7 +645,7 @@ class Window(Adw.ApplicationWindow):
         classes = Adw.EntryRow(title="Window classes (comma-separated)", text=profile["match"])
         group.add(name)
         group.add(classes)
-        windows = open_windows()
+        windows = desktop.open_windows()
         if windows:
             picker = Adw.ComboRow(title="Add an open window",
                                   model=Gtk.StringList(strings=["—"] + [f"{t[:40]}  ({c})" for c, t in windows]))
@@ -1047,6 +1032,11 @@ class App(Adw.Application):
         provider.load_from_string(CSS)
         Gtk.StyleContext.add_provider_for_display(
             Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        if desktop.current() != desktop.HYPRLAND:  # Hyprland has the bar's hidden-apps module instead
+            from .tray import TrayIcon
+            self.tray = TrayIcon("Numpad Control", "input-keyboard", "Click to open the settings",
+                                 on_activate=self.activate,
+                                 menu=[("Open settings", self.activate), ("Quit", self.request_quit)])
         quit_action = Gio.SimpleAction.new("quit", None)
         quit_action.connect("activate", lambda *_: self.request_quit())
         self.add_action(quit_action)
@@ -1065,12 +1055,10 @@ class App(Adw.Application):
             if self.start_hidden:  # started at login: wait in the background
                 self.start_hidden = False
                 return
-        elif self.window.get_visible() and os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        elif self.window.get_visible():
             # Launched again while open: Hyprland ignores present() by default
-            # (misc:focus_on_activate), so ask it directly to jump to the window.
-            subprocess.run(["hyprctl", "dispatch",
-                            f'hl.dsp.focus({{ window = "class:{APP_ID}" }})'],
-                           capture_output=True, timeout=5)
+            # (misc:focus_on_activate), so ask the desktop directly to bring it forward.
+            desktop.focus_app_window(APP_ID)
         self.window.present()
 
     def request_quit(self):

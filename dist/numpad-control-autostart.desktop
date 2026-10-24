@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Numpad Control
+Comment=Waits in the system tray so the settings open instantly
+Exec=@HOME@/.local/bin/numpad-control --hidden
+Icon=input-keyboard
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=2

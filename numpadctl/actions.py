@@ -1,7 +1,6 @@
 """Everything a key can be bound to."""
 
 import copy
-import json
 import os
 import re
 import shutil
@@ -12,7 +11,7 @@ import webbrowser
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import audio, modes, obs, sandbox
+from . import audio, desktop, modes, obs, sandbox
 
 
 @dataclass
@@ -49,15 +48,11 @@ def notify(title, body=""):
 
 
 def show_osd(cfg, message, icon="dialog-information-symbolic", force=False):
-    """Short on-screen confirmation (SwayOSD if available, else a notification)."""
+    """Short on-screen confirmation (Plasma's or SwayOSD's popup, else a notification)."""
     if not force and not cfg.get("feedback", True):
         return
-    if shutil.which("swayosd-client"):
-        done = subprocess.run(["swayosd-client", "--custom-message", message,
-                               "--custom-icon", icon], capture_output=True, timeout=5)
-        if done.returncode == 0:
-            return
-    notify(message)
+    if not desktop.show_osd(message, icon):
+        notify(message)
 
 
 def _command(*argv):
@@ -89,10 +84,17 @@ def refresh_session_env():
                              capture_output=True, text=True, timeout=2).stdout
     except (OSError, subprocess.SubprocessError):
         out = ""
+    current = {}
     for line in out.splitlines():
         name, _, value = line.partition("=")
         if name in SESSION_VARS and value:
-            os.environ[name] = value
+            current[name] = value
+    if current:  # also forget the previous session's (e.g. Hyprland's ID after logging into KDE)
+        for name in SESSION_VARS:
+            if name in current:
+                os.environ[name] = current[name]
+            else:
+                os.environ.pop(name, None)
     return bool(os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"))
 
 
@@ -181,9 +183,7 @@ def _copy_text(cfg, text):
 
 
 def _toggle_dnd(cfg):
-    _command("dunstctl", "set-paused", "toggle")
-    paused = subprocess.run(["dunstctl", "is-paused"], capture_output=True, text=True).stdout.strip()
-    return "Do not disturb on" if paused == "true" else "Do not disturb off"
+    return "Do not disturb on" if desktop.toggle_dnd() else "Do not disturb off"
 
 
 def _show_notification(cfg, title, body):
@@ -191,49 +191,22 @@ def _show_notification(cfg, title, body):
 
 
 def _lock_screen(cfg):
-    if shutil.which("hyprlock"):
-        _detached("hyprlock")
-    else:
-        _command("loginctl", "lock-session")
+    desktop.lock_screen()
 
 
 def _screenshot(cfg, region=False):
     folder = Path.home() / "Pictures" / "Screenshots"
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / time.strftime("%Y-%m-%d_%H-%M-%S.png")
-    argv = ["grim"]
-    if region:
-        pick = subprocess.run(["slurp"], capture_output=True, text=True)
-        if pick.returncode != 0:
-            return "cancelled"
-        argv += ["-g", pick.stdout.strip()]
-    _command(*argv, str(path))
+    if not desktop.screenshot(path, region):
+        return "cancelled"
     with open(path, "rb") as image:
         subprocess.run(["wl-copy", "--type", "image/png"], stdin=image, check=False, timeout=5)
     notify("Screenshot saved", f"{path} (also copied)")
 
 
-def _hyprctl(lua):
-    if not shutil.which("hyprctl"):
-        raise ActionError("Hyprland is not running")
-    out = subprocess.run(["hyprctl", "dispatch", lua], capture_output=True, text=True, timeout=5)
-    if out.stdout.strip() != "ok":
-        raise ActionError(out.stdout.strip() or out.stderr.strip())
-
-
-def _hypr(lua):
-    return lambda cfg: _hyprctl(lua)
-
-
 def active_window_class():
-    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") or not shutil.which("hyprctl"):
-        return ""
-    try:
-        out = subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True,
-                             text=True, timeout=1).stdout
-        return json.loads(out).get("class", "") if out.lstrip().startswith("{") else ""
-    except (subprocess.SubprocessError, ValueError):
-        return ""
+    return desktop.active_window_class()
 
 
 def _window_class(value):
@@ -244,7 +217,7 @@ def _window_class(value):
 
 
 def _focus_window(cfg, window):
-    _hyprctl(f'hl.dsp.focus({{ window = "class:{_window_class(window)}" }})')
+    desktop.focus_window(_window_class(window))
 
 
 MAX_WINDOW_WAIT = 60
@@ -328,11 +301,11 @@ def _workspace_number(value):
 
 
 def _go_to_workspace(cfg, workspace):
-    _hyprctl(f"hl.dsp.focus({{ workspace = {_workspace_number(workspace)} }})")
+    desktop.go_to_workspace(_workspace_number(workspace))
 
 
 def _move_to_workspace(cfg, workspace):
-    _hyprctl(f"hl.dsp.window.move({{ workspace = {_workspace_number(workspace)} }})")
+    desktop.move_window_to_workspace(_workspace_number(workspace))
 
 
 def _volume(osd_args, wpctl_args):
@@ -354,7 +327,7 @@ def _set_volume(cfg, percent):
         subprocess.run(["swayosd-client", "--output-volume", "+0"], capture_output=True, timeout=5)
 
 
-# Shutdown / restart: the second press must come within this window. Presses
+# Sleep / shutdown / restart: the second press must come within this window. Presses
 # closer together than the minimum count as a bounce and just re-arm.
 CONFIRM_MIN_SECONDS = 0.4
 CONFIRM_MAX_SECONDS = 5.0
@@ -562,24 +535,23 @@ ACTIONS = [
     Action("screenshot_region", "Select a region", lambda cfg: _screenshot(cfg, region=True),
            group="Screenshot"),
 
+    # ids keep their old hypr_ names so existing configs still load
     Action("hypr_workspace", "Go to workspace", _go_to_workspace,
-           [Param("workspace", "Workspace number", default="1")], group="Window"),
+           [Param("workspace", "Workspace number (virtual desktop on KDE)", default="1")], group="Window"),
     Action("hypr_move_to_workspace", "Move window to workspace", _move_to_workspace,
-           [Param("workspace", "Workspace number", default="2")], group="Window"),
-    Action("hypr_next_workspace", "Next workspace",
-           _hypr('hl.dsp.focus({ workspace = "e+1" })'), group="Window", repeat=True),
-    Action("hypr_prev_workspace", "Previous workspace",
-           _hypr('hl.dsp.focus({ workspace = "e-1" })'), group="Window", repeat=True),
-    Action("hypr_close", "Close window", _hypr("hl.dsp.window.close()"), group="Window"),
-    Action("hypr_fullscreen", "Toggle fullscreen",
-           _hypr('hl.dsp.window.fullscreen({ mode = "fullscreen" })'), group="Window"),
-    Action("hypr_float", "Toggle floating",
-           _hypr('hl.dsp.window.float({ action = "toggle" })'), group="Window"),
+           [Param("workspace", "Workspace number (virtual desktop on KDE)", default="2")], group="Window"),
+    Action("hypr_next_workspace", "Next workspace", lambda cfg: desktop.step_workspace(1),
+           group="Window", repeat=True),
+    Action("hypr_prev_workspace", "Previous workspace", lambda cfg: desktop.step_workspace(-1),
+           group="Window", repeat=True),
+    Action("hypr_close", "Close window", lambda cfg: desktop.close_window(), group="Window"),
+    Action("hypr_fullscreen", "Toggle fullscreen", lambda cfg: desktop.toggle_fullscreen(), group="Window"),
+    Action("hypr_float", "Toggle floating (Hyprland)", lambda cfg: desktop.toggle_floating(), group="Window"),
     Action("focus_window", "Focus a window", _focus_window,
            [Param("window", "Window class (e.g. kitty, firefox)", default="kitty")], group="Window",
            check=lambda window: _window_class(window)),
-    Action("hypr_scratchpad", "Show / hide scratchpad",
-           _hypr('hl.dsp.workspace.toggle_special("magic")'), group="Window"),
+    Action("hypr_scratchpad", "Show / hide scratchpad (Hyprland)",
+           lambda cfg: desktop.toggle_scratchpad(), group="Window"),
 
     Action("obs_start_recording", "Start recording", _obs(obs.start_recording), group="OBS", osd_icon="media-record-symbolic"),
     Action("obs_stop_recording", "Stop recording", _obs(obs.stop_recording), group="OBS", osd_icon="media-playback-stop-symbolic"),
@@ -649,7 +621,9 @@ ACTIONS = [
     Action("dnd_toggle", "Do not disturb on / off", _toggle_dnd, group="System",
            osd_icon="notifications-disabled-symbolic"),
     Action("lock_screen", "Lock screen", _lock_screen, group="System"),
-    Action("suspend", "Sleep (suspend)", lambda cfg: _command("systemctl", "suspend"), group="System"),
+    Action("suspend", "Sleep (press twice)",
+           _power("suspend", "suspend", "to sleep", "Going to sleep…",
+                  "system-suspend-symbolic"), group="System", confirm=True),
     Action("shutdown", "Shut down (press twice)",
            _power("shutdown", "poweroff", "to shut down", "Shutting down…",
                   "system-shutdown-symbolic"), group="System", confirm=True),
@@ -720,7 +694,7 @@ def perform(cfg, binding, trigger="tap"):
         if action.confirm:  # the prompt says how to confirm: press / hold / double-tap
             params["trigger"] = trigger
         return action.run(cfg, **params)
-    except (obs.OBSError, audio.AudioError) as e:
+    except (obs.OBSError, audio.AudioError, desktop.DesktopError) as e:
         raise ActionError(str(e))
 
 

@@ -2,10 +2,11 @@
 
 Turns a cheap USB numpad into a control pad (like a Stream Deck) on Linux.
 Each key runs an action: open apps and websites, control OBS, media and volume,
-manage Hyprland windows, type text, run multi-step macros, and more.
+manage windows and desktops, type text, run multi-step macros, and more.
 Everything is set up in a GTK4 / libadwaita settings window. No code needed.
 
-Built and tested on Arch Linux + Hyprland (Wayland). Linux only for now.
+Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland).
+Linux only for now.
 
 ## How it works
 - A **background service** (systemd user service) reads the numpad directly with
@@ -14,7 +15,25 @@ Built and tested on Arch Linux + Hyprland (Wayland). Linux only for now.
 - The **settings window** edits `~/.config/numpad-control/config.json`. The service
   reloads it automatically after Save.
 - The service fetches the desktop's display variables on every key press, so
-  apps open correctly even if it started before Hyprland at boot.
+  apps open correctly even if it started before the desktop at boot, and it
+  switches between Hyprland and KDE tools when you log out of one desktop and
+  into the other (no restart needed).
+
+## Hyprland and KDE Plasma
+The desktop is detected automatically (`XDG_CURRENT_DESKTOP`) and each feature
+uses that desktop's own tools:
+
+| Feature | Hyprland | KDE Plasma |
+|---|---|---|
+| Window actions, per-app profiles, Wait for window | `hyprctl` | kdotool |
+| Workspaces | Hyprland workspaces | virtual desktops |
+| Toggle floating, scratchpad | yes | not available (Hyprland only) |
+| On-screen popups | SwayOSD | Plasma's own popups |
+| Do not disturb | dunst | Plasma's Do Not Disturb |
+| Screenshots | grim + slurp | Spectacle |
+| Lock screen | hyprlock | KDE's screen locker (`loginctl lock-session`) |
+| Settings window at login | Hyprland autostart | KDE autostart (`~/.config/autostart`) |
+| Hidden settings window | listed by your bar (PID file) | system tray icon |
 
 ## Every action
 | Group | Actions |
@@ -22,12 +41,12 @@ Built and tested on Arch Linux + Hyprland (Wayland). Linux only for now.
 | General | Open default browser · Open a website · Open file or folder · Launch an app (picked from installed apps) · Copy text to clipboard · Show a notification |
 | Keyboard | Type text · Press keys (`Enter`, `Down Down`, `ctrl+shift+t`, …), via ydotool |
 | Screenshot | Full screen · Select a region (saved to `~/Pictures/Screenshots` and copied) |
-| Window (Hyprland) | Go to workspace N · Move window to workspace N · Next / previous workspace · Close window · Toggle fullscreen · Toggle floating · Focus a window (by class) · Show / hide scratchpad |
+| Window | Go to workspace N · Move window to workspace N · Next / previous workspace · Close window · Toggle fullscreen · Focus a window (by class) · Toggle floating (Hyprland) · Show / hide scratchpad (Hyprland) |
 | OBS | Start / stop / toggle / pause / resume recording · Start / stop / toggle streaming · Start / stop streaming AND recording · Switch scene · Show / hide a source in a scene · Mute / unmute an audio source · Turn a filter on / off (voice changer, camera effect, …) · Toggle virtual camera · Toggle replay buffer · Save replay buffer |
 | Media | Play / pause · Stop · Next / previous track · Volume up / down · Set volume to N% · Mute speakers · Mute microphone |
 | Per-app audio | App volume up / down · Set app volume to N% · Mute / unmute an app (e.g. Spotify, Firefox) |
 | Audio output | Switch audio output to a device · Next audio output (cycles through devices) |
-| System | Do not disturb on / off (dunst) · Lock screen · Sleep · Shut down · Restart |
+| System | Do not disturb on / off · Lock screen · Sleep · Shut down · Restart |
 | Mode | Toggle a mode · Turn a mode on · Turn a mode off · If a mode is on… (if / otherwise) |
 | Advanced | Macro · Run Python (sandboxed) |
 
@@ -53,8 +72,8 @@ filter list the filters on the source you entered. You can still type names by h
 text) when the key runs; the insert button next to the field adds them at the cursor.
 Only these exact names are replaced; other text in braces stays as written.
 
-**Shut down / Restart need confirming:** the first trigger only shows "Press again
-to shut down" (or "Hold again" / "Double-tap again", matching the key); repeating it
+**Sleep / Shut down / Restart need confirming:** the first trigger only shows "Press
+again to sleep" (or "Hold again" / "Double-tap again", matching the key); repeating it
 within 5 seconds confirms. Repeats under 0.4 s count as key bounce. They can't be
 used in macros or run from the window's Test button.
 
@@ -66,7 +85,8 @@ instantly; once Hold or Double tap is set, Press fires on release instead.
 - **Layer key** (Settings): hold it and every other key uses its "Layer" actions,
   doubling the number of actions.
 - **Profiles** (top left): different actions while a given app is focused,
-  matched by Hyprland window class. Anything a profile leaves unset uses Default.
+  matched by window class (e.g. `kitty`, `org.kde.dolphin`). Anything a profile
+  leaves unset uses Default.
   The profile menu can create, **duplicate** (copies every key, slot and layer key
   to start from), edit and delete profiles.
 
@@ -97,11 +117,11 @@ bad window classes, …) are reported when you Save, not when the macro runs.
 Example: Launch an app → kitty, Wait for window `kitty`, Type text `claude -r`,
 Press keys `Enter`. Text is typed literally (`$HOME` and `\n` stay as written),
 apart from the placeholders above.
-kdotool is KDE-only, so window control uses Hyprland's `hyprctl` instead.
+Window steps use `hyprctl` on Hyprland and kdotool on KDE Plasma.
 
 ## Feedback
-- On-screen confirmations via SwayOSD, e.g. "● Recording", "Stream ended",
-  "Scene: Gaming". Can be turned off in Settings.
+- On-screen confirmations (SwayOSD on Hyprland, Plasma's popups on KDE), e.g.
+  "● Recording", "Stream ended", "Scene: Gaming". Can be turned off in Settings.
 - The window shows whether the service is running and the numpad is connected
   (with a "Start service" button if it isn't), lights up keys as you press them,
   and has a **learn mode** (keyboard icon): press a numpad key to select it in the
@@ -110,16 +130,20 @@ kdotool is KDE-only, so window control uses Hyprland's `hyprctl` instead.
 
 ## Starting at login
 - The background service starts at login (systemd, `default.target`).
-- The settings window starts hidden at login (`numpad-control --hidden`, from
-  Hyprland's autostart), so it opens instantly from the launcher. Closing it only
-  hides it; Ctrl+Q quits it. It writes
-  `$XDG_RUNTIME_DIR/numpad-control-window.pid` while running, so bar modules can
-  list it as a hidden app.
+- The settings window starts hidden at login (`numpad-control --hidden`), so it
+  opens instantly from the launcher. Closing it only hides it; Ctrl+Q quits it.
+  - **KDE Plasma:** started by `~/.config/autostart/numpad-control.desktop`
+    (installed by `install.sh`), and shown as a **system tray icon**: click it to
+    open the settings; right-click for Open settings / Quit.
+  - **Hyprland:** add `numpad-control --hidden` to your Hyprland autostart. No tray
+    icon is shown there; instead it writes `$XDG_RUNTIME_DIR/numpad-control-window.pid`
+    while running, so a bar module can list it as a hidden app.
 
 ## Install
 Needs Python 3, GTK4 + libadwaita + python-gobject (from the distro), and
-optionally OBS 28+, SwayOSD, ydotool, playerctl, wpctl + pactl (PipeWire), grim + slurp,
-wl-copy, dunst and Hyprland for the matching actions.
+optionally OBS 28+, ydotool, playerctl, wpctl + pactl (PipeWire) and wl-clipboard,
+plus per desktop: Hyprland → SwayOSD, grim + slurp, dunst, hyprlock;
+KDE Plasma 6 → kdotool and Spectacle.
 
     git clone https://github.com/youssefahmed2017/numpad-control ~/numpad-control
     cd ~/numpad-control
