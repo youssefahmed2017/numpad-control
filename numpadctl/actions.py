@@ -12,7 +12,7 @@ import webbrowser
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import obs, sandbox
+from . import audio, obs, sandbox
 
 
 @dataclass
@@ -347,11 +347,7 @@ def _volume(osd_args, wpctl_args):
 
 
 def _set_volume(cfg, percent):
-    try:
-        level = int(percent.strip().rstrip("%"))
-    except ValueError:
-        raise ActionError(f"volume must be a number, not {percent!r}")
-    _command("wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{max(0, min(level, 100))}%")
+    _command("wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{_percent(percent)}%")
     if shutil.which("swayosd-client"):
         # swayosd treats a bare number as "raise by", so set with wpctl and
         # just show the popup with +0.
@@ -454,6 +450,16 @@ def _macro(cfg, steps):
             raise ActionError(f"step {i} ({BY_ID[step['action']].label}) failed: {e}")
 
 
+def _percent(value):
+    try:
+        level = int(str(value).strip().rstrip("%"))
+    except ValueError:
+        raise ActionError(f"volume must be a number, not {value!r}")
+    if not 0 <= level <= 100:
+        raise ActionError("volume must be between 0 and 100")
+    return level
+
+
 def _obs(fn):
     return lambda cfg, **p: fn(cfg["obs"], **p)
 
@@ -551,11 +557,33 @@ ACTIONS = [
     Action("volume_down", "Volume down",
            _volume(["--output-volume", "-5"], ["set-volume", SINK, "5%-"]), group="Media", repeat=True),
     Action("volume_set", "Set volume to…", _set_volume,
-           [Param("percent", "Volume %", default="50")], group="Media"),
+           [Param("percent", "Volume %", default="50")], group="Media",
+           check=lambda percent: _percent(percent)),
     Action("volume_mute", "Mute / unmute speakers",
            _volume(["--output-volume", "mute-toggle"], ["set-mute", SINK, "toggle"]), group="Media"),
     Action("mic_mute", "Mute / unmute microphone",
            _volume(["--input-volume", "mute-toggle"], ["set-mute", SOURCE, "toggle"]), group="Media"),
+
+    Action("app_volume_up", "App volume up", lambda cfg, app: audio.change_app_volume(app, 5),
+           [Param("app", "App (e.g. Firefox, spotify)", suggest="audio_apps")],
+           group="Media", repeat=True, osd_icon="audio-volume-high-symbolic"),
+    Action("app_volume_down", "App volume down", lambda cfg, app: audio.change_app_volume(app, -5),
+           [Param("app", "App (e.g. Firefox, spotify)", suggest="audio_apps")],
+           group="Media", repeat=True, osd_icon="audio-volume-medium-symbolic"),
+    Action("app_volume_set", "Set app volume to…",
+           lambda cfg, app, percent: audio.set_app_volume(app, _percent(percent)),
+           [Param("app", "App (e.g. Firefox, spotify)", suggest="audio_apps"),
+            Param("percent", "Volume %", default="50")],
+           group="Media", osd_icon="audio-volume-high-symbolic",
+           check=lambda app, percent: _percent(percent)),
+    Action("app_mute", "Mute / unmute an app", lambda cfg, app: audio.toggle_app_mute(app),
+           [Param("app", "App (e.g. Firefox, spotify)", suggest="audio_apps")],
+           group="Media", osd_icon="audio-volume-muted-symbolic"),
+    Action("output_switch", "Switch audio output to…", lambda cfg, output: audio.switch_output(output),
+           [Param("output", "Output device", suggest="audio_outputs")],
+           group="Media", osd_icon="audio-speakers-symbolic"),
+    Action("output_next", "Next audio output", lambda cfg: audio.next_output(),
+           group="Media", osd_icon="audio-speakers-symbolic"),
 
     Action("dnd_toggle", "Do not disturb on / off", _toggle_dnd, group="System",
            osd_icon="notifications-disabled-symbolic"),
@@ -602,6 +630,8 @@ SUGGESTIONS = {
     # filters can sit on any input (mic, webcam, …) or on a scene itself
     "obs_filter_sources": lambda cfg, p: obs.list_inputs(cfg["obs"]) + obs.list_scenes(cfg["obs"]),
     "obs_filters": lambda cfg, p: obs.list_filters(cfg["obs"], p.get("source", "").strip()),
+    "audio_apps": lambda cfg, p: audio.playing_apps(),
+    "audio_outputs": lambda cfg, p: audio.outputs(),
 }
 
 
@@ -616,7 +646,7 @@ def perform(cfg, binding, trigger="tap"):
         if action.confirm:  # the prompt says how to confirm: press / hold / double-tap
             params["trigger"] = trigger
         return action.run(cfg, **params)
-    except obs.OBSError as e:
+    except (obs.OBSError, audio.AudioError) as e:
         raise ActionError(str(e))
 
 

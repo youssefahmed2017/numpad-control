@@ -194,6 +194,7 @@ class Window(Adw.ApplicationWindow):
         profile_row.append(self.profile_dropdown)
         menu = Gio.Menu()
         menu.append("New profile…", "win.new-profile")
+        menu.append("Duplicate profile…", "win.duplicate-profile")
         menu.append("Edit profile…", "win.edit-profile")
         menu.append("Delete profile", "win.delete-profile")
         profile_row.append(Gtk.MenuButton(icon_name="document-edit-symbolic", menu_model=menu,
@@ -601,12 +602,16 @@ class Window(Adw.ApplicationWindow):
     # ---------------------------------------------------------------- profiles & layer
     def refresh_profiles(self):
         names = [p["name"] for p in self.cfg["profiles"]]
+        index = min(self.profile_index, len(names) - 1)
+        # A new model briefly selects the first entry; that isn't the user switching.
+        self.refreshing_profiles = True
         self.profile_dropdown.set_model(Gtk.StringList(strings=names))
-        self.profile_dropdown.set_selected(min(self.profile_index, len(names) - 1))
+        self.profile_dropdown.set_selected(index)
+        self.refreshing_profiles = False
 
     def on_profile_changed(self, dropdown, _pspec):
         index = dropdown.get_selected()
-        if index == Gtk.INVALID_LIST_POSITION or index == self.profile_index:
+        if self.refreshing_profiles or index == Gtk.INVALID_LIST_POSITION or index == self.profile_index:
             return
         self.commit_params()
         self.profile_index = index
@@ -621,20 +626,32 @@ class Window(Adw.ApplicationWindow):
 
     def _install_profile_actions(self):
         for name, handler in (("new-profile", lambda *_: self.profile_dialog(None)),
+                              ("duplicate-profile",
+                               lambda *_: self.profile_dialog(None, copy_from=self.profile_index)),
                               ("edit-profile", lambda *_: self.profile_dialog(self.profile_index)),
                               ("delete-profile", lambda *_: self.delete_profile())):
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", handler)
             self.add_action(action)
 
-    def profile_dialog(self, index):
+    def profile_dialog(self, index, copy_from=None):
+        """Edit profile `index`, or create one (empty, or a copy of profile `copy_from`)."""
         if index == 0:
             self.toast("The Default profile always applies and can't be edited.")
             return
-        profile = self.cfg["profiles"][index] if index else {"name": "", "match": ""}
-        dialog = Adw.AlertDialog(heading="Edit profile" if index else "New profile",
-                                 body="A profile's keys apply while one of its apps is focused. "
-                                      "Keys it doesn't set use the Default profile.")
+        self.commit_params()  # so a copy includes the key being edited
+        if copy_from is not None:
+            source = self.cfg["profiles"][copy_from]
+            profile = {"name": f"{source['name']} copy", "match": source["match"] if copy_from else ""}
+            heading = f"Duplicate “{source['name']}”"
+            body = (f"Makes a new profile that starts with the same keys as “{source['name']}”, "
+                    "which you can then change. Choose the apps it applies to.")
+        else:
+            profile = self.cfg["profiles"][index] if index else {"name": "", "match": ""}
+            heading = "Edit profile" if index else "New profile"
+            body = ("A profile's keys apply while one of its apps is focused. "
+                    "Keys it doesn't set use the Default profile.")
+        dialog = Adw.AlertDialog(heading=heading, body=body)
         group = Adw.PreferencesGroup()
         name = Adw.EntryRow(title="Name", text=profile["name"])
         classes = Adw.EntryRow(title="Window classes (comma-separated)", text=profile["match"])
@@ -666,11 +683,15 @@ class Window(Adw.ApplicationWindow):
             if index:
                 profile["name"], profile["match"] = name.get_text().strip(), classes.get_text().strip()
             else:
-                self.commit_params()
-                self.cfg["profiles"].append({"name": name.get_text().strip(),
-                                             "match": classes.get_text().strip(),
-                                             "bindings": {}, "layer_bindings": {}})
+                copied = self.cfg["profiles"][copy_from] if copy_from is not None else {}
+                self.cfg["profiles"].append({
+                    "name": name.get_text().strip(), "match": classes.get_text().strip(),
+                    "bindings": copy.deepcopy(copied.get("bindings", {})),
+                    "layer_bindings": copy.deepcopy(copied.get("layer_bindings", {}))})
                 self.profile_index = len(self.cfg["profiles"]) - 1
+                self.param_widgets = {}  # they belong to the previous profile
+                if not classes.get_text().strip():
+                    self.toast("It won't apply until you add a window class (Edit profile…)")
             self.mark_dirty()
             self.refresh_profiles()
             self.refresh_pad()

@@ -25,10 +25,22 @@ Built and tested on Arch Linux + Hyprland (Wayland). Linux only for now.
 | Window (Hyprland) | Go to workspace N · Move window to workspace N · Next / previous workspace · Close window · Toggle fullscreen · Toggle floating · Focus a window (by class) · Show / hide scratchpad |
 | OBS | Start / stop / toggle / pause / resume recording · Start / stop / toggle streaming · Start / stop streaming AND recording · Switch scene · Show / hide a source in a scene · Mute / unmute an audio source · Turn a filter on / off (voice changer, camera effect, …) · Toggle virtual camera · Toggle replay buffer · Save replay buffer |
 | Media | Play / pause · Stop · Next / previous track · Volume up / down · Set volume to N% · Mute speakers · Mute microphone |
+| Per-app audio | App volume up / down · Set app volume to N% · Mute / unmute an app (e.g. Spotify, Firefox) |
+| Audio output | Switch audio output to a device · Next audio output (cycles through devices) |
 | System | Do not disturb on / off (dunst) · Lock screen · Sleep · Shut down · Restart |
 | Advanced | Macro · Run Python (sandboxed) |
 
-Volume up/down and next/previous workspace repeat while the key is held.
+Volume up/down (system and per-app) and next/previous workspace repeat while the
+key is held.
+
+**Per-app audio** uses PipeWire (`pactl`). An app only has sound to control while
+it's playing something; otherwise the action says "Spotify isn't playing any sound
+right now". All of an app's sound streams (e.g. several Firefox tabs) change
+together. The list button next to the field shows the apps playing sound right now.
+
+**Switching the audio output** moves sound that's already playing too. Devices are
+picked by their readable name (e.g. "Built-in Audio Analog Stereo"), from the list
+button or typed; part of the name is enough.
 
 **Picking OBS names:** every OBS scene, source, audio source and filter field has a
 list button that fetches the real names from OBS (it must be running). The lists
@@ -54,6 +66,8 @@ instantly; once Hold or Double tap is set, Press fires on release instead.
   doubling the number of actions.
 - **Profiles** (top left): different actions while a given app is focused,
   matched by Hyprland window class. Anything a profile leaves unset uses Default.
+  The profile menu can create, **duplicate** (copies every key, slot and layer key
+  to start from), edit and delete profiles.
 
 ## Macros
 The **Macro** action runs steps top to bottom. A step is any action above, or:
@@ -88,7 +102,7 @@ kdotool is KDE-only, so window control uses Hyprland's `hyprctl` instead.
 
 ## Install
 Needs Python 3, GTK4 + libadwaita + python-gobject (from the distro), and
-optionally OBS 28+, SwayOSD, ydotool, playerctl, wpctl (PipeWire), grim + slurp,
+optionally OBS 28+, SwayOSD, ydotool, playerctl, wpctl + pactl (PipeWire), grim + slurp,
 wl-copy, dunst and Hyprland for the matching actions.
 
     git clone https://github.com/youssefahmed2017/numpad-control ~/numpad-control
