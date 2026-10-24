@@ -20,10 +20,9 @@ def main():
             print("Press a key on your numpad…")
             print(daemon.detect_device() or "nothing pressed")
     elif command == "list":
-        import evdev
-        for path in evdev.list_devices():
-            d = evdev.InputDevice(path)
-            print(f"{path}  {d.info.vendor:04x}:{d.info.product:04x}  {d.name}")
+        from .platform import numpad_input
+        for device, vendor, product, name in numpad_input.list_devices():
+            print(f"{device}  {vendor}:{product}  {name}")
     elif command == "usb-info":
         # For install-usb-fix.sh: which USB port the configured numpad is on.
         from pathlib import Path

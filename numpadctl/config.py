@@ -18,22 +18,9 @@ from .platform import paths
 CONFIG_DIR = paths.config_dir()
 CONFIG_PATH = CONFIG_DIR / "config.json"
 
-# Logical key name -> evdev key code names that produce it.
-KEYS = {
-    "NumLock": ["KEY_NUMLOCK"],
-    "/": ["KEY_KPSLASH"],
-    "*": ["KEY_KPASTERISK"],
-    "Backspace": ["KEY_BACKSPACE"],
-    "7": ["KEY_KP7"], "8": ["KEY_KP8"], "9": ["KEY_KP9"],
-    "-": ["KEY_KPMINUS"],
-    "4": ["KEY_KP4"], "5": ["KEY_KP5"], "6": ["KEY_KP6"],
-    "+": ["KEY_KPPLUS"],
-    "1": ["KEY_KP1"], "2": ["KEY_KP2"], "3": ["KEY_KP3"],
-    "Enter": ["KEY_KPENTER"],
-    "0": ["KEY_KP0"],
-    "000": [],  # the device sends KEY_KP0 three times in a burst
-    ".": ["KEY_KPDOT", "KEY_KPCOMMA"],
-}
+# Key names: "NumLock", "/", "*", "Backspace", "0"-"9", "-", "+", "Enter", ".",
+# and "000" (sent as three quick "0"s; the service recognises the burst).
+# Each OS's input backend in platform/ maps its key codes to these names.
 
 SLOTS = ("tap", "hold", "double")
 TAP_ONLY_KEYS = {"000"}  # a burst of three 0s can't be held or double-tapped

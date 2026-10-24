@@ -1,8 +1,8 @@
 import asyncio
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
-from evdev import ecodes
 
 from numpadctl import daemon
 
@@ -37,38 +37,38 @@ class DaemonTest(unittest.IsolatedAsyncioTestCase):
         for p in self.patches:
             p.stop()
 
-    async def tap(self, code, hold=0.0):
-        self.d.on_event(code, True)
+    async def tap(self, key, hold=0.0):
+        self.d.on_key(key, True)
         await asyncio.sleep(hold)
-        self.d.on_event(code, False)
+        self.d.on_key(key, False)
 
     async def test_tap_fires_immediately(self):
         self.d.cfg = make_cfg({"5": {"tap": b("media_play_pause")}})
-        self.d.on_event(ecodes.KEY_KP5, True)
+        self.d.on_key("5", True)
         self.assertEqual(self.fired, ["media_play_pause"])
-        self.d.on_event(ecodes.KEY_KP5, False)
+        self.d.on_key("5", False)
 
     async def test_hold_vs_tap(self):
         self.d.cfg = make_cfg({"5": {"tap": b("obs_start_recording"), "hold": b("obs_stop_recording")}})
-        await self.tap(ecodes.KEY_KP5, hold=0.02)
+        await self.tap("5", hold=0.02)
         self.assertEqual(self.fired, ["obs_start_recording"])
-        await self.tap(ecodes.KEY_KP5, hold=0.2)
+        await self.tap("5", hold=0.2)
         self.assertEqual(self.fired, ["obs_start_recording", "obs_stop_recording"])
 
     async def test_double_tap(self):
         self.d.cfg = make_cfg({"5": {"tap": b("media_next"), "double": b("media_previous")}})
-        await self.tap(ecodes.KEY_KP5)
+        await self.tap("5")
         await asyncio.sleep(0.02)
-        await self.tap(ecodes.KEY_KP5)
+        await self.tap("5")
         await asyncio.sleep(0.15)
         self.assertEqual(self.fired, ["media_previous"])
-        await self.tap(ecodes.KEY_KP5)
+        await self.tap("5")
         await asyncio.sleep(0.15)
         self.assertEqual(self.fired, ["media_previous", "media_next"])
 
     async def test_repeat_while_held(self):
         self.d.cfg = make_cfg({"-": {"tap": b("volume_down")}})
-        await self.tap(ecodes.KEY_KPMINUS, hold=0.25)
+        await self.tap("-", hold=0.25)
         count = len(self.fired)
         self.assertGreaterEqual(count, 4)  # 1 + repeats every 0.03s after 0.1s
         await asyncio.sleep(0.1)
@@ -76,12 +76,12 @@ class DaemonTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_non_repeating_action_fires_once(self):
         self.d.cfg = make_cfg({"5": {"tap": b("media_play_pause")}})
-        await self.tap(ecodes.KEY_KP5, hold=0.25)
+        await self.tap("5", hold=0.25)
         self.assertEqual(self.fired, ["media_play_pause"])
 
     async def hold(self, binding, seconds):
         self.d.cfg = make_cfg({"5": {"hold": binding}})
-        await self.tap(ecodes.KEY_KP5, hold=seconds)
+        await self.tap("5", hold=seconds)
         count = len(self.fired)
         await asyncio.sleep(0.1)
         self.assertEqual(len(self.fired), count, "must stop when the key is let go")
@@ -116,17 +116,17 @@ class DaemonTest(unittest.IsolatedAsyncioTestCase):
     async def test_000_burst_and_single_zero(self):
         self.d.cfg = make_cfg({"0": {"tap": b("media_stop")}, "000": {"tap": b("open_browser")}})
         for _ in range(3):
-            self.d.on_event(ecodes.KEY_KP0, True)
-            self.d.on_event(ecodes.KEY_KP0, False)
+            self.d.on_key("0", True)
+            self.d.on_key("0", False)
         await asyncio.sleep(0.05)
         self.assertEqual(self.fired, ["open_browser"])
-        await self.tap(ecodes.KEY_KP0)
+        await self.tap("0")
         await asyncio.sleep(0.05)
         self.assertEqual(self.fired, ["open_browser", "media_stop"])
 
     async def test_zero_can_be_held(self):
         self.d.cfg = make_cfg({"0": {"tap": b("media_stop"), "hold": b("lock_screen")}})
-        await self.tap(ecodes.KEY_KP0, hold=0.2)
+        await self.tap("0", hold=0.2)
         await asyncio.sleep(0.05)
         self.assertEqual(self.fired, ["lock_screen"])
 
@@ -134,11 +134,11 @@ class DaemonTest(unittest.IsolatedAsyncioTestCase):
         self.d.cfg = make_cfg({"5": {"tap": b("media_next")}},
                               layer_bindings={"5": {"tap": b("media_previous")}},
                               layer_key="Enter")
-        await self.tap(ecodes.KEY_KP5)
-        self.d.on_event(ecodes.KEY_KPENTER, True)
-        await self.tap(ecodes.KEY_KP5)
-        self.d.on_event(ecodes.KEY_KPENTER, False)
-        await self.tap(ecodes.KEY_KP5)
+        await self.tap("5")
+        self.d.on_key("Enter", True)
+        await self.tap("5")
+        self.d.on_key("Enter", False)
+        await self.tap("5")
         self.assertEqual(self.fired, ["media_next", "media_previous", "media_next"])
 
     async def test_profile_overrides_and_falls_back(self):
@@ -147,10 +147,10 @@ class DaemonTest(unittest.IsolatedAsyncioTestCase):
         self.d.cfg = make_cfg({"5": {"tap": b("media_play_pause")}, "6": {"tap": b("media_next")}},
                               profiles=[obs_profile])
         with mock.patch.object(daemon, "active_window_class", return_value="com.obsproject.Studio"):
-            await self.tap(ecodes.KEY_KP5)
-            await self.tap(ecodes.KEY_KP6)
+            await self.tap("5")
+            await self.tap("6")
         with mock.patch.object(daemon, "active_window_class", return_value="firefox"):
-            await self.tap(ecodes.KEY_KP5)
+            await self.tap("5")
         self.assertEqual(self.fired, ["obs_toggle_recording", "media_next", "media_play_pause"])
 
     async def test_capture_mode_runs_nothing_but_reports_keys(self):
@@ -158,7 +158,7 @@ class DaemonTest(unittest.IsolatedAsyncioTestCase):
         writer = mock.Mock()
         self.d.clients.add(writer)
         self.d.capturing.add(writer)
-        await self.tap(ecodes.KEY_KP5)
+        await self.tap("5")
         self.assertEqual(self.fired, [])
         self.assertIn(b'"key": "5"', writer.write.call_args_list[-1].args[0])
 
@@ -171,10 +171,10 @@ if __name__ == "__main__":
         self.d.run_action = lambda key, binding, slot: slots.append(slot)
         self.d.cfg = make_cfg({"5": {"tap": b("media_next"), "hold": b("shutdown"),
                                      "double": b("reboot")}})
-        await self.tap(ecodes.KEY_KP5, hold=0.2)            # hold
-        await self.tap(ecodes.KEY_KP5)                       # double tap
+        await self.tap("5", hold=0.2)            # hold
+        await self.tap("5")                       # double tap
         await asyncio.sleep(0.02)
-        await self.tap(ecodes.KEY_KP5)
+        await self.tap("5")
         await asyncio.sleep(0.15)
         self.assertEqual(slots, ["hold", "double"])
 
@@ -246,10 +246,8 @@ class SocketTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_detect_uses_next_key_on_our_device(self):
         await self.message()
-        dev = mock.Mock()
-        dev.name, dev.info.vendor, dev.info.product = "Usb KeyBoard", 0xc0f4, 0x05f5
-        self.d.devices = [dev]
-        with mock.patch.object(daemon, "detect_device", return_value=None):
+        self.d.numpad = SimpleNamespace(spec={"vendor": "c0f4", "product": "05f5", "name": "Usb KeyBoard"})
+        with mock.patch.object(daemon.numpad_input, "detect_device", return_value=None):
             await self.send({"cmd": "detect"})
             self.d.key_event("7", True)
             self.assertEqual(self.fired, [], "the detect press must not run an action")

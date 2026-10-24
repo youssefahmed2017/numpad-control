@@ -220,9 +220,12 @@ don't trust.
 - `numpadctl/gui.py`: the settings window; `tray.py`: KDE tray icon
 - `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
-- `numpadctl/platform/`: everything that differs between operating systems
-  (file locations, file locking, the service ↔ window connection). Groundwork for a
-  future Windows version: the rest of the code only talks to the OS through it.
+- `numpadctl/platform/`: everything that differs between operating systems, so a
+  future Windows version only has to add its own versions of these:
+  - `paths.py`: file locations and file locking
+  - `ipc.py`: the service ↔ window connection
+  - `numpad_input.py`: reading the numpad (Linux: `linux_numpad.py`, evdev); the
+    service itself only sees key names like `"5"`, `"Enter"`, `"000"`
 
 ## Tests
     .venv/bin/python -m unittest discover -s tests -t .
