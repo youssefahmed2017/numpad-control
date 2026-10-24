@@ -50,6 +50,31 @@ except during the 30-second block test, and only for the keyboard you choose.
 6. **Send back** the output of both runs (copy the text from the window, or take a
    screenshot).
 
+## Test 2: the real Windows input backend
+After the test above worked, this tries the code Numpad Control itself will use
+(`numpadctl/platform/windows_numpad.py`). It only captures the numpad; the main
+keyboard isn't touched at all.
+
+1. Get the project (Git is needed; it comes with "Git for Windows"):
+
+       cd %USERPROFILE%\Desktop
+       git clone https://github.com/youssefahmed2017/numpad-control
+       cd numpad-control
+
+   (If it's already there: `cd %USERPROFILE%\Desktop\numpad-control` and `git pull`.)
+2. Copy `interception.dll` (from the unzipped `Interception\library\x64\` folder)
+   into `numpad-control\numpadctl\platform\`.
+3. Run:
+
+       python -m numpadctl.platform.windows_numpad
+
+   It lists the keyboards, then shows every numpad key as **pressed** / **released**.
+   The numpad's keys don't type while it runs; the main keyboard types as usual.
+   Check that holding a key shows **one** "pressed" (not a stream of them), and that
+   **unplugging the numpad** stops it with "the numpad was unplugged" within a few
+   seconds. Ctrl+C stops it. (The `000` key shows as three `0` presses here; the full
+   app turns that burst into one `000` key.)
+
 ## If something goes wrong
 - If the keyboard stops responding while the test runs, **close the black window
   with the mouse**; that ends the test and gives the keys back.

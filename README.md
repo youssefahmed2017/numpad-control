@@ -224,8 +224,11 @@ don't trust.
   future Windows version only has to add its own versions of these:
   - `paths.py`: file locations and file locking
   - `ipc.py`: the service ↔ window connection
-  - `numpad_input.py`: reading the numpad (Linux: `linux_numpad.py`, evdev); the
-    service itself only sees key names like `"5"`, `"Enter"`, `"000"`
+  - `numpad_input.py`: reading the numpad; the service itself only sees key names
+    like `"5"`, `"Enter"`, `"000"`. Linux: `linux_numpad.py` (evdev). Windows:
+    `windows_numpad.py`, using the [Interception](https://github.com/oblitum/Interception)
+    driver to capture only the numpad, even next to a keyboard with its own number pad
+    (tested on a real Windows PC; the rest of the Windows version isn't built yet)
   - `system.py`: system actions (Linux: `linux_system.py`): opening apps, URLs and
     files, clipboard, notifications, typing and key presses, media, volume, power.
     Apps opened from the numpad get their own systemd scope, so they don't count as
