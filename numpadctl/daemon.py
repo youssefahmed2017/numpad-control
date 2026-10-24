@@ -205,6 +205,8 @@ class Daemon:
     # ------------------------------------------------------------ tap / hold / double
     def press(self, key):
         self.reload_if_changed()
+        if not actions.refresh_session_env():
+            log.warning("no desktop session found yet - apps and windows can't open")
         current = self.presses.get(key)
         if current and current.waiting_double:
             current.timer.cancel()

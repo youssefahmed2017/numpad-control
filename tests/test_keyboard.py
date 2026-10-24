@@ -70,3 +70,19 @@ class KeyboardTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SessionEnvTest(unittest.TestCase):
+    def test_display_vars_are_picked_up_from_systemd(self):
+        out = mock.Mock(stdout="HOME=/home/x\nWAYLAND_DISPLAY=wayland-9\nHYPRLAND_INSTANCE_SIGNATURE=abc\nPATH=/bin\n")
+        with mock.patch.dict(actions.os.environ, {}, clear=True), \
+                mock.patch.object(actions.subprocess, "run", return_value=out):
+            self.assertTrue(actions.refresh_session_env())
+            self.assertEqual(actions.os.environ["WAYLAND_DISPLAY"], "wayland-9")
+            self.assertEqual(actions.os.environ["HYPRLAND_INSTANCE_SIGNATURE"], "abc")
+            self.assertNotIn("PATH", actions.os.environ, "only display variables are copied")
+
+    def test_no_session_yet(self):
+        with mock.patch.dict(actions.os.environ, {}, clear=True), \
+                mock.patch.object(actions.subprocess, "run", return_value=mock.Mock(stdout="HOME=/x\n")):
+            self.assertFalse(actions.refresh_session_env())

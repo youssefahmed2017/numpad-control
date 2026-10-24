@@ -71,14 +71,55 @@ def _detached(*argv):
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+# Session variables a desktop app needs. The background service can start
+# before the desktop shares them, and they change on every login, so they're
+# fetched again before each action instead of trusted from startup.
+SESSION_VARS = ("WAYLAND_DISPLAY", "DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE",
+                "XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE", "XDG_SESSION_DESKTOP")
+
+
+def refresh_session_env():
+    """Copy the desktop session's display variables from systemd into os.environ.
+
+    Returns True if a display is known afterwards."""
+    try:
+        out = subprocess.run(["systemctl", "--user", "show-environment"],
+                             capture_output=True, text=True, timeout=2).stdout
+    except (OSError, subprocess.SubprocessError):
+        out = ""
+    for line in out.splitlines():
+        name, _, value = line.partition("=")
+        if name in SESSION_VARS and value:
+            os.environ[name] = value
+    return bool(os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"))
+
+
+def _open_in_browser(url):
+    # Not webbrowser.open(): it picks a browser once per process and keeps that
+    # choice, so a service started before the desktop never finds a browser.
+    if shutil.which("xdg-open"):
+        _detached("xdg-open", url)
+    else:
+        webbrowser.open(url)
+
+
 def _open_browser(cfg, url=""):
-    webbrowser.open(url.strip() or "about:blank")
+    if url.strip():
+        _open_in_browser(url.strip())
+        return
+    browser = subprocess.run(["xdg-settings", "get", "default-web-browser"],
+                             capture_output=True, text=True, timeout=5).stdout.strip() \
+        if shutil.which("xdg-settings") else ""
+    if browser:
+        _launch_app(cfg, browser)
+    else:
+        webbrowser.open("about:blank")
 
 
 def _open_url(cfg, url):
     if not url.strip():
         raise ActionError("no URL set")
-    webbrowser.open(url.strip())
+    _open_in_browser(url.strip())
 
 
 def _open_path(cfg, path):
@@ -88,7 +129,7 @@ def _open_path(cfg, path):
 
 
 def _run_python(cfg, code):
-    ok, output = sandbox.run(code)
+    ok, output = sandbox.run(code, on_open_url=_open_in_browser)
     if not ok:
         raise ActionError(output or "snippet failed")
     return output
