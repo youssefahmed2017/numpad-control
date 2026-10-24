@@ -1,72 +1,122 @@
 # Numpad Control
 
-Turns a USB numpad into a control pad on Linux: each key runs an action
-(open browser/URL, OBS record/stream/scenes, media & volume, sandboxed Python).
+Turns a cheap USB numpad into a control pad (like a Stream Deck) on Linux.
+Each key runs an action: open apps and websites, control OBS, media and volume,
+manage Hyprland windows, type text, run multi-step macros, and more.
+Everything is set up in a GTK4 / libadwaita settings window. No code needed.
 
-## Install
-    ./install.sh          # udev rule (sudo), user service, app-menu entry
+Built and tested on Arch Linux + Hyprland (Wayland). Linux only for now.
 
-Then open **Numpad Control** from your launcher, click a key, pick an action, Save.
-The service reloads the config automatically (~/.config/numpad-control/config.json).
+## How it works
+- A **background service** (systemd user service) reads the numpad directly with
+  evdev and grabs it, so its keys only trigger actions and never type digits.
+  The `000` key (which sends three 0s in a burst) is detected as its own key.
+- The **settings window** edits `~/.config/numpad-control/config.json`. The service
+  reloads it automatically after Save.
+- The service fetches the desktop's display variables on every key press, so
+  apps open correctly even if it started before Hyprland at boot.
 
-## Commands
-    .venv/bin/python -m numpadctl gui      # settings window
-    .venv/bin/python -m numpadctl run      # the daemon (normally via systemd)
-    .venv/bin/python -m numpadctl detect   # find your numpad's USB id
-    journalctl --user -u numpad-control -f # logs (incl. print() from snippets)
+## Every action
+| Group | Actions |
+|---|---|
+| General | Open default browser · Open a website · Open file or folder · Launch an app (picked from installed apps) · Copy text to clipboard · Show a notification |
+| Keyboard | Type text · Press keys (`Enter`, `Down Down`, `ctrl+shift+t`, …), via ydotool |
+| Screenshot | Full screen · Select a region (saved to `~/Pictures/Screenshots` and copied) |
+| Window (Hyprland) | Go to workspace N · Move window to workspace N · Next / previous workspace · Close window · Toggle fullscreen · Toggle floating · Focus a window (by class) · Show / hide scratchpad |
+| OBS | Start / stop / toggle / pause / resume recording · Start / stop / toggle streaming · Start / stop streaming AND recording · Switch scene · Show / hide a source in a scene · Mute / unmute an audio source · Toggle virtual camera · Toggle replay buffer · Save replay buffer |
+| Media | Play / pause · Stop · Next / previous track · Volume up / down · Set volume to N% · Mute speakers · Mute microphone |
+| System | Do not disturb on / off (dunst) · Lock screen · Sleep · Shut down · Restart |
+| Advanced | Macro · Run Python (sandboxed) |
+
+Volume up/down and next/previous workspace repeat while the key is held.
+
+**Shut down / Restart need confirming:** the first trigger only shows "Press again
+to shut down" (or "Hold again" / "Double-tap again", matching the key); repeating it
+within 5 seconds confirms. Repeats under 0.4 s count as key bounce. They can't be
+used in macros or run from the window's Test button.
 
 ## Per key: Press, Hold, Double tap
-Every key (except 000) has three slots. A key with only a Press action fires
+Every key (except `000`) has three slots. A key with only a Press action fires
 instantly; once Hold or Double tap is set, Press fires on release instead.
-Volume up/down and next/previous workspace repeat while held.
 
 ## Layer key and profiles
-- **Layer key** (Settings): hold it and every other key uses its "Layer" actions.
-- **Profiles** (top-left): different actions while a given app is focused
-  (matched by Hyprland window class). Anything a profile leaves unset uses Default.
+- **Layer key** (Settings): hold it and every other key uses its "Layer" actions,
+  doubling the number of actions.
+- **Profiles** (top left): different actions while a given app is focused,
+  matched by Hyprland window class. Anything a profile leaves unset uses Default.
 
 ## Macros
-The "Macro" action runs several actions in a row, with optional waits
-(e.g. switch scene → wait 3 s → start streaming + recording). It stops at the
-first step that fails. Steps can't be Run Python, another macro, or
-shutdown/restart.
+The **Macro** action runs steps top to bottom. A step is any action above, or:
+- **Wait** N seconds (up to 60)
+- **Wait for window**: wait until an app's window is focused, e.g. after launching it
 
-Building blocks for automating apps:
-- **Type text** / **Press keys** (via ydotool): e.g. `Enter`, `Down Down`, `ctrl+shift+t`.
-  Text is typed literally (no `$VARS` or `\n` escapes).
-- **Focus a window** and **Wait for window** (Hyprland window class, e.g. `kitty`):
-  wait for an app you just launched before typing into it.
+A macro stops at the first step that fails and says which one. Steps can't be
+Run Python, another macro, or shut down / restart. Problems (unknown key names,
+bad window classes, …) are reported when you Save, not when the macro runs.
 
-Example: Launch kitty → Wait for window `kitty` → Type `claude -r` → Press `Enter`.
-(kdotool is KDE-only, so window control uses Hyprland's own `hyprctl` instead.)
-
-## Starting at login
-The background service (systemd) makes the keys work and starts at login.
-The settings window also starts hidden at login (`numpad-control --hidden`,
-from Hyprland's autostart), so it opens instantly; closing it only hides it.
-Ctrl+Q quits it for real.
+Example: Launch an app → kitty, Wait for window `kitty`, Type text `claude -r`,
+Press keys `Enter`. Text is typed literally (`$HOME` and `\n` stay as written).
+kdotool is KDE-only, so window control uses Hyprland's `hyprctl` instead.
 
 ## Feedback
-- On-screen confirmations (via SwayOSD), e.g. "Recording" / "Stream ended".
-- The window shows whether the service is running and the numpad is connected,
-  lights up keys as you press them, and has a **learn mode** (keyboard icon):
-  press a numpad key to select it without running its action.
+- On-screen confirmations via SwayOSD, e.g. "● Recording", "Stream ended",
+  "Scene: Gaming". Can be turned off in Settings.
+- The window shows whether the service is running and the numpad is connected
+  (with a "Start service" button if it isn't), lights up keys as you press them,
+  and has a **learn mode** (keyboard icon): press a numpad key to select it in the
+  window without running its action.
+- Errors from an action show as a desktop notification.
+
+## Starting at login
+- The background service starts at login (systemd, `default.target`).
+- The settings window starts hidden at login (`numpad-control --hidden`, from
+  Hyprland's autostart), so it opens instantly from the launcher. Closing it only
+  hides it; Ctrl+Q quits it. It writes
+  `$XDG_RUNTIME_DIR/numpad-control-window.pid` while running, so bar modules can
+  list it as a hidden app.
+
+## Install
+Needs Python 3, GTK4 + libadwaita + python-gobject (from the distro), and
+optionally OBS 28+, SwayOSD, ydotool, playerctl, wpctl (PipeWire), grim + slurp,
+wl-copy, dunst and Hyprland for the matching actions.
+
+    git clone https://github.com/youssefahmed2017/numpad-control ~/numpad-control
+    cd ~/numpad-control
+    python -m venv --system-site-packages .venv
+    .venv/bin/pip install evdev obsws-python
+    ./install.sh          # udev rule (sudo), user service, launcher + app-menu entry
+
+Then open **Numpad Control** from your launcher, click a key, pick an action, Save.
+
+The project currently expects to live in `~/numpad-control`, and the udev rule in
+`dist/70-numpad-control.rules` matches one numpad model (USB ID `c0f4:05f5`).
+For a different numpad, use "Detect…" in Settings and change the IDs in that rule.
+
+## OBS
+In OBS: Tools → WebSocket Server Settings → Enable WebSocket server. Put the
+password in the window's Settings (gear icon) → OBS, and use "Test connection".
+
+## Run Python (sandboxed)
+An optional advanced action. Snippets are checked before saving and before running.
+Allowed imports: webbrowser, time, datetime, math, random, json, re, statistics;
+helpers `open_url(url)` and `notify(title, body)`. eval/exec/compile/open,
+os/sys/subprocess and every other import, `_` names and introspection attributes
+are rejected. Snippets run in a separate process limited to 30 s CPU and 512 MB of
+memory, with no file writes and no process spawning. Opening URLs (http/https only)
+and notifications are carried out by the trusted parent process.
+This is a solid guardrail, not a perfect jail. Don't run snippets from people you
+don't trust.
+
+## Commands
+    numpad-control                          # open the settings window
+    .venv/bin/python -m numpadctl run       # the service (normally via systemd)
+    .venv/bin/python -m numpadctl detect    # press a key to find your numpad's USB ID
+    .venv/bin/python -m numpadctl list      # list input devices
+    journalctl --user -u numpad-control -f  # service log
 
 ## Tests
     .venv/bin/python -m unittest discover -s tests -t .
 
-## OBS
-OBS → Tools → WebSocket Server Settings → Enable. Put the password in "OBS settings…".
-
-## Run Python sandbox
-Snippets are checked before saving and before running. Allowed imports:
-webbrowser, time, datetime, math, random, json, re, statistics; helpers
-`open_url(url)` and `notify(title, body)`. eval/exec/compile/open, os/sys/subprocess
-and every other import, `_`-names and introspection attributes are rejected.
-Snippets run in a separate process limited to 30 s CPU and 512 MB of memory, with no
-file writes and no process spawning. Opening URLs (http/https only) and notifications
-are carried out by the trusted parent process.
-This is a solid guardrail, not a perfect jail. Don't run snippets from people you don't trust.
-
-## Different numpad?
-Use "Detect numpad…" in the window, and change the IDs in dist/70-numpad-control.rules.
+## Plans
+- A Windows version (with one Qt settings window for both systems) is planned
+  for later.
