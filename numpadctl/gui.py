@@ -17,8 +17,10 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 from . import actions, config, obs, sandbox  # noqa: E402
 
 APP_ID = "dev.numpadctl.NumpadControl"
-SOCKET_PATH = os.path.join(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"),
-                           "numpad-control.sock")
+RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+SOCKET_PATH = os.path.join(RUNTIME_DIR, "numpad-control.sock")
+# Lets other tools (e.g. a "hidden apps" bar module) see that the window app is running.
+PID_PATH = os.path.join(RUNTIME_DIR, "numpad-control-window.pid")
 
 LAYOUT = [  # (key, row, column, rowspan)
     ("NumLock", 0, 0, 1), ("/", 0, 1, 1), ("*", 0, 2, 1), ("Backspace", 0, 3, 1),
@@ -897,6 +899,8 @@ class App(Adw.Application):
 
     def do_startup(self):
         Adw.Application.do_startup(self)
+        with open(PID_PATH, "w") as f:
+            f.write(str(os.getpid()))
         provider = Gtk.CssProvider()
         provider.load_from_string(CSS)
         Gtk.StyleContext.add_provider_for_display(
@@ -905,6 +909,13 @@ class App(Adw.Application):
         quit_action.connect("activate", lambda *_: self.request_quit())
         self.add_action(quit_action)
         self.set_accels_for_action("app.quit", ["<Control>q"])
+
+    def do_shutdown(self):
+        try:
+            os.remove(PID_PATH)
+        except FileNotFoundError:
+            pass
+        Adw.Application.do_shutdown(self)
 
     def do_activate(self):
         if self.window is None:
