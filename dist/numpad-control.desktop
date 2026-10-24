@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Numpad Control
+Comment=Choose what each numpad key does
+Exec=@HOME@/.local/bin/numpad-control
+Path=@HOME@/numpad-control
+Icon=input-keyboard
+Categories=Utility;
+StartupWMClass=dev.numpadctl.NumpadControl
