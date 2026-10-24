@@ -295,3 +295,6 @@ don't trust.
   numbered desktop, floating and the scratchpad (Hyprland only), Do not disturb,
   Run Python, and on-screen popups (notifications instead). Install with
   `install.ps1` (see Install → Windows).
+
+# License 
+GPLv3, see [License](LICENSE)
