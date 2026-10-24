@@ -1,6 +1,9 @@
 """Everything a key can be bound to."""
 
 import copy
+import json
+import os
+import re
 import shutil
 import subprocess
 import threading
@@ -30,6 +33,7 @@ class Action:
     osd_icon: str = ""     # if set, the returned message is shown on screen
     repeat: bool = False   # keeps running while the key is held
     confirm: bool = False  # needs a second press; never run by "Test now" or macros
+    check: callable = None # check(**params) raises ActionError for bad settings
 
 
 class ActionError(Exception):
@@ -156,6 +160,96 @@ def _hypr(lua):
     return lambda cfg: _hyprctl(lua)
 
 
+def active_window_class():
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") or not shutil.which("hyprctl"):
+        return ""
+    try:
+        out = subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True,
+                             text=True, timeout=1).stdout
+        return json.loads(out).get("class", "") if out.lstrip().startswith("{") else ""
+    except (subprocess.SubprocessError, ValueError):
+        return ""
+
+
+def _window_class(value):
+    value = value.strip()
+    if not re.fullmatch(r"[\w.\-]+", value):
+        raise ActionError(f"window class must be a name like kitty or firefox, not {value!r}")
+    return value
+
+
+def _focus_window(cfg, window):
+    _hyprctl(f'hl.dsp.focus({{ window = "class:{_window_class(window)}" }})')
+
+
+MAX_WINDOW_WAIT = 60
+
+
+def _wait_for_window(cfg, window, seconds):
+    """Wait until a window of this class is focused (e.g. an app just launched)."""
+    wanted, limit = _window_class(window).lower(), _wait_seconds(seconds)
+    deadline = time.monotonic() + limit
+    while time.monotonic() < deadline:
+        if active_window_class().lower() == wanted:
+            return
+        time.sleep(0.1)
+    raise ActionError(f"no {wanted} window was focused within {limit:g} s")
+
+
+# ---------------------------------------------------------------- keyboard (ydotool)
+
+KEY_ALIASES = {
+    "ctrl": "LEFTCTRL", "control": "LEFTCTRL", "shift": "LEFTSHIFT", "alt": "LEFTALT",
+    "altgr": "RIGHTALT", "super": "LEFTMETA", "win": "LEFTMETA", "meta": "LEFTMETA",
+    "return": "ENTER", "esc": "ESC", "escape": "ESC", "del": "DELETE", "ins": "INSERT",
+    "pgup": "PAGEUP", "pgdn": "PAGEDOWN", "bksp": "BACKSPACE", "caps": "CAPSLOCK",
+    "print": "SYSRQ", "printscreen": "SYSRQ", "menu": "COMPOSE",
+}
+MAX_KEY_PRESSES = 50
+
+
+def parse_keys(text):
+    """'ctrl+shift+t Down Enter' -> [[codes of one combination], ...]"""
+    from evdev import ecodes
+    combos = []
+    for chunk in text.replace(",", " ").split():
+        codes = []
+        for name in chunk.split("+"):
+            code = ecodes.ecodes.get("KEY_" + KEY_ALIASES.get(name.lower(), name.upper())) if name else None
+            if code is None:
+                raise ActionError(f"unknown key {name or chunk!r} (examples: ctrl+c, Down, Enter, F5)")
+            codes.append(code)
+        combos.append(codes)
+    if not combos:
+        raise ActionError("no keys set")
+    if len(combos) > MAX_KEY_PRESSES:
+        raise ActionError(f"at most {MAX_KEY_PRESSES} key presses")
+    return combos
+
+
+def _ydotool(*args, stdin=None):
+    if not shutil.which("ydotool"):
+        raise ActionError("ydotool is not installed (sudo pacman -S ydotool)")
+    done = subprocess.run(["ydotool", *args], input=stdin, capture_output=True, text=True, timeout=30)
+    if done.returncode != 0:
+        raise ActionError("ydotool failed - is its service running? "
+                          "(systemctl --user enable --now ydotool)")
+
+
+def _press_keys(cfg, keys):
+    events = []
+    for combo in parse_keys(keys):
+        events += [f"{code}:1" for code in combo]            # hold them down in order
+        events += [f"{code}:0" for code in reversed(combo)]  # let go in reverse
+    _ydotool("key", *events)
+
+
+def _type_text(cfg, text):
+    if not text:
+        raise ActionError("no text set")
+    _ydotool("type", "--escape", "0", "--file", "-", stdin=text)
+
+
 def _workspace_number(value):
     try:
         number = int(value)
@@ -247,6 +341,26 @@ def _wait(cfg, seconds):
     time.sleep(_wait_seconds(seconds))
 
 
+def _raise(message):
+    raise ActionError(message)
+
+
+def binding_problems(binding):
+    """Problems with a binding's settings, found before it ever runs."""
+    action = BY_ID.get(binding.get("action"))
+    if action is None:
+        return [f"unknown action {binding.get('action')!r}"]
+    if action.id == "macro":
+        return macro_problems(binding.get("params", {}).get("steps", []))
+    if action.check:
+        given = binding.get("params", {})
+        try:
+            action.check(**{p.name: given.get(p.name, p.default) for p in action.params})
+        except ActionError as e:
+            return [str(e)]
+    return []
+
+
 def macro_problems(steps):
     """Problems that would stop a macro from running; empty list means OK."""
     if not steps:
@@ -257,11 +371,8 @@ def macro_problems(steps):
     for i, step in enumerate(steps, 1):
         if step.get("action") not in STEP_IDS:
             problems.append(f"step {i}: {step.get('action')!r} can't be used in a macro")
-        elif step["action"] == "wait":
-            try:
-                _wait_seconds(step.get("params", {}).get("seconds", ""))
-            except ActionError as e:
-                problems.append(f"step {i}: {e}")
+        else:
+            problems += [f"step {i}: {p}" for p in binding_problems(step)]
     return problems
 
 
@@ -307,6 +418,12 @@ ACTIONS = [
     Action("show_notification", "Show a notification", _show_notification,
            [Param("title", "Title"), Param("body", "Message")]),
 
+    Action("type_text", "Type text", _type_text, [Param("text", "Text to type")],
+           group="Keyboard", check=lambda text: None if text else _raise("no text set")),
+    Action("press_keys", "Press keys", _press_keys,
+           [Param("keys", "Keys (e.g. Enter, Down Down, ctrl+shift+t)", default="Enter")],
+           group="Keyboard", check=lambda keys: parse_keys(keys)),
+
     Action("screenshot_full", "Full screen", lambda cfg: _screenshot(cfg), group="Screenshot"),
     Action("screenshot_region", "Select a region", lambda cfg: _screenshot(cfg, region=True),
            group="Screenshot"),
@@ -324,6 +441,9 @@ ACTIONS = [
            _hypr('hl.dsp.window.fullscreen({ mode = "fullscreen" })'), group="Window"),
     Action("hypr_float", "Toggle floating",
            _hypr('hl.dsp.window.float({ action = "toggle" })'), group="Window"),
+    Action("focus_window", "Focus a window", _focus_window,
+           [Param("window", "Window class (e.g. kitty, firefox)", default="kitty")], group="Window",
+           check=lambda window: _window_class(window)),
     Action("hypr_scratchpad", "Show / hide scratchpad",
            _hypr('hl.dsp.workspace.toggle_special("magic")'), group="Window"),
 
@@ -384,15 +504,20 @@ ACTIONS = [
 
 # Only used as a macro step.
 WAIT = Action("wait", "Wait", _wait, [Param("seconds", "Seconds", default="1")],
-              group="Macro")
+              group="Macro", check=lambda seconds: _wait_seconds(seconds))
+WAIT_FOR_WINDOW = Action(
+    "wait_for_window", "Wait for window", _wait_for_window,
+    [Param("window", "Window class (e.g. kitty)", default="kitty"),
+     Param("seconds", "Give up after (seconds)", default="10")],
+    group="Macro", check=lambda window, seconds: (_window_class(window), _wait_seconds(seconds)))
 
 # What a macro step can be: no nested macros, no Python (it has its own editor),
 # and nothing that needs a confirming second press (shutdown / restart).
-STEP_ACTIONS = [WAIT] + [a for a in ACTIONS
+STEP_ACTIONS = [WAIT, WAIT_FOR_WINDOW] + [a for a in ACTIONS
                          if a.id not in ("none", "macro", "run_python") and not a.confirm]
 STEP_IDS = {a.id for a in STEP_ACTIONS}
 
-BY_ID = {a.id: a for a in ACTIONS + [WAIT]}
+BY_ID = {a.id: a for a in ACTIONS + [WAIT, WAIT_FOR_WINDOW]}
 
 
 def perform(cfg, binding, trigger="tap"):

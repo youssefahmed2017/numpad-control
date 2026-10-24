@@ -9,8 +9,6 @@ import json
 import logging
 import os
 import select
-import shutil
-import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -86,15 +84,7 @@ def device_spec(dev):
             "name": dev.name}
 
 
-def active_window_class():
-    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") or not shutil.which("hyprctl"):
-        return ""
-    try:
-        out = subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True,
-                             text=True, timeout=1).stdout
-        return json.loads(out).get("class", "") if out.lstrip().startswith("{") else ""
-    except (subprocess.SubprocessError, ValueError):
-        return ""
+active_window_class = actions.active_window_class
 
 
 class Press:

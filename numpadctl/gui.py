@@ -326,7 +326,7 @@ class Window(Adw.ApplicationWindow):
         group = Adw.PreferencesGroup(title=SLOT_TITLES[slot], description=description)
 
         combo = Adw.ComboRow(title="Action", model=Gtk.StringList(strings=ACTION_NAMES),
-                             enable_search=True,
+                             enable_search=True, search_match_mode=Gtk.StringFilterMatchMode.SUBSTRING,
                              expression=Gtk.PropertyExpression.new(Gtk.StringObject, None, "string"))
         combo.set_selected(actions.ACTIONS.index(action))
         if action.repeat and slot != "double":
@@ -417,7 +417,7 @@ class Window(Adw.ApplicationWindow):
         row.add_suffix(remove)
 
         combo = Adw.ComboRow(title="Action", model=Gtk.StringList(strings=STEP_NAMES),
-                             enable_search=True,
+                             enable_search=True, search_match_mode=Gtk.StringFilterMatchMode.SUBSTRING,
                              expression=Gtk.PropertyExpression.new(Gtk.StringObject, None, "string"))
         combo.set_selected(actions.STEP_ACTIONS.index(action))
         combo.connect("notify::selected", self.on_step_action_changed, steps, i)
@@ -477,7 +477,7 @@ class Window(Adw.ApplicationWindow):
         apps = sorted((a for a in Gio.AppInfo.get_all() if a.should_show()),
                       key=lambda a: a.get_display_name().lower())
         ids = [a.get_id() for a in apps]
-        combo = Adw.ComboRow(title=title, enable_search=True,
+        combo = Adw.ComboRow(title=title, enable_search=True, search_match_mode=Gtk.StringFilterMatchMode.SUBSTRING,
                              model=Gtk.StringList(strings=[a.get_display_name() for a in apps]),
                              expression=Gtk.PropertyExpression.new(Gtk.StringObject, None, "string"))
         combo.app_ids = ids
@@ -724,12 +724,11 @@ class Window(Adw.ApplicationWindow):
     def save(self):
         self.commit_params()
         for profile, kind, key, slot, binding in self.all_bindings():
-            if binding.get("action") == "macro":
-                problems = actions.macro_problems(binding["params"].get("steps", []))
-                if problems:
-                    self.error(f"{profile['name']}: key {key} ({SLOT_TITLES[slot]}): macro problem",
-                               "\n".join(problems))
-                    return False
+            problems = actions.binding_problems(binding)
+            if problems:
+                self.error(f"{profile['name']}: key {key} ({SLOT_TITLES[slot]}): can't save",
+                           "\n".join(problems))
+                return False
             if binding.get("action") == "run_python":
                 problems = sandbox.validate(binding["params"].get("code", ""))
                 if problems:

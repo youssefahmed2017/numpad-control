@@ -28,7 +28,17 @@ Volume up/down and next/previous workspace repeat while held.
 ## Macros
 The "Macro" action runs several actions in a row, with optional waits
 (e.g. switch scene → wait 3 s → start streaming + recording). It stops at the
-first step that fails. Steps can't be Run Python or another macro.
+first step that fails. Steps can't be Run Python, another macro, or
+shutdown/restart.
+
+Building blocks for automating apps:
+- **Type text** / **Press keys** (via ydotool): e.g. `Enter`, `Down Down`, `ctrl+shift+t`.
+  Text is typed literally (no `$VARS` or `\n` escapes).
+- **Focus a window** and **Wait for window** (Hyprland window class, e.g. `kitty`):
+  wait for an app you just launched before typing into it.
+
+Example: Launch kitty → Wait for window `kitty` → Type `claude -r` → Press `Enter`.
+(kdotool is KDE-only, so window control uses Hyprland's own `hyprctl` instead.)
 
 ## Starting at login
 The background service (systemd) makes the keys work and starts at login.
