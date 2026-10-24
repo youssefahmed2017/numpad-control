@@ -85,8 +85,7 @@ class PlaceholderTest(unittest.TestCase):
     def test_time_date_and_clipboard(self):
         clip = mock.Mock(stdout="copied words")
         with mock.patch.object(actions.time, "strftime", side_effect=lambda f: {"%H:%M": "14:05", "%Y-%m-%d": "2026-10-24"}[f]), \
-                mock.patch.object(actions.subprocess, "run", return_value=clip), \
-                mock.patch.object(actions.shutil, "which", return_value="/usr/bin/wl-paste"):
+                mock.patch.object(actions.system, "clipboard_text", return_value=clip.stdout):
             self.assertEqual(actions.fill_placeholders("at {time} on {date}: {clipboard}"),
                              "at 14:05 on 2026-10-24: copied words")
 
@@ -95,12 +94,13 @@ class PlaceholderTest(unittest.TestCase):
                          "{name} {} {" + actions.fill_placeholders("{time}") + "} function() { }")
 
     def test_clipboard_not_read_unless_used(self):
-        with mock.patch.object(actions.subprocess, "run") as run:
+        with mock.patch.object(actions.system, "clipboard_text") as clipboard:
             actions.fill_placeholders("plain text {time}")
-        run.assert_not_called()
+        clipboard.assert_not_called()
 
     def test_type_text_fills_placeholders(self):
-        with mock.patch.object(actions, "_ydotool") as ydotool, \
+        from numpadctl.platform import linux_system
+        with mock.patch.object(linux_system, "_ydotool") as ydotool, \
                 mock.patch.object(actions.time, "strftime", return_value="14:05"):
             actions.run({}, {"action": "type_text", "params": {"text": "Live since {time}"}})
         self.assertEqual(ydotool.call_args.kwargs["stdin"], "Live since 14:05")

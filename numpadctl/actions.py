@@ -1,17 +1,14 @@
 """Everything a key can be bound to."""
 
 import copy
-import os
 import re
-import shutil
-import subprocess
 import threading
 import time
-import webbrowser
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import audio, desktop, modes, obs, sandbox
+from .platform import system
 
 
 @dataclass
@@ -42,10 +39,8 @@ class ActionError(Exception):
     pass
 
 
-def notify(title, body=""):
-    if shutil.which("notify-send"):
-        subprocess.run(["notify-send", "-a", "Numpad Control", title, body],
-                       check=False, timeout=5)
+notify = system.notify
+refresh_session_env = system.refresh_session  # used by the service before each key press
 
 
 def show_osd(cfg, message, icon="dialog-information-symbolic", force=False):
@@ -56,104 +51,34 @@ def show_osd(cfg, message, icon="dialog-information-symbolic", force=False):
         notify(message)
 
 
-def _command(*argv):
-    if not shutil.which(argv[0]):
-        raise ActionError(f"'{argv[0]}' is not installed")
-    subprocess.run(argv, check=False, timeout=10)
-
-
-def _detached(*argv):
-    if not shutil.which(argv[0]):
-        raise ActionError(f"'{argv[0]}' is not installed")
-    subprocess.Popen(argv, start_new_session=True,
-                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-
-# Session variables a desktop app needs. The background service can start
-# before the desktop shares them, and they change on every login, so they're
-# fetched again before each action instead of trusted from startup.
-SESSION_VARS = ("WAYLAND_DISPLAY", "DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE",
-                "XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE", "XDG_SESSION_DESKTOP")
-
-
-def refresh_session_env():
-    """Copy the desktop session's display variables from systemd into os.environ.
-
-    Returns True if a display is known afterwards."""
-    try:
-        out = subprocess.run(["systemctl", "--user", "show-environment"],
-                             capture_output=True, text=True, timeout=2).stdout
-    except (OSError, subprocess.SubprocessError):
-        out = ""
-    current = {}
-    for line in out.splitlines():
-        name, _, value = line.partition("=")
-        if name in SESSION_VARS and value:
-            current[name] = value
-    if current:  # also forget the previous session's (e.g. Hyprland's ID after logging into KDE)
-        for name in SESSION_VARS:
-            if name in current:
-                os.environ[name] = current[name]
-            else:
-                os.environ.pop(name, None)
-    return bool(os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"))
-
-
-def _open_in_browser(url):
-    # Not webbrowser.open(): it picks a browser once per process and keeps that
-    # choice, so a service started before the desktop never finds a browser.
-    if shutil.which("xdg-open"):
-        _detached("xdg-open", url)
-    else:
-        webbrowser.open(url)
-
-
 def _open_browser(cfg, url=""):
     if url.strip():
-        _open_in_browser(url.strip())
-        return
-    browser = subprocess.run(["xdg-settings", "get", "default-web-browser"],
-                             capture_output=True, text=True, timeout=5).stdout.strip() \
-        if shutil.which("xdg-settings") else ""
-    if browser:
-        _launch_app(cfg, browser)
+        system.open_url(url.strip())
     else:
-        webbrowser.open("about:blank")
+        system.open_default_browser()
 
 
 def _open_url(cfg, url):
     if not url.strip():
         raise ActionError("no URL set")
-    _open_in_browser(url.strip())
+    system.open_url(url.strip())
 
 
 def _open_path(cfg, path):
     if not path.strip():
         raise ActionError("no file or folder set")
-    _detached("xdg-open", path.strip())
+    system.open_path(path.strip())
 
 
 def _run_python(cfg, code):
-    ok, output = sandbox.run(code, on_open_url=_open_in_browser)
+    ok, output = sandbox.run(code, on_open_url=system.open_url)
     if not ok:
         raise ActionError(output or "snippet failed")
     return output
 
 
 def _launch_app(cfg, app):
-    import gi
-    try:
-        gi.require_version("GioUnix", "2.0")
-        from gi.repository.GioUnix import DesktopAppInfo
-    except (ValueError, ImportError):
-        from gi.repository.Gio import DesktopAppInfo
-    try:
-        info = DesktopAppInfo.new(app)
-    except TypeError:
-        info = None
-    if info is None:
-        raise ActionError(f"app {app!r} is not installed")
-    _detached("gio", "launch", info.get_filename())
+    system.launch_app(app)
 
 
 PLACEHOLDERS = {
@@ -170,16 +95,12 @@ def fill_placeholders(text):
     if "{date}" in text:
         text = text.replace("{date}", time.strftime("%Y-%m-%d"))
     if "{clipboard}" in text:
-        clip = ""
-        if shutil.which("wl-paste"):
-            clip = subprocess.run(["wl-paste", "--no-newline", "--type", "text"],
-                                  capture_output=True, text=True, timeout=5).stdout
-        text = text.replace("{clipboard}", clip)
+        text = text.replace("{clipboard}", system.clipboard_text())
     return text
 
 
 def _copy_text(cfg, text):
-    _command("wl-copy", "--", fill_placeholders(text))
+    system.copy_text(fill_placeholders(text))
     return "Copied"
 
 
@@ -201,8 +122,7 @@ def _screenshot(cfg, region=False):
     path = folder / time.strftime("%Y-%m-%d_%H-%M-%S.png")
     if not desktop.screenshot(path, region):
         return "cancelled"
-    with open(path, "rb") as image:
-        subprocess.run(["wl-copy", "--type", "image/png"], stdin=image, check=False, timeout=5)
+    system.copy_image(path)
     notify("Screenshot saved", f"{path} (also copied)")
 
 
@@ -235,7 +155,7 @@ def _wait_for_window(cfg, window, seconds):
     raise ActionError(f"no {wanted} window was focused within {limit:g} s")
 
 
-# ---------------------------------------------------------------- keyboard (ydotool)
+# ---------------------------------------------------------------- keyboard
 
 KEY_ALIASES = {
     "ctrl": "LEFTCTRL", "control": "LEFTCTRL", "shift": "LEFTSHIFT", "alt": "LEFTALT",
@@ -248,21 +168,21 @@ MAX_KEY_PRESSES = 50
 
 
 def parse_keys(text):
-    """'ctrl+shift+t Down Enter' -> [[codes of one combination], ...]
+    """'ctrl+shift+t Down Enter' -> [["LEFTCTRL", "LEFTSHIFT", "T"], ["DOWN"], ["ENTER"]]
 
     + joins keys pressed together (spaces around it are fine: "Super + Q");
-    spaces or commas separate key presses done one after another."""
-    from evdev import ecodes
+    spaces or commas separate key presses done one after another. Key names
+    are the same on every OS; platform/ turns them into that OS's key codes."""
     combos = []
     text = re.sub(r"\s*\+\s*", "+", text.strip())
     for chunk in text.replace(",", " ").split():
-        codes = []
+        names = []
         for name in chunk.split("+"):
-            code = ecodes.ecodes.get("KEY_" + KEY_ALIASES.get(name.lower(), name.upper())) if name else None
-            if code is None:
+            key = KEY_ALIASES.get(name.lower(), name.upper()) if name else ""
+            if not key or not system.is_key(key):
                 raise ActionError(f"unknown key {name or chunk!r} (examples: ctrl+c, Down, Enter, F5)")
-            codes.append(code)
-        combos.append(codes)
+            names.append(key)
+        combos.append(names)
     if not combos:
         raise ActionError("no keys set")
     if len(combos) > MAX_KEY_PRESSES:
@@ -270,21 +190,8 @@ def parse_keys(text):
     return combos
 
 
-def _ydotool(*args, stdin=None):
-    if not shutil.which("ydotool"):
-        raise ActionError("ydotool is not installed (sudo pacman -S ydotool)")
-    done = subprocess.run(["ydotool", *args], input=stdin, capture_output=True, text=True, timeout=30)
-    if done.returncode != 0:
-        raise ActionError("ydotool failed - is its service running? "
-                          "(systemctl --user enable --now ydotool)")
-
-
 def _press_keys(cfg, keys):
-    events = []
-    for combo in parse_keys(keys):
-        events += [f"{code}:1" for code in combo]            # hold them down in order
-        events += [f"{code}:0" for code in reversed(combo)]  # let go in reverse
-    _ydotool("key", *events)
+    system.press_keys(parse_keys(keys))
 
 
 def _type_text(cfg, text):
@@ -292,7 +199,7 @@ def _type_text(cfg, text):
         raise ActionError("no text set")
     text = fill_placeholders(text)
     if text:
-        _ydotool("type", "--escape", "0", "--file", "-", stdin=text)
+        system.type_text(text)
 
 
 def _workspace_number(value):
@@ -313,23 +220,8 @@ def _move_to_workspace(cfg, workspace):
     desktop.move_window_to_workspace(_workspace_number(workspace))
 
 
-def _volume(osd_args, wpctl_args):
-    """Use SwayOSD (shows the volume popup) when it's running, else wpctl."""
-    def run(cfg):
-        if shutil.which("swayosd-client"):
-            osd = subprocess.run(["swayosd-client", *osd_args], capture_output=True, timeout=5)
-            if osd.returncode == 0:
-                return
-        _command("wpctl", *wpctl_args)
-    return run
-
-
 def _set_volume(cfg, percent):
-    _command("wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{_percent(percent)}%")
-    if shutil.which("swayosd-client"):
-        # swayosd treats a bare number as "raise by", so set with wpctl and
-        # just show the popup with +0.
-        subprocess.run(["swayosd-client", "--output-volume", "+0"], capture_output=True, timeout=5)
+    system.set_volume(_percent(percent))
 
 
 # Sleep / shutdown / restart: the second press must come within this window. Presses
@@ -360,7 +252,7 @@ def _power(action_id, verb, question, doing, icon):
             show_osd(cfg, f"{AGAIN.get(trigger, AGAIN['tap'])} {question}", icon, force=True)
             return
         show_osd(cfg, doing, icon, force=True)
-        _command("systemctl", verb)
+        system.power(verb)
     return run
 
 
@@ -503,18 +395,10 @@ def _obs(fn):
     return lambda cfg, **p: fn(cfg["obs"], **p)
 
 
-def _playerctl(arg):
-    """Use SwayOSD's player popup when it's running, else plain playerctl."""
-    def run(cfg):
-        if shutil.which("swayosd-client"):
-            osd = subprocess.run(["swayosd-client", "--playerctl", arg], capture_output=True, timeout=5)
-            if osd.returncode == 0:
-                return
-        _command("playerctl", "previous" if arg == "prev" else arg)
-    return run
+def _media(command):
+    return lambda cfg: system.media(command)
 
 
-SINK, SOURCE = "@DEFAULT_AUDIO_SINK@", "@DEFAULT_AUDIO_SOURCE@"
 
 ACTIONS = [
     Action("none", "(nothing)", lambda cfg: None),
@@ -586,22 +470,18 @@ ACTIONS = [
     Action("obs_toggle_replay_buffer", "Toggle replay buffer", _obs(obs.toggle_replay_buffer), group="OBS", osd_icon="media-playlist-repeat-symbolic"),
     Action("obs_save_replay", "Save replay buffer", _obs(obs.save_replay), group="OBS", osd_icon="document-save-symbolic"),
 
-    Action("media_play_pause", "Play / pause", _playerctl("play-pause"), group="Media"),
-    Action("media_stop", "Stop", _playerctl("stop"), group="Media"),
-    Action("media_next", "Next track", _playerctl("next"), group="Media", rapid=True),
-    Action("media_previous", "Previous track", _playerctl("prev"), group="Media", rapid=True),
-    Action("volume_up", "Volume up",
-           _volume(["--max-volume", "100", "--output-volume", "+5"],
-                   ["set-volume", "-l", "1.0", SINK, "5%+"]), group="Media", repeat=True),
-    Action("volume_down", "Volume down",
-           _volume(["--output-volume", "-5"], ["set-volume", SINK, "5%-"]), group="Media", repeat=True),
+    Action("media_play_pause", "Play / pause", _media("play-pause"), group="Media"),
+    Action("media_stop", "Stop", _media("stop"), group="Media"),
+    Action("media_next", "Next track", _media("next"), group="Media", rapid=True),
+    Action("media_previous", "Previous track", _media("previous"), group="Media", rapid=True),
+    Action("volume_up", "Volume up", lambda cfg: system.change_volume(+5), group="Media", repeat=True),
+    Action("volume_down", "Volume down", lambda cfg: system.change_volume(-5), group="Media", repeat=True),
     Action("volume_set", "Set volume to…", _set_volume,
            [Param("percent", "Volume %", default="50")], group="Media",
            check=lambda percent: _percent(percent)),
-    Action("volume_mute", "Mute / unmute speakers",
-           _volume(["--output-volume", "mute-toggle"], ["set-mute", SINK, "toggle"]), group="Media"),
-    Action("mic_mute", "Mute / unmute microphone",
-           _volume(["--input-volume", "mute-toggle"], ["set-mute", SOURCE, "toggle"]), group="Media"),
+    Action("volume_mute", "Mute / unmute speakers", lambda cfg: system.toggle_mute(), group="Media"),
+    Action("mic_mute", "Mute / unmute microphone", lambda cfg: system.toggle_mute(microphone=True),
+           group="Media"),
 
     Action("app_volume_up", "App volume up", lambda cfg, app: audio.change_app_volume(app, 5),
            [Param("app", "App (e.g. Firefox, spotify)", suggest="audio_apps")],
@@ -700,7 +580,7 @@ def perform(cfg, binding, trigger="tap"):
         if action.confirm:  # the prompt says how to confirm: press / hold / double-tap
             params["trigger"] = trigger
         return action.run(cfg, **params)
-    except (obs.OBSError, audio.AudioError, desktop.DesktopError) as e:
+    except (obs.OBSError, audio.AudioError, desktop.DesktopError, system.SystemActionError) as e:
         raise ActionError(str(e))
 
 

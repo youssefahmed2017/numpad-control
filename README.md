@@ -226,6 +226,14 @@ don't trust.
   - `ipc.py`: the service ↔ window connection
   - `numpad_input.py`: reading the numpad (Linux: `linux_numpad.py`, evdev); the
     service itself only sees key names like `"5"`, `"Enter"`, `"000"`
+  - `system.py`: system actions (Linux: `linux_system.py`): opening apps, URLs and
+    files, clipboard, notifications, typing and key presses, media, volume, power.
+    Apps opened from the numpad get their own systemd scope, so they don't count as
+    part of the service. "Press keys" stores key names (`LEFTMETA`, `Q`), which each
+    OS turns into its own key codes.
+
+  `desktop.py` (Hyprland / KDE), `audio.py` (PipeWire), `sandbox.py` and `tray.py`
+  are still Linux-only and sit next to the shared code.
 
 ## Tests
     .venv/bin/python -m unittest discover -s tests -t .

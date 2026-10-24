@@ -4,6 +4,7 @@ from unittest import mock
 from evdev import ecodes
 
 from numpadctl import actions
+from numpadctl.platform import linux_system
 
 
 def step(action, **params):
@@ -12,19 +13,16 @@ def step(action, **params):
 
 class KeyboardTest(unittest.TestCase):
     def test_parse_combos_and_sequences(self):
-        self.assertEqual(actions.parse_keys("ctrl+shift+t"),
-                         [[ecodes.KEY_LEFTCTRL, ecodes.KEY_LEFTSHIFT, ecodes.KEY_T]])
-        self.assertEqual(actions.parse_keys("Down down, Enter"),
-                         [[ecodes.KEY_DOWN], [ecodes.KEY_DOWN], [ecodes.KEY_ENTER]])
-        self.assertEqual(actions.parse_keys("super+Return F5"),
-                         [[ecodes.KEY_LEFTMETA, ecodes.KEY_ENTER], [ecodes.KEY_F5]])
+        self.assertEqual(actions.parse_keys("ctrl+shift+t"), [["LEFTCTRL", "LEFTSHIFT", "T"]])
+        self.assertEqual(actions.parse_keys("Down down, Enter"), [["DOWN"], ["DOWN"], ["ENTER"]])
+        self.assertEqual(actions.parse_keys("super+Return F5"), [["LEFTMETA", "ENTER"], ["F5"]])
 
     def test_spaces_around_plus_still_mean_together(self):
-        together = [[ecodes.KEY_LEFTMETA, ecodes.KEY_Q]]
+        together = [["LEFTMETA", "Q"]]
         for text in ("super+q", "Super + Q", "SUPER +q", "  super+ Q "):
             with self.subTest(text):
                 self.assertEqual(actions.parse_keys(text), together)
-        self.assertEqual(actions.parse_keys("Super + Q Enter"), together + [[ecodes.KEY_ENTER]])
+        self.assertEqual(actions.parse_keys("Super + Q Enter"), together + [["ENTER"]])
 
     def test_bad_keys(self):
         for text in ("", "ctrl+", "notakey", "ctrl++c"):
@@ -33,14 +31,14 @@ class KeyboardTest(unittest.TestCase):
                     actions.parse_keys(text)
 
     def test_press_keys_holds_then_releases_in_reverse(self):
-        with mock.patch.object(actions, "_ydotool") as ydotool:
+        with mock.patch.object(linux_system, "_ydotool") as ydotool:
             actions.run({}, step("press_keys", keys="ctrl+c Enter"))
         c, ctrl, enter = ecodes.KEY_C, ecodes.KEY_LEFTCTRL, ecodes.KEY_ENTER
         ydotool.assert_called_once_with(
             "key", f"{ctrl}:1", f"{c}:1", f"{c}:0", f"{ctrl}:0", f"{enter}:1", f"{enter}:0")
 
     def test_type_text_goes_through_stdin_literally(self):
-        with mock.patch.object(actions, "_ydotool") as ydotool:
+        with mock.patch.object(linux_system, "_ydotool") as ydotool:
             actions.run({}, step("type_text", text="-r claude \\n $HOME"))
         ydotool.assert_called_once_with("type", "--escape", "0", "--file", "-",
                                         stdin="-r claude \\n $HOME")
@@ -82,14 +80,14 @@ if __name__ == "__main__":
 class SessionEnvTest(unittest.TestCase):
     def test_display_vars_are_picked_up_from_systemd(self):
         out = mock.Mock(stdout="HOME=/home/x\nWAYLAND_DISPLAY=wayland-9\nHYPRLAND_INSTANCE_SIGNATURE=abc\nPATH=/bin\n")
-        with mock.patch.dict(actions.os.environ, {}, clear=True), \
-                mock.patch.object(actions.subprocess, "run", return_value=out):
+        with mock.patch.dict(linux_system.os.environ, {}, clear=True), \
+                mock.patch.object(linux_system.subprocess, "run", return_value=out):
             self.assertTrue(actions.refresh_session_env())
-            self.assertEqual(actions.os.environ["WAYLAND_DISPLAY"], "wayland-9")
-            self.assertEqual(actions.os.environ["HYPRLAND_INSTANCE_SIGNATURE"], "abc")
-            self.assertNotIn("PATH", actions.os.environ, "only display variables are copied")
+            self.assertEqual(linux_system.os.environ["WAYLAND_DISPLAY"], "wayland-9")
+            self.assertEqual(linux_system.os.environ["HYPRLAND_INSTANCE_SIGNATURE"], "abc")
+            self.assertNotIn("PATH", linux_system.os.environ, "only display variables are copied")
 
     def test_no_session_yet(self):
-        with mock.patch.dict(actions.os.environ, {}, clear=True), \
-                mock.patch.object(actions.subprocess, "run", return_value=mock.Mock(stdout="HOME=/x\n")):
+        with mock.patch.dict(linux_system.os.environ, {}, clear=True), \
+                mock.patch.object(linux_system.subprocess, "run", return_value=mock.Mock(stdout="HOME=/x\n")):
             self.assertFalse(actions.refresh_session_env())

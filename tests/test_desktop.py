@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from numpadctl import actions, desktop
+from numpadctl.platform import linux_system
 
 HYPR_ENV = {"XDG_CURRENT_DESKTOP": "Hyprland", "HYPRLAND_INSTANCE_SIGNATURE": "abc"}
 KDE_ENV = {"XDG_CURRENT_DESKTOP": "KDE"}
@@ -118,18 +119,18 @@ class SessionSwitchTest(unittest.TestCase):
         systemd = mock.Mock(stdout="WAYLAND_DISPLAY=wayland-0\nXDG_CURRENT_DESKTOP=KDE\nHOME=/h\n")
         stale = {"WAYLAND_DISPLAY": "wayland-1", "XDG_CURRENT_DESKTOP": "Hyprland",
                  "HYPRLAND_INSTANCE_SIGNATURE": "old", "PATH": "/bin"}
-        with mock.patch.dict(actions.os.environ, stale, clear=True), \
-                mock.patch.object(actions.subprocess, "run", return_value=systemd):
+        with mock.patch.dict(linux_system.os.environ, stale, clear=True), \
+                mock.patch.object(linux_system.subprocess, "run", return_value=systemd):
             actions.refresh_session_env()
-            self.assertEqual(actions.os.environ["XDG_CURRENT_DESKTOP"], "KDE")
-            self.assertEqual(actions.os.environ["WAYLAND_DISPLAY"], "wayland-0")
-            self.assertNotIn("HYPRLAND_INSTANCE_SIGNATURE", actions.os.environ)
-            self.assertEqual(actions.os.environ["PATH"], "/bin", "unrelated variables are kept")
+            self.assertEqual(linux_system.os.environ["XDG_CURRENT_DESKTOP"], "KDE")
+            self.assertEqual(linux_system.os.environ["WAYLAND_DISPLAY"], "wayland-0")
+            self.assertNotIn("HYPRLAND_INSTANCE_SIGNATURE", linux_system.os.environ)
+            self.assertEqual(linux_system.os.environ["PATH"], "/bin", "unrelated variables are kept")
             self.assertEqual(desktop.current(), "kde")
 
     def test_nothing_dropped_if_systemd_cannot_be_asked(self):
-        with mock.patch.dict(actions.os.environ, {"WAYLAND_DISPLAY": "wayland-1"}, clear=True), \
-                mock.patch.object(actions.subprocess, "run", side_effect=OSError):
+        with mock.patch.dict(linux_system.os.environ, {"WAYLAND_DISPLAY": "wayland-1"}, clear=True), \
+                mock.patch.object(linux_system.subprocess, "run", side_effect=OSError):
             self.assertTrue(actions.refresh_session_env())
 
 

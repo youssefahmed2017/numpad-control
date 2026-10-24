@@ -10,7 +10,7 @@ class PowerConfirmTest(unittest.TestCase):
         self.clock = 1000.0
         self.patches = [
             mock.patch.object(actions.time, "monotonic", lambda: self.clock),
-            mock.patch.object(actions, "_command"),
+            mock.patch.object(actions.system, "power"),
             mock.patch.object(actions, "show_osd"),
         ]
         self.command = self.patches[1].start()
@@ -35,12 +35,12 @@ class PowerConfirmTest(unittest.TestCase):
     def test_second_press_in_window_shuts_down(self):
         self.press()
         self.press(after=1.0)
-        self.command.assert_called_once_with("systemctl", "poweroff")
+        self.command.assert_called_once_with("poweroff")
 
     def test_reboot(self):
         self.press("reboot")
         self.press("reboot", after=2.0)
-        self.command.assert_called_once_with("systemctl", "reboot")
+        self.command.assert_called_once_with("reboot")
 
     def test_too_late_rearms_instead(self):
         self.press()
@@ -70,14 +70,14 @@ class PowerConfirmTest(unittest.TestCase):
     def test_hold_then_hold_again_shuts_down(self):
         self.press(trigger="hold")
         self.press(trigger="hold", after=1.5)
-        self.command.assert_called_once_with("systemctl", "poweroff")
+        self.command.assert_called_once_with("poweroff")
 
     def test_sleep_needs_confirming_too(self):
         self.press("suspend")
         self.command.assert_not_called()
         self.assertEqual(self.osd.call_args.args[1], "Press again to sleep")
         self.press("suspend", after=1.0)
-        self.command.assert_called_once_with("systemctl", "suspend")
+        self.command.assert_called_once_with("suspend")
 
     def test_not_allowed_in_macros(self):
         self.assertNotIn("suspend", actions.STEP_IDS)
