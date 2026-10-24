@@ -204,7 +204,8 @@ Paste this into PowerShell (as your normal user):
 It installs Python if needed (winget), downloads Numpad Control (git, or a zip if git
 isn't installed), creates the Python environment, installs the
 [Interception](https://github.com/oblitum/Interception) driver from its official
-release (Windows asks for administrator permission once; a restart is needed the
+release (Windows asks for administrator permission once, showing "Publisher:
+Unknown" because Interception's installer isn't signed; a restart is needed the
 first time), adds **Numpad Control** and **Numpad Control Settings** to the Start
 menu, and starts it at login with a tray icon. Running it again updates everything.
 Options (set them before pasting): `$env:NUMPAD_DRYRUN = "1"` only shows what it

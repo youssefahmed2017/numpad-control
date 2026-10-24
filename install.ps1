@@ -182,7 +182,10 @@ function Install-NumpadControl {
             Copy-Item $source.FullName $Dll -Force
         }
         if (-not (Test-InterceptionDriver)) {
-            Run "install the driver (Windows will ask for administrator permission)" {
+            Note "Windows will now ask for administrator permission and show 'Publisher: Unknown':"
+            Note "that's Interception's installer (install-interception.exe) from its official GitHub"
+            Note "release, which isn't signed (its drivers are). Click Yes to install it."
+            Run "install the driver" {
                 $installer = Get-ChildItem -Recurse -Path $unpacked -Filter install-interception.exe | Select-Object -First 1
                 try {
                     $process = Start-Process $installer.FullName -ArgumentList "/install" -Verb RunAs -Wait -PassThru
