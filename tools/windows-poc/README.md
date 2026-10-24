@@ -19,8 +19,9 @@ except during the 30-second block test, and only for the keyboard you choose.
       <https://github.com/oblitum/Interception/releases/latest> and unzip it.
    2. Open the Start menu, type `cmd`, right-click **Command Prompt** →
       **Run as administrator**.
-   3. Go into the unzipped folder's `command line installer` folder, e.g.:
-      `cd "%USERPROFILE%\Downloads\Interception\command line installer"`
+   3. Go into the unzipped folder's `command line installer` folder, e.g. in
+      Command Prompt: `cd "%USERPROFILE%\Downloads\Interception\command line installer"`
+      (in PowerShell: `cd "$HOME\Downloads\Interception\command line installer"`)
    4. Run: `install-interception.exe /install`
    5. **Restart the PC.**
 
@@ -29,8 +30,9 @@ except during the 30-second block test, and only for the keyboard you choose.
    - `numpad_poc.py` (from this folder)
    - `interception.dll` from the unzipped `Interception\library\x64\` folder
 
-4. **Watch test**: open a normal Command Prompt in that folder
-   (`cd %USERPROFILE%\Desktop\numpad-test`) and run:
+4. **Watch test**: open a normal (not administrator) PowerShell or Command Prompt in
+   that folder (PowerShell: `cd ~\Desktop\numpad-test`; Command Prompt:
+   `cd %USERPROFILE%\Desktop\numpad-test`) and run:
 
        python numpad_poc.py
 
@@ -57,11 +59,12 @@ keyboard isn't touched at all.
 
 1. Get the project (Git is needed; it comes with "Git for Windows"):
 
-       cd %USERPROFILE%\Desktop
+       cd ~
        git clone https://github.com/youssefahmed2017/numpad-control
        cd numpad-control
 
-   (If it's already there: `cd %USERPROFILE%\Desktop\numpad-control` and `git pull`.)
+   (These work in PowerShell and Windows Terminal. If it's already there:
+   `cd ~\numpad-control` and `git pull`.)
 2. Copy `interception.dll` (from the unzipped `Interception\library\x64\` folder)
    into `numpad-control\numpadctl\platform\`.
 3. Run:
