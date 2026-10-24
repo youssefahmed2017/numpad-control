@@ -1,14 +1,27 @@
 # Numpad Control
 
-Turns a cheap USB numpad into a control pad (like a Stream Deck) on Linux.
+Turns a cheap USB numpad into a control pad (like a Stream Deck) on Linux and Windows.
 Each key runs an action: open apps and websites, control OBS, media and volume,
 manage windows and desktops, type text, run multi-step macros, and more.
 Everything is set up in a settings window (Qt, the same on Linux and Windows). No code needed.
 
-Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland).
-Linux only for now.
+Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland), and on
+**Windows** (newer: its installer and some of its actions are still being tested).
 
 ![The settings window: a numpad on the left, the selected key's "Go live" macro on the right](docs/screenshots/macro.png)
+
+## Install
+**Linux** (in a terminal, as your normal user):
+
+    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.sh | bash
+
+**Windows** (in PowerShell, as your normal user):
+
+    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.ps1 | iex
+
+Then open **Numpad Control** from your app menu / Start menu, click a key, pick an
+action, Save. What the installers do, and their options:
+[Install in detail](#install-in-detail).
 
 ## Screenshots
 | | |
@@ -156,7 +169,8 @@ Window steps use `hyprctl` on Hyprland and kdotool on KDE Plasma.
     icon is shown there; instead it writes `$XDG_RUNTIME_DIR/numpad-control-window.pid`
     while running, so a bar module can list it as a hidden app.
 
-## Install
+## Install in detail
+### Linux
 One command (as your normal user; it asks for your password when it needs sudo):
 
     curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.sh | bash
