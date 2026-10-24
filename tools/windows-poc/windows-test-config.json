@@ -1,0 +1,36 @@
+{
+  "device": {"vendor": "c0f4", "product": "05f5"},
+  "grab": true,
+  "feedback": true,
+  "layer_key": null,
+  "modes": ["Test mode"],
+  "obs": {"host": "localhost", "port": 4455, "password": ""},
+  "profiles": [
+    {"name": "Default", "match": "", "layer_bindings": {}, "bindings": {
+      "1": {"tap": {"action": "open_browser", "params": {"url": ""}}},
+      "2": {"tap": {"action": "open_url", "params": {"url": "https://github.com/youssefahmed2017/numpad-control"}}},
+      "3": {"tap": {"action": "show_notification", "params": {"title": "Numpad Control", "body": "Key 3 works on Windows ({time})"}}},
+      "4": {"tap": {"action": "volume_down", "params": {}}},
+      "6": {"tap": {"action": "volume_up", "params": {}}},
+      "5": {"tap": {"action": "media_play_pause", "params": {}}, "hold": {"action": "media_next", "params": {}}},
+      "7": {"tap": {"action": "type_text", "params": {"text": "Hello from the numpad! {time}"}}},
+      "8": {"tap": {"action": "press_keys", "params": {"keys": "super+r"}}},
+      "9": {"tap": {"action": "copy_text", "params": {"text": "Copied by the numpad"}}},
+      "0": {"tap": {"action": "macro", "params": {"steps": [
+        {"action": "show_notification", "params": {"title": "Macro", "body": "Step 1: typing in a second"}},
+        {"action": "wait", "params": {"seconds": "1"}},
+        {"action": "type_text", "params": {"text": "typed by a macro"}}]}}},
+      "000": {"tap": {"action": "open_path", "params": {"path": "C:\\"}}},
+      "+": {"tap": {"action": "mode_toggle", "params": {"mode": "Test mode"}}},
+      "-": {"tap": {"action": "if_mode", "params": {"mode": "Test mode",
+        "then": [{"action": "show_notification", "params": {"title": "Test mode", "body": "Test mode is ON"}}],
+        "otherwise": [{"action": "show_notification", "params": {"title": "Test mode", "body": "Test mode is OFF"}}]}}},
+      "*": {"tap": {"action": "volume_mute", "params": {}}},
+      "/": {"tap": {"action": "volume_set", "params": {"percent": "30"}}},
+      "Enter": {
+        "tap": {"action": "show_notification", "params": {"title": "Enter", "body": "pressed"}},
+        "hold": {"action": "show_notification", "params": {"title": "Enter", "body": "held"}},
+        "double": {"action": "show_notification", "params": {"title": "Enter", "body": "double-tapped"}}}
+    }}
+  ]
+}

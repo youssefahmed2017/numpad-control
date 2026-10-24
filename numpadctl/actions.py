@@ -71,6 +71,9 @@ def _open_path(cfg, path):
 
 
 def _run_python(cfg, code):
+    from .platform import IS_WINDOWS
+    if IS_WINDOWS:  # the sandbox relies on Linux process limits
+        raise ActionError("Run Python isn't available on Windows yet")
     ok, output = sandbox.run(code, on_open_url=system.open_url)
     if not ok:
         raise ActionError(output or "snippet failed")

@@ -6,6 +6,11 @@ import sys
 def main():
     command = sys.argv[1] if len(sys.argv) > 1 else "gui"
     if command == "gui":
+        from .platform import IS_WINDOWS
+        if IS_WINDOWS:
+            from .config import CONFIG_PATH
+            sys.exit("The settings window isn't available on Windows yet.\n"
+                     f"For now, edit {CONFIG_PATH} and run: python -m numpadctl run")
         from . import gui
         gui.run(sys.argv[2:])
     elif command == "run":

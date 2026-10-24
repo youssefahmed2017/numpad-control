@@ -228,9 +228,11 @@ don't trust.
     like `"5"`, `"Enter"`, `"000"`. Linux: `linux_numpad.py` (evdev). Windows:
     `windows_numpad.py`, using the [Interception](https://github.com/oblitum/Interception)
     driver to capture only the numpad, even next to a keyboard with its own number pad
-    (tested on a real Windows PC; the rest of the Windows version isn't built yet)
-  - `system.py`: system actions (Linux: `linux_system.py`): opening apps, URLs and
-    files, clipboard, notifications, typing and key presses, media, volume, power.
+    (tested on a real Windows PC)
+  - `system.py`: system actions: opening apps, URLs and files, clipboard,
+    notifications, typing and key presses, media, volume, power. Linux:
+    `linux_system.py`; Windows: `windows_system.py` (SendInput, Windows' own volume
+    popup, toast notifications; no extra packages).
     Apps opened from the numpad get their own systemd scope, so they don't count as
     part of the service. "Press keys" stores key names (`LEFTMETA`, `Q`), which each
     OS turns into its own key codes.
@@ -245,5 +247,8 @@ don't trust.
 - A Windows version (with one Qt settings window for both systems) is planned
   for later. It will read the numpad through the Interception driver, so it can
   tell an external numpad apart from a main keyboard that has its own number pad.
-  [`tools/windows-poc/`](tools/windows-poc/) is a small test of exactly that, to run
-  on a Windows PC first.
+  [`tools/windows-poc/`](tools/windows-poc/) has the tests for a Windows PC. Working
+  so far: reading the numpad, and the background service with most actions (no
+  settings window yet; it's configured by editing the settings file). Not on Windows
+  yet: window/workspace actions, per-app profiles, per-app audio, microphone mute,
+  screenshots, Run Python, the tray icon and the settings window.

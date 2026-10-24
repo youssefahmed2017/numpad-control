@@ -78,6 +78,48 @@ keyboard isn't touched at all.
    seconds. Ctrl+C stops it. (The `000` key shows as three `0` presses here; the full
    app turns that burst into one `000` key.)
 
+## Test 3: the whole service
+This runs Numpad Control's background service on Windows with a ready-made test
+setup ([`windows-test-config.json`](windows-test-config.json)). There's no settings
+window on Windows yet; that comes later.
+
+1. Update the project and install what it needs (in PowerShell):
+
+       cd ~\numpad-control
+       git pull
+       python -m pip install -r requirements.txt
+
+2. Put the test setup where the service looks for its settings:
+
+       New-Item -ItemType Directory -Force "$env:APPDATA\numpad-control" | Out-Null
+       Copy-Item tools\windows-poc\windows-test-config.json "$env:APPDATA\numpad-control\config.json"
+
+3. Start the service (it prints a line for every key; Ctrl+C stops it):
+
+       python -m numpadctl run
+
+4. Try the keys:
+
+   | Key | Expected |
+   |---|---|
+   | 1 | the default browser opens |
+   | 2 | the project's GitHub page opens |
+   | 3 | a Windows notification "Key 3 works on Windows (time)" |
+   | 4 / 6 | volume down / up, with Windows' volume popup; holding repeats |
+   | 5 | press: play/pause music; hold: next track |
+   | 7 | types "Hello from the numpad!" and the time (click into Notepad first) |
+   | 8 | Windows' **Run** box opens (Super+R) |
+   | 9 | "Copied by the numpad" is on the clipboard (paste it with Ctrl+V) |
+   | 0 | a notification, then a second later it types "typed by a macro" |
+   | 000 | Explorer opens `C:\` |
+   | + then - | `+` turns "Test mode" on/off; `-` says whether it's ON or OFF |
+   | * | mutes / unmutes the speakers |
+   | / | sets the volume to 30% |
+   | Enter | press, hold, and double tap each show a different notification |
+
+5. Send back what didn't work, and the window's text (it shows an error line for
+   any key that failed).
+
 ## If something goes wrong
 - If the keyboard stops responding while the test runs, **close the black window
   with the mouse**; that ends the test and gives the keys back.
