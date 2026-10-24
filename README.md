@@ -240,4 +240,7 @@ don't trust.
 
 ## Plans
 - A Windows version (with one Qt settings window for both systems) is planned
-  for later.
+  for later. It will read the numpad through the Interception driver, so it can
+  tell an external numpad apart from a main keyboard that has its own number pad.
+  [`tools/windows-poc/`](tools/windows-poc/) is a small test of exactly that, to run
+  on a Windows PC first.
