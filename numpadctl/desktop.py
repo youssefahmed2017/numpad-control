@@ -12,8 +12,10 @@ import shutil
 import subprocess
 from pathlib import Path
 
-HYPRLAND, KDE, OTHER = "hyprland", "kde", "other"
-NAMES = {HYPRLAND: "Hyprland", KDE: "KDE Plasma"}
+from .platform import IS_WINDOWS
+
+HYPRLAND, KDE, WINDOWS, OTHER = "hyprland", "kde", "windows", "other"
+NAMES = {HYPRLAND: "Hyprland", KDE: "KDE Plasma", WINDOWS: "Windows"}
 
 
 class DesktopError(Exception):
@@ -21,6 +23,8 @@ class DesktopError(Exception):
 
 
 def current():
+    if IS_WINDOWS:
+        return WINDOWS
     desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
     if "hyprland" in desktop:
         return HYPRLAND
@@ -253,3 +257,13 @@ def focus_app_window(app_id):
                 _kdotool("windowactivate", found[0])
     except (DesktopError, subprocess.SubprocessError):
         pass
+
+
+# On Windows the same functions come from platform/windows_desktop.py.
+if IS_WINDOWS:
+    from .platform import windows_desktop as _windows
+    for _name in ("active_window_class", "open_windows", "focus_window", "close_window", "toggle_fullscreen",
+                  "toggle_floating", "toggle_scratchpad", "go_to_workspace", "move_window_to_workspace",
+                  "step_workspace", "show_osd", "toggle_dnd", "screenshot", "lock_screen", "focus_app_window"):
+        globals()[_name] = getattr(_windows, _name)
+

@@ -18,7 +18,9 @@ SIMULATION = textwrap.dedent("""
     from numpadctl.platform import numpad_input, system
     import numpadctl.daemon, numpadctl.actions, numpadctl.config, numpadctl.modes
     from numpadctl.platform import windows_tray
-    print(numpad_input.open_numpad.__module__, system.press_keys.__module__)
+    from numpadctl import actions, desktop
+    print(numpad_input.open_numpad.__module__, system.press_keys.__module__,
+          desktop.screenshot.__module__, desktop.current(), actions.audio.__name__)
 """)
 
 
@@ -28,7 +30,8 @@ class WindowsImportTest(unittest.TestCase):
                               cwd=Path(__file__).parent.parent, timeout=60)
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(done.stdout.split(),
-                         ["numpadctl.platform.windows_numpad", "numpadctl.platform.windows_system"])
+                         ["numpadctl.platform.windows_numpad", "numpadctl.platform.windows_system",
+                          "numpadctl.platform.windows_desktop", "windows", "numpadctl.platform.windows_audio"])
 
 
 if __name__ == "__main__":

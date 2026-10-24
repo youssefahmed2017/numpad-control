@@ -7,8 +7,13 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import audio, desktop, modes, obs, sandbox
-from .platform import system
+from . import desktop, modes, obs, sandbox
+from .platform import IS_WINDOWS, system
+
+if IS_WINDOWS:  # per-app audio: Core Audio on Windows, PipeWire on Linux
+    from .platform import windows_audio as audio
+else:
+    from . import audio
 
 
 @dataclass
@@ -71,7 +76,6 @@ def _open_path(cfg, path):
 
 
 def _run_python(cfg, code):
-    from .platform import IS_WINDOWS
     if IS_WINDOWS:  # the sandbox relies on Linux process limits
         raise ActionError("Run Python isn't available on Windows yet")
     ok, output = sandbox.run(code, on_open_url=system.open_url)
@@ -123,7 +127,10 @@ def _screenshot(cfg, region=False):
     folder = Path.home() / "Pictures" / "Screenshots"
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / time.strftime("%Y-%m-%d_%H-%M-%S.png")
-    if not desktop.screenshot(path, region):
+    saved = desktop.screenshot(path, region)
+    if saved is None:  # Windows' Snipping tool took over (it copies the region itself)
+        return
+    if not saved:
         return "cancelled"
     system.copy_image(path)
     notify("Screenshot saved", f"{path} (also copied)")

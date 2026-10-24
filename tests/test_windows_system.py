@@ -73,9 +73,15 @@ class WindowsSystemTest(unittest.TestCase):
         self.assertEqual(len(up), 2 * 20)
         self.assertEqual(up[0], (0xAF, False, True))
 
-    def test_microphone_mute_says_not_yet(self):
-        with self.assertRaisesRegex(ws.SystemActionError, "isn't supported on Windows yet"):
+    def test_microphone_mute_uses_core_audio(self):
+        from numpadctl.platform import windows_audio
+        with mock.patch.object(windows_audio, "toggle_microphone_mute") as mic:
             ws.toggle_mute(microphone=True)
+        mic.assert_called_once()
+        self.assertEqual(self.sent, [], "no key press for the microphone")
+        with mock.patch.object(windows_audio, "toggle_microphone_mute", side_effect=windows_audio.AudioError("no microphone found")):
+            with self.assertRaisesRegex(ws.SystemActionError, "no microphone found"):
+                ws.toggle_mute(microphone=True)
 
     def test_power(self):
         with mock.patch.object(ws.subprocess, "run") as run:

@@ -309,8 +309,13 @@ def set_volume(percent):
 
 
 def toggle_mute(microphone=False):
-    if microphone:
-        raise SystemActionError("muting the microphone isn't supported on Windows yet")
+    if microphone:  # there's no microphone key; use Core Audio
+        from .windows_audio import AudioError, toggle_microphone_mute
+        try:
+            toggle_microphone_mute()
+        except AudioError as e:
+            raise SystemActionError(str(e))
+        return
     _tap("MUTE")
 
 

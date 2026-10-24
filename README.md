@@ -268,11 +268,15 @@ don't trust.
 - A Windows version (with one Qt settings window for both systems) is planned
   for later. It will read the numpad through the Interception driver, so it can
   tell an external numpad apart from a main keyboard that has its own number pad.
-  [`tools/windows-poc/`](tools/windows-poc/) has the tests for a Windows PC. Working
-  so far: reading the numpad, the background service with most actions, and a tray
-  app (`numpad-control.pyw`: runs without a console window, with Settings…, Edit
-  settings file, Pause, Start at login, Show log and Quit;
-  `numpadctl/platform/windows_tray.py`). Settings… opens the same Qt settings window
-  as on Linux (new; not yet tried on Windows). Not on Windows yet: window/workspace
-  actions, per-app profiles, per-app audio, microphone mute, screenshots, Run Python.
-  Install with `install.ps1` (see Install → Windows).
+  [`tools/windows-poc/`](tools/windows-poc/) has the tests for a Windows PC.
+  Working: reading the numpad, the background service, a tray app
+  (`numpad-control.pyw`: Settings…, Edit settings file, Pause, Start at login, Show
+  log, Quit), the same Qt settings window, and the actions: per-app profiles and
+  Wait for window (by program name, e.g. `obs64`), Focus a window, Close window,
+  Toggle fullscreen (maximize / restore on Windows), Next / previous desktop,
+  per-app volume and mute, microphone mute, switching the audio output (Core Audio
+  via pycaw), full-screen screenshots (region opens Windows' Snipping tool, which
+  copies it), and Lock screen. Not on Windows: going to / moving windows to a
+  numbered desktop, floating and the scratchpad (Hyprland only), Do not disturb,
+  Run Python, and on-screen popups (notifications instead). Install with
+  `install.ps1` (see Install → Windows).

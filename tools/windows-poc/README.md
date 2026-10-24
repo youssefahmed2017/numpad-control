@@ -149,6 +149,34 @@ with an icon in the system tray (bottom right, maybe under the **^** arrow).
 If it can't start (for example if `interception.dll` is missing), a message box
 says why. Send that text, or the log from **Show log**.
 
+## Test 5: the installer, the settings window and the new actions
+1. **Quit** Numpad Control from its tray icon.
+2. **Run the installer** in PowerShell (it updates the copy in `~\numpad-control`,
+   installs the new packages, adds Start-menu entries and restarts Numpad Control;
+   Interception is already installed, so no restart is needed):
+
+       irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.ps1 | iex
+
+3. **Open the settings window**: left-click the tray icon, or Start menu →
+   **Numpad Control Settings**. It's the same window as on Linux.
+4. **Set up and try** a few keys in it (pick the action, fill in the fields, click
+   **Save**, then press the key):
+   - *Media · App volume up* with app `spotify` (or whatever is playing; the **☰**
+     button lists apps playing sound right now)
+   - *Media · Mute / unmute microphone*
+   - *Media · Next audio output* (if you have speakers and headphones)
+   - *Window · Focus a window* with `notepad` (open Notepad first), *Close window*,
+     *Toggle fullscreen* (maximizes / restores), *Next workspace* (needs a second
+     desktop: Win+Ctrl+D)
+   - *Screenshot · Full screen* (saved to Pictures\Screenshots and copied) and
+     *Select a region* (opens the Snipping tool)
+   - *System · Lock screen*
+   - A **profile**: ⋯ → New profile…, "Add an open window" → pick Notepad; give key 1
+     a different action in that profile; key 1 should do it only while Notepad is
+     focused.
+5. Send back anything that didn't work, with the error message (and **Show log**
+   from the tray menu).
+
 ## If something goes wrong
 - If the keyboard stops responding while the test runs, **close the black window
   with the mouse**; that ends the test and gives the keys back.
