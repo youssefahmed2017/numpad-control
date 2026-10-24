@@ -162,12 +162,12 @@ One command (as your normal user; it asks for your password when it needs sudo):
     curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.sh | bash
 
 It:
-1. installs the system packages (pacman, apt or dnf): Python, GTK 4, libadwaita,
-   python-gobject, git, ydotool, playerctl, PipeWire tools, wl-clipboard, plus the
+1. installs the system packages (pacman, apt or dnf): Python, python-gobject, git, ydotool, playerctl, PipeWire tools, wl-clipboard, plus the
    extras for each desktop it finds (Hyprland: SwayOSD, grim, slurp, dunst, hyprlock;
    KDE Plasma: Spectacle, and kdotool from the AUR via yay/paru)
 2. clones the code to `~/numpad-control` (or updates it if it's already there)
-3. creates the Python environment (`.venv`, with `requirements.txt`)
+3. creates the Python environment (`.venv`, with `requirements.txt`; this downloads
+   Qt for the settings window, about 250 MB)
 4. asks you to press a key on your numpad, to find it
 5. installs a udev rule so you can read that numpad (and only that one)
 6. installs and starts the background service (and ydotool's service)
@@ -223,8 +223,6 @@ don't trust.
   `dialogs.py` (settings, profiles), `app.py` (one copy at a time, `--hidden`, tray
   icon on KDE), `theme.py` (dark/light following the system). `numpadctl/ui_common.py`
   holds what doesn't depend on the toolkit.
-- `numpadctl/gui.py` and `tray.py`: the previous GTK4 window and KDE tray, still
-  available as `numpadctl gui-gtk` until the Qt window has fully replaced them
 - `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
 - `numpadctl/platform/`: everything that differs between operating systems, so a

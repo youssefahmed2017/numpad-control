@@ -87,11 +87,11 @@ class AudioTest(unittest.TestCase):
         self.assertTrue(actions.binding_problems({"action": "volume_set", "params": {"percent": "150"}}))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class OutputNameTest(unittest.TestCase):
     def test_underscores_and_spaces_match(self):
         sinks = [{"index": 1, "name": "x", "description": "Test_Speakers"}]
         self.assertIs(audio._find_output(sinks, "test speakers"), sinks[0])
+
+
+if __name__ == "__main__":
+    unittest.main()

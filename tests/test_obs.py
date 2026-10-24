@@ -108,21 +108,3 @@ class PlaceholderTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-class PlaceholderButtonTest(unittest.TestCase):
-    def test_inserts_at_the_cursor(self):
-        import gi
-        gi.require_version("Adw", "1")
-        gi.require_version("Gtk", "4.0")
-        from gi.repository import Adw
-        Adw.init()
-        from numpadctl import gui
-        entry = Adw.EntryRow(text="Live since  today")
-        entry.set_position(11)
-        button = gui.Window.placeholder_button(mock.Mock(popover_list=gui.Window.popover_list,
-                                                         list_row=gui.Window.list_row), entry)
-        listbox = button.get_popover().get_child().get_last_child().get_child().get_child()
-        listbox.emit("row-activated", listbox.get_row_at_index(0))  # {time}
-        self.assertEqual(entry.get_text(), "Live since {time} today")
-        self.assertEqual(entry.get_position(), 17)

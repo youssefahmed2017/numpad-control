@@ -73,10 +73,6 @@ class KeyboardTest(unittest.TestCase):
         self.assertIn("step 3", actions.binding_problems(macro)[0])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class SessionEnvTest(unittest.TestCase):
     def test_display_vars_are_picked_up_from_systemd(self):
         out = mock.Mock(stdout="HOME=/home/x\nWAYLAND_DISPLAY=wayland-9\nHYPRLAND_INSTANCE_SIGNATURE=abc\nPATH=/bin\n")
@@ -91,3 +87,7 @@ class SessionEnvTest(unittest.TestCase):
         with mock.patch.dict(linux_system.os.environ, {}, clear=True), \
                 mock.patch.object(linux_system.subprocess, "run", return_value=mock.Mock(stdout="HOME=/x\n")):
             self.assertFalse(actions.refresh_session_env())
+
+
+if __name__ == "__main__":
+    unittest.main()

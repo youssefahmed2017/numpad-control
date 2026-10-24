@@ -161,6 +161,17 @@ class QtWindowTest(unittest.TestCase):
         self.assertFalse(self.w.dirty)
         self.assertNotIn("2", self.w.keymap(), "discarding reloads the saved setup")
 
+    def test_placeholder_is_inserted_at_the_cursor(self):
+        self.w.select("3")
+        self.pick(0, "type_text")
+        field = [f for f in self.editor(widgets.TextField) if f.edit.accessibleName() == "Text to type"][0]
+        field.edit.setText("Live since  today")
+        field.edit.setCursorPosition(11)
+        button = [b for b in field.findChildren(widgets.QToolButton) if b.text() == "{…}"][0]
+        [a for a in button.menu().actions() if a.text().startswith("{time}")][0].trigger()
+        self.assertEqual(field.edit.text(), "Live since {time} today")
+        self.assertEqual(self.w.keymap()["3"]["tap"]["params"]["text"], "Live since {time} today")
+
     def test_learn_needs_the_service(self):
         self.w.learn.setChecked(True)
         self.assertFalse(self.w.learn.isChecked())

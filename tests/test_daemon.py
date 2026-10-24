@@ -163,9 +163,6 @@ class DaemonTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(b'"key": "5"', writer.write.call_args_list[-1].args[0])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
     async def test_daemon_passes_the_slot_that_fired(self):
         slots = []
         self.d.run_action = lambda key, binding, slot: slots.append(slot)
@@ -271,3 +268,6 @@ class SocketOverTCPTest(SocketTest):
         self.assertEqual(await asyncio.wait_for(reader.read(), 2), b"", "connection closed, nothing sent")
         writer.close()
 
+
+if __name__ == "__main__":
+    unittest.main()

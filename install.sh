@@ -63,7 +63,7 @@ has_desktop() { command -v "$1" > /dev/null 2>&1; }
 if [ "$DEPS" = 1 ]; then
     bold "1/7  System packages"
     if command -v pacman > /dev/null; then
-        packages=(git python python-gobject gtk4 libadwaita libnotify xdg-utils wl-clipboard
+        packages=(git python python-gobject libnotify xdg-utils wl-clipboard
                   ydotool playerctl wireplumber libpulse)
         has_desktop Hyprland && packages+=(swayosd grim slurp dunst hyprlock)
         has_desktop plasmashell && packages+=(spectacle)
@@ -77,15 +77,15 @@ if [ "$DEPS" = 1 ]; then
             fi
         fi
     elif command -v apt-get > /dev/null; then
-        run sudo apt-get install -y git python3 python3-venv python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 \
+        run sudo apt-get install -y git python3 python3-venv python3-gi \
             libnotify-bin xdg-utils wl-clipboard ydotool playerctl wireplumber pulseaudio-utils
         warn "Install your desktop's extras yourself if needed (Hyprland: swayosd grim slurp dunst; KDE: kdotool spectacle)."
     elif command -v dnf > /dev/null; then
-        run sudo dnf install -y git python3 python3-gobject gtk4 libadwaita libnotify xdg-utils \
+        run sudo dnf install -y git python3 python3-gobject libnotify xdg-utils \
             wl-clipboard ydotool playerctl wireplumber pulseaudio-utils
         warn "Install your desktop's extras yourself if needed (Hyprland: swayosd grim slurp dunst; KDE: kdotool spectacle)."
     else
-        warn "Unknown package manager: install git, Python 3, python-gobject, GTK 4 and libadwaita yourself."
+        warn "Unknown package manager: install git, Python 3 and python-gobject yourself."
     fi
 else
     bold "1/7  System packages (skipped)"
@@ -113,8 +113,8 @@ bold "3/7  Python environment"
 [ -x "$DIR/.venv/bin/python" ] || run python3 -m venv --system-site-packages "$DIR/.venv"
 run "$DIR/.venv/bin/pip" install --quiet --upgrade -r "$DIR/requirements.txt"
 if [ "$DRY_RUN" = 0 ]; then
-    "$DIR/.venv/bin/python" -c 'import gi; gi.require_version("Gtk", "4.0"); gi.require_version("Adw", "1"); from gi.repository import Gtk, Adw' \
-        || { echo "GTK 4 / libadwaita for Python are missing (step 1)." >&2; exit 1; }
+    "$DIR/.venv/bin/python" -c 'import PySide6.QtWidgets' \
+        || { echo "Qt for Python (PySide6) didn't install - see the messages above." >&2; exit 1; }
 fi
 
 # ---------------------------------------------------------------- 4. numpad

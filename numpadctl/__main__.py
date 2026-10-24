@@ -1,4 +1,4 @@
-"""numpadctl [gui [--hidden]|gui-gtk|run|tray|detect [--json]|list|usb-info]"""
+"""numpadctl [gui [--hidden]|run|tray|detect [--json]|list|usb-info]"""
 
 import sys
 
@@ -8,9 +8,6 @@ def main():
     if command == "gui":
         from .qt import app
         sys.exit(app.run(sys.argv[2:]))
-    elif command == "gui-gtk":  # the previous GTK4 window, until the Qt one has replaced it
-        from . import gui
-        gui.run(sys.argv[2:])
     elif command == "tray":
         from .platform import IS_WINDOWS
         if not IS_WINDOWS:

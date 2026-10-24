@@ -138,10 +138,6 @@ class WindowsNumpadTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(fake.filtered, set())
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ServiceOnWindowsBackendTest(unittest.IsolatedAsyncioTestCase):
     async def test_000_and_keys_through_the_service(self):
         from numpadctl import daemon
@@ -159,3 +155,7 @@ class ServiceOnWindowsBackendTest(unittest.IsolatedAsyncioTestCase):
             reader.cancel()
             numpad.close()
         self.assertEqual(fired, [("000", "obs_save_replay"), ("5", "media_play_pause")])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -163,10 +163,6 @@ class ServicePauseTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(fired, ["5"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class QuitEarlyTest(unittest.TestCase):
     def test_quit_before_the_service_starts(self):
         app = tray.TrayApp(FakeDaemon(), open_file=lambda p: None)
@@ -175,3 +171,7 @@ class QuitEarlyTest(unittest.TestCase):
         service.start()
         service.join(3)
         self.assertFalse(service.is_alive(), "the service doesn't keep running after an early Quit")
+
+
+if __name__ == "__main__":
+    unittest.main()
