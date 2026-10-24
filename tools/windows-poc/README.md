@@ -110,7 +110,7 @@ window on Windows yet; that comes later.
    | 7 | types "Hello from the numpad!" and the time (click into Notepad first) |
    | 8 | Windows' **Run** box opens (Super+R) |
    | 9 | "Copied by the numpad" is on the clipboard (paste it with Ctrl+V) |
-   | 0 | a notification, then a second later it types "typed by a macro" |
+   | 0 | a macro (click into Notepad first): one notification, then after 1 second it **types** "typed by a macro" into Notepad (there's no second notification) |
    | 000 | Explorer opens `C:\` |
    | + then - | `+` turns "Test mode" on/off; `-` says whether it's ON or OFF |
    | * | mutes / unmutes the speakers |

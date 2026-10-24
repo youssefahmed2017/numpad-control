@@ -17,7 +17,7 @@
       "8": {"tap": {"action": "press_keys", "params": {"keys": "super+r"}}},
       "9": {"tap": {"action": "copy_text", "params": {"text": "Copied by the numpad"}}},
       "0": {"tap": {"action": "macro", "params": {"steps": [
-        {"action": "show_notification", "params": {"title": "Macro", "body": "Step 1: typing in a second"}},
+        {"action": "show_notification", "params": {"title": "Macro", "body": "Typing 'typed by a macro' into the focused window in 1 second"}},
         {"action": "wait", "params": {"seconds": "1"}},
         {"action": "type_text", "params": {"text": "typed by a macro"}}]}}},
       "000": {"tap": {"action": "open_path", "params": {"path": "C:\\"}}},
