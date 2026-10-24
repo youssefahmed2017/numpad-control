@@ -3,7 +3,7 @@
 Turns a cheap USB numpad into a control pad (like a Stream Deck) on Linux.
 Each key runs an action: open apps and websites, control OBS, media and volume,
 manage windows and desktops, type text, run multi-step macros, and more.
-Everything is set up in a GTK4 / libadwaita settings window. No code needed.
+Everything is set up in a settings window (Qt, the same on Linux and Windows). No code needed.
 
 Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland).
 Linux only for now.
@@ -217,7 +217,14 @@ don't trust.
 - `numpadctl/daemon.py`: the background service: key timing (press / hold / double
   tap, repeat, rapid-fire, layer key, `000`), profiles, and the link to the window
 - `numpadctl/actions.py`: every action, plus macros and modes logic
-- `numpadctl/gui.py`: the settings window; `tray.py`: KDE tray icon
+- `numpadctl/qt/`: the settings window (Qt / PySide6, shared by Linux and Windows):
+  `window.py` (numpad + key editor), `widgets.py` (searchable dropdowns, fields with
+  list and placeholder buttons, step lists for macros and if/otherwise),
+  `dialogs.py` (settings, profiles), `app.py` (one copy at a time, `--hidden`, tray
+  icon on KDE), `theme.py` (dark/light following the system). `numpadctl/ui_common.py`
+  holds what doesn't depend on the toolkit.
+- `numpadctl/gui.py` and `tray.py`: the previous GTK4 window and KDE tray, still
+  available as `numpadctl gui-gtk` until the Qt window has fully replaced them
 - `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
 - `numpadctl/platform/`: everything that differs between operating systems, so a
@@ -249,8 +256,9 @@ don't trust.
   tell an external numpad apart from a main keyboard that has its own number pad.
   [`tools/windows-poc/`](tools/windows-poc/) has the tests for a Windows PC. Working
   so far: reading the numpad, the background service with most actions, and a tray
-  app (`numpad-control.pyw`: runs without a console window, with Open settings file,
-  Pause, Start at login, Show log and Quit; `numpadctl/platform/windows_tray.py`).
-  There's no settings window on Windows yet; it's configured by editing the settings
-  file. Not on Windows yet: window/workspace actions, per-app profiles, per-app
-  audio, microphone mute, screenshots, Run Python, the settings window, an installer.
+  app (`numpad-control.pyw`: runs without a console window, with Settings…, Edit
+  settings file, Pause, Start at login, Show log and Quit;
+  `numpadctl/platform/windows_tray.py`). Settings… opens the same Qt settings window
+  as on Linux (new; not yet tried on Windows). Not on Windows yet: window/workspace
+  actions, per-app profiles, per-app audio, microphone mute, screenshots, Run Python,
+  an installer.

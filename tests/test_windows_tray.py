@@ -97,9 +97,13 @@ class TrayAppTest(unittest.TestCase):
         app.toggle_pause()
         self.assertFalse(app.daemon.paused)
 
-    def test_open_settings_and_log(self):
+    def test_settings_window_file_and_log(self):
         app, opened = self.make()
-        app.open_settings()
+        with mock.patch("numpadctl.platform.windows_system.spawn") as spawn:
+            app.open_settings()
+        self.assertEqual(spawn.call_args.args[-1], "gui", "opens the settings window")
+        self.assertTrue(spawn.call_args.args[0].endswith("pythonw.exe"))
+        app.edit_settings_file()
         app.show_log()
         self.assertEqual(opened[0].name, "config.json")
         self.assertEqual(opened[1].name, "numpad-control.log")
@@ -136,10 +140,10 @@ class TrayAppTest(unittest.TestCase):
                 mock.patch.object(tray, "autostart_enabled", return_value=False):
             app.menu()
         labels = [m[0] if isinstance(m, tuple) else m for m in made]
-        self.assertEqual(labels, ["Numpad not found - plug it in", "---", "Open settings file", "Pause",
-                                  "Start at login", "Show log", "---", "Quit"])
+        self.assertEqual(labels, ["Numpad not found - plug it in", "---", "Settings…", "Edit settings file",
+                                  "Pause", "Start at login", "Show log", "---", "Quit"])
         default = [m for m in made if isinstance(m, tuple) and m[2].get("default")]
-        self.assertEqual(default[0][0], "Open settings file", "a left click opens the settings")
+        self.assertEqual(default[0][0], "Settings…", "a left click opens the settings window")
 
 
 class ServicePauseTest(unittest.IsolatedAsyncioTestCase):

@@ -1,4 +1,4 @@
-"""numpadctl [gui [--hidden]|run|tray|detect [--json]|list|usb-info]"""
+"""numpadctl [gui [--hidden]|gui-gtk|run|tray|detect [--json]|list|usb-info]"""
 
 import sys
 
@@ -6,11 +6,9 @@ import sys
 def main():
     command = sys.argv[1] if len(sys.argv) > 1 else "gui"
     if command == "gui":
-        from .platform import IS_WINDOWS
-        if IS_WINDOWS:
-            from .config import CONFIG_PATH
-            sys.exit("The settings window isn't available on Windows yet.\n"
-                     f"For now, edit {CONFIG_PATH} and run: python -m numpadctl run")
+        from .qt import app
+        sys.exit(app.run(sys.argv[2:]))
+    elif command == "gui-gtk":  # the previous GTK4 window, until the Qt one has replaced it
         from . import gui
         gui.run(sys.argv[2:])
     elif command == "tray":

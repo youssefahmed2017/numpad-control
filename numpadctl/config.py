@@ -29,6 +29,7 @@ DEFAULT_CONFIG = {
     "device": {"vendor": "c0f4", "product": "05f5"},
     "grab": True,       # stop the numpad from also typing digits
     "feedback": True,   # on-screen confirmations
+    "appearance": "auto",  # settings window: "auto" (follow the system), "light" or "dark"
     "layer_key": None,  # hold this key for the second set of actions
     "modes": [],        # names of on/off modes (their state is in modes.py)
     "obs": {"host": "localhost", "port": 4455, "password": ""},

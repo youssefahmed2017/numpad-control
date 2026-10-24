@@ -4,8 +4,8 @@ Start it with numpad-control.pyw (double-click it, or "Start at login" in the
 tray menu), which runs without a console window. Logs go to
 %LOCALAPPDATA%\\numpad-control\\state\\numpad-control.log.
 
-Tray menu: status, Open settings file (also a left click), Pause, Start at
-login, Show log, Quit.
+Tray menu: status, Settings… (the settings window; also a left click), Edit
+settings file, Pause, Start at login, Show log, Quit.
 """
 
 import asyncio
@@ -110,6 +110,11 @@ class TrayApp:
 
     # menu actions
     def open_settings(self, *_):
+        """The settings window (a separate process, like on Linux)."""
+        from .windows_system import spawn
+        spawn(str(Path(sys.executable).with_name("pythonw.exe")), str(LAUNCHER), "gui")
+
+    def edit_settings_file(self, *_):
         self.open_file(config_path())
 
     def show_log(self, *_):
@@ -162,7 +167,8 @@ class TrayApp:
         return Menu(
             Item(lambda item: self.status_text(), None, enabled=False),
             Menu.SEPARATOR,
-            Item("Open settings file", self.open_settings, default=True),
+            Item("Settings…", self.open_settings, default=True),
+            Item("Edit settings file", self.edit_settings_file),
             Item("Pause", self.toggle_pause, checked=lambda item: self.daemon.paused),
             Item("Start at login", self.toggle_autostart, checked=lambda item: autostart_enabled()),
             Item("Show log", self.show_log),
