@@ -19,6 +19,13 @@ class KeyboardTest(unittest.TestCase):
         self.assertEqual(actions.parse_keys("super+Return F5"),
                          [[ecodes.KEY_LEFTMETA, ecodes.KEY_ENTER], [ecodes.KEY_F5]])
 
+    def test_spaces_around_plus_still_mean_together(self):
+        together = [[ecodes.KEY_LEFTMETA, ecodes.KEY_Q]]
+        for text in ("super+q", "Super + Q", "SUPER +q", "  super+ Q "):
+            with self.subTest(text):
+                self.assertEqual(actions.parse_keys(text), together)
+        self.assertEqual(actions.parse_keys("Super + Q Enter"), together + [[ecodes.KEY_ENTER]])
+
     def test_bad_keys(self):
         for text in ("", "ctrl+", "notakey", "ctrl++c"):
             with self.subTest(text):

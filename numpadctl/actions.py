@@ -247,9 +247,13 @@ MAX_KEY_PRESSES = 50
 
 
 def parse_keys(text):
-    """'ctrl+shift+t Down Enter' -> [[codes of one combination], ...]"""
+    """'ctrl+shift+t Down Enter' -> [[codes of one combination], ...]
+
+    + joins keys pressed together (spaces around it are fine: "Super + Q");
+    spaces or commas separate key presses done one after another."""
     from evdev import ecodes
     combos = []
+    text = re.sub(r"\s*\+\s*", "+", text.strip())
     for chunk in text.replace(",", " ").split():
         codes = []
         for name in chunk.split("+"):
@@ -528,7 +532,8 @@ ACTIONS = [
     Action("type_text", "Type text", _type_text, [Param("text", "Text to type", placeholders=True)],
            group="Keyboard", check=lambda text: None if text else _raise("no text set")),
     Action("press_keys", "Press keys", _press_keys,
-           [Param("keys", "Keys (e.g. Enter, Down Down, ctrl+shift+t)", default="Enter")],
+           [Param("keys", "Keys: + presses together (super+q), spaces one after another (Down Down Enter)",
+                  default="Enter")],
            group="Keyboard", check=lambda keys: parse_keys(keys)),
 
     Action("screenshot_full", "Full screen", lambda cfg: _screenshot(cfg), group="Screenshot"),
