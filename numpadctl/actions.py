@@ -12,7 +12,7 @@ import webbrowser
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import audio, obs, sandbox
+from . import audio, modes, obs, sandbox
 
 
 @dataclass
@@ -408,26 +408,49 @@ def _raise(message):
     raise ActionError(message)
 
 
-def binding_problems(binding):
-    """Problems with a binding's settings, found before it ever runs."""
+def binding_problems(binding, cfg=None):
+    """Problems with a binding's settings, found before it ever runs.
+
+    With cfg, mode names are checked against the config's modes too."""
     action = BY_ID.get(binding.get("action"))
     if action is None:
         return [f"unknown action {binding.get('action')!r}"]
+    given = binding.get("params", {})
     if action.id == "macro":
-        return macro_problems(binding.get("params", {}).get("steps", []))
+        return macro_problems(given.get("steps", []), cfg)
+    if action.id == "if_mode":
+        problems = []
+        if not given.get("then") and not given.get("otherwise"):
+            problems.append("both branches are empty")
+        for branch in ("then", "otherwise"):
+            label = "if on" if branch == "then" else "otherwise"
+            problems += [f"{label}, {p}" for p in macro_problems(given.get(branch, []), cfg, allow_empty=True)]
+        return _mode_problems(action, given, cfg) + problems
+    problems = _mode_problems(action, given, cfg)
     if action.check:
-        given = binding.get("params", {})
         try:
             action.check(**{p.name: given.get(p.name, p.default) for p in action.params})
         except ActionError as e:
-            return [str(e)]
+            problems.append(str(e))
+    return problems
+
+
+def _mode_problems(action, given, cfg):
+    if cfg is None:
+        return []
+    try:
+        for p in action.params:
+            if p.suggest == "modes":
+                mode_name(cfg, given.get(p.name, p.default))
+    except ActionError as e:
+        return [str(e)]
     return []
 
 
-def macro_problems(steps):
+def macro_problems(steps, cfg=None, allow_empty=False):
     """Problems that would stop a macro from running; empty list means OK."""
     if not steps:
-        return ["the macro has no steps"]
+        return [] if allow_empty else ["the macro has no steps"]
     if len(steps) > MAX_MACRO_STEPS:
         return [f"a macro can have at most {MAX_MACRO_STEPS} steps"]
     problems = []
@@ -435,19 +458,57 @@ def macro_problems(steps):
         if step.get("action") not in STEP_IDS:
             problems.append(f"step {i}: {step.get('action')!r} can't be used in a macro")
         else:
-            problems += [f"step {i}: {p}" for p in binding_problems(step)]
+            problems += [f"step {i}: {p}" for p in binding_problems(step, cfg)]
     return problems
 
 
-def _macro(cfg, steps):
-    problems = macro_problems(steps)
-    if problems:
-        raise ActionError("; ".join(problems))
+def _run_steps(cfg, steps):
     for i, step in enumerate(steps, 1):
         try:
             run(cfg, step)
         except Exception as e:
             raise ActionError(f"step {i} ({BY_ID[step['action']].label}) failed: {e}")
+
+
+def _macro(cfg, steps):
+    problems = macro_problems(steps, cfg)
+    if problems:
+        raise ActionError("; ".join(problems))
+    _run_steps(cfg, steps)
+
+
+# ---------------------------------------------------------------- modes
+
+def mode_name(cfg, value):
+    """The configured mode matching value (ignoring case), or an error."""
+    wanted = str(value).strip()
+    if not wanted:
+        raise ActionError("no mode chosen")
+    for name in cfg.get("modes", []):
+        if name.lower() == wanted.lower():
+            return name
+    raise ActionError(f"there's no mode called {wanted!r} (add it in Settings → Modes)")
+
+
+def _mode_toggle(cfg, mode):
+    name = mode_name(cfg, mode)
+    return f"{name} {'on' if modes.toggle(name) else 'off'}"
+
+
+def _mode_set(on):
+    def run(cfg, mode):
+        name = mode_name(cfg, mode)
+        modes.set_mode(name, on)
+        return f"{name} {'on' if on else 'off'}"
+    return run
+
+
+def _if_mode(cfg, mode, then, otherwise):
+    problems = binding_problems({"action": "if_mode",
+                                 "params": {"mode": mode, "then": then, "otherwise": otherwise}}, cfg)
+    if problems:
+        raise ActionError("; ".join(problems))
+    _run_steps(cfg, then if modes.is_on(mode_name(cfg, mode)) else otherwise)
 
 
 def _percent(value):
@@ -596,6 +657,18 @@ ACTIONS = [
            _power("reboot", "reboot", "to restart", "Restarting…",
                   "system-reboot-symbolic"), group="System", confirm=True),
 
+    Action("mode_toggle", "Toggle a mode", _mode_toggle,
+           [Param("mode", "Mode", suggest="modes")], group="Mode", osd_icon="emblem-ok-symbolic"),
+    Action("mode_on", "Turn a mode on", _mode_set(True),
+           [Param("mode", "Mode", suggest="modes")], group="Mode", osd_icon="emblem-ok-symbolic"),
+    Action("mode_off", "Turn a mode off", _mode_set(False),
+           [Param("mode", "Mode", suggest="modes")], group="Mode", osd_icon="emblem-ok-symbolic"),
+    Action("if_mode", "If a mode is on…", _if_mode,
+           [Param("mode", "Mode", suggest="modes"),
+            Param("then", "If it's on, run these steps", kind="macro", default=[]),
+            Param("otherwise", "Otherwise, run these steps", kind="macro", default=[])],
+           group="Mode"),
+
     Action("macro", "Macro", _macro,
            [Param("steps", "Steps", kind="macro", default=[])], group="Advanced"),
     Action("run_python", "Run Python (sandboxed)", _run_python,
@@ -616,7 +689,7 @@ WAIT_FOR_WINDOW = Action(
 # What a macro step can be: no nested macros, no Python (it has its own editor),
 # and nothing that needs a confirming second press (shutdown / restart).
 STEP_ACTIONS = [WAIT, WAIT_FOR_WINDOW] + [a for a in ACTIONS
-                         if a.id not in ("none", "macro", "run_python") and not a.confirm]
+                         if a.id not in ("none", "macro", "if_mode", "run_python") and not a.confirm]
 STEP_IDS = {a.id for a in STEP_ACTIONS}
 
 BY_ID = {a.id: a for a in ACTIONS + [WAIT, WAIT_FOR_WINDOW]}
@@ -631,6 +704,7 @@ SUGGESTIONS = {
     "obs_filter_sources": lambda cfg, p: obs.list_inputs(cfg["obs"]) + obs.list_scenes(cfg["obs"]),
     "obs_filters": lambda cfg, p: obs.list_filters(cfg["obs"], p.get("source", "").strip()),
     "audio_apps": lambda cfg, p: audio.playing_apps(),
+    "modes": lambda cfg, p: list(cfg.get("modes", [])),
     "audio_outputs": lambda cfg, p: audio.outputs(),
 }
 

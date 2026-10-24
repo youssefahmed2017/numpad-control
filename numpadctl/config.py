@@ -42,6 +42,7 @@ DEFAULT_CONFIG = {
     "grab": True,       # stop the numpad from also typing digits
     "feedback": True,   # on-screen confirmations
     "layer_key": None,  # hold this key for the second set of actions
+    "modes": [],        # names of on/off modes (their state is in modes.py)
     "obs": {"host": "localhost", "port": 4455, "password": ""},
     "profiles": [
         {"name": "Default", "match": "",

@@ -28,6 +28,7 @@ Built and tested on Arch Linux + Hyprland (Wayland). Linux only for now.
 | Per-app audio | App volume up / down · Set app volume to N% · Mute / unmute an app (e.g. Spotify, Firefox) |
 | Audio output | Switch audio output to a device · Next audio output (cycles through devices) |
 | System | Do not disturb on / off (dunst) · Lock screen · Sleep · Shut down · Restart |
+| Mode | Toggle a mode · Turn a mode on · Turn a mode off · If a mode is on… (if / otherwise) |
 | Advanced | Macro · Run Python (sandboxed) |
 
 Volume up/down (system and per-app) and next/previous workspace repeat while the
@@ -69,13 +70,28 @@ instantly; once Hold or Double tap is set, Press fires on release instead.
   The profile menu can create, **duplicate** (copies every key, slot and layer key
   to start from), edit and delete profiles.
 
+## Modes and if / otherwise
+**Modes** are named on/off switches, e.g. "Stream mode" or "Gaming", created in
+Settings → Modes. Each has a live switch there, and the Toggle / Turn on / Turn off
+a mode actions flip them from keys or macros (with a popup like "Stream mode on").
+
+**If a mode is on…** checks a mode and runs one of two step lists: "If it's on, run
+these steps" and "Otherwise, run these steps". Steps work like macro steps; either
+list can be empty (do nothing), but not both. Example: if Stream mode is on, mute
+the OBS mic and Spotify; otherwise, mute the system microphone.
+
+Mode states are kept in `~/.local/state/numpad-control/modes.json`, shared by the
+service and the window, and survive restarts and reboots. Save reports keys that use
+a mode that doesn't exist (e.g. after removing it in Settings).
+
 ## Macros
 The **Macro** action runs steps top to bottom. A step is any action above, or:
 - **Wait** N seconds (up to 60)
 - **Wait for window**: wait until an app's window is focused, e.g. after launching it
 
 A macro stops at the first step that fails and says which one. Steps can't be
-Run Python, another macro, or shut down / restart. Problems (unknown key names,
+Run Python, another macro, If a mode is on…, or shut down / restart (mode toggles
+can be steps). Problems (unknown key names,
 bad window classes, …) are reported when you Save, not when the macro runs.
 
 Example: Launch an app → kitty, Wait for window `kitty`, Type text `claude -r`,

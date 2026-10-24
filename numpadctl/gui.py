@@ -14,7 +14,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import actions, config, obs, sandbox  # noqa: E402
+from . import actions, config, modes, obs, sandbox  # noqa: E402
 
 APP_ID = "dev.numpadctl.NumpadControl"
 RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
@@ -141,7 +141,7 @@ class Window(Adw.ApplicationWindow):
         self.key_buttons = {}
         self.dirty = False
         self.on_detected = None
-        self.expanded_step = None  # macro step to show opened after a rebuild
+        self.expanded_step = None  # (id of its step list, index): step to show opened after a rebuild
 
         self.title_widget = Adw.WindowTitle(title="Numpad Control")
         header = Adw.HeaderBar(title_widget=self.title_widget)
@@ -355,6 +355,8 @@ class Window(Adw.ApplicationWindow):
                 widgets[p.name] = self.app_row(p.label, value)
                 group.add(widgets[p.name])
             elif p.kind == "macro":
+                if sum(q.kind == "macro" for q in action.params) > 1:  # if/else: name each branch
+                    group.add(Gtk.Label(label=p.label, xalign=0, css_classes=["heading"], margin_top=14))
                 group.add(self.macro_editor(binding["params"].setdefault(p.name, [])))
             elif p.kind == "code":
                 view = Gtk.TextView(monospace=True, css_classes=["code"], wrap_mode=Gtk.WrapMode.NONE)
@@ -409,11 +411,11 @@ class Window(Adw.ApplicationWindow):
         return row
 
     def picker_button(self, entry, suggest, get_params):
-        button, popover, listbox, status = self.popover_list("view-list-symbolic", "Pick from OBS")
+        button, popover, listbox, status = self.popover_list("view-list-symbolic", "Pick from a list")
 
         def on_show(_popover):
             listbox.remove_all()
-            status.set_label("Loading from OBS…")
+            status.set_label("Loading…")
             status.set_visible(True)
             params = get_params()
 
@@ -421,7 +423,7 @@ class Window(Adw.ApplicationWindow):
                 if error:
                     status.set_label(str(error))
                 elif not names:
-                    status.set_label("Nothing found in OBS")
+                    status.set_label("Nothing to pick from right now")
                 else:
                     status.set_visible(False)
                     for name in names:
@@ -486,7 +488,7 @@ class Window(Adw.ApplicationWindow):
             action = actions.WAIT
         row = Adw.ExpanderRow(title=f"{i + 1}.  {action_name(action)}", use_markup=False,
                               subtitle=self.step_summary(step, action),
-                              expanded=i == self.expanded_step)
+                              expanded=(id(steps), i) == self.expanded_step)
         remove = Gtk.Button(icon_name="edit-delete-symbolic", tooltip_text="Remove step",
                             valign=Gtk.Align.CENTER, css_classes=["flat"])
         remove.connect("clicked", lambda *_: self.change_steps(steps, lambda: steps.pop(i), None))
@@ -529,7 +531,7 @@ class Window(Adw.ApplicationWindow):
 
     def change_steps(self, steps, change, expand):
         change()
-        self.expanded_step = expand
+        self.expanded_step = None if expand is None else (id(steps), expand)
         self.mark_dirty()
         GLib.idle_add(self.build_editor)  # don't destroy widgets inside their own signal
 
@@ -592,7 +594,8 @@ class Window(Adw.ApplicationWindow):
         for slot, widgets in self.param_widgets.items():
             binding = self.keymap().get(self.selected, {}).get(slot)
             if binding and widgets:
-                binding["params"] = {n: self.widget_value(w) for n, w in widgets.items()}
+                # update, not replace: step lists (macro, if/else branches) aren't widgets
+                binding["params"].update({n: self.widget_value(w) for n, w in widgets.items()})
 
     def mark_dirty(self):
         if not self.dirty:
@@ -821,7 +824,7 @@ class Window(Adw.ApplicationWindow):
     def save(self):
         self.commit_params()
         for profile, kind, key, slot, binding in self.all_bindings():
-            problems = actions.binding_problems(binding)
+            problems = actions.binding_problems(binding, self.cfg)
             if problems:
                 self.error(f"{profile['name']}: key {key} ({SLOT_TITLES[slot]}): can't save",
                            "\n".join(problems))
@@ -916,6 +919,17 @@ class SettingsDialog(Adw.PreferencesDialog):
         keys.add(self.feedback)
         page.add(keys)
 
+        self.mode_names = list(cfg.get("modes", []))
+        self.modes_group = Adw.PreferencesGroup(
+            title="Modes",
+            description="On/off switches that “If a mode is on…” keys check. Flip them here, "
+                        "or with the Toggle / Turn on / Turn off a mode actions.")
+        self.mode_rows = []
+        self.add_mode_row = Adw.EntryRow(title="Add a mode (e.g. Stream mode)", show_apply_button=True)
+        self.add_mode_row.connect("apply", self.add_mode)
+        self.fill_modes()
+        page.add(self.modes_group)
+
         s = cfg["obs"]
         group = Adw.PreferencesGroup(
             title="OBS",
@@ -934,6 +948,38 @@ class SettingsDialog(Adw.PreferencesDialog):
 
         self.add(page)
         self.connect("closed", self.on_closed)
+
+    def fill_modes(self):
+        for row in self.mode_rows + [self.add_mode_row]:
+            if row.get_parent():
+                self.modes_group.remove(row)
+        state = modes.states()
+        self.mode_rows = []
+        for name in self.mode_names:
+            row = Adw.SwitchRow(title=name, use_markup=False, active=state.get(name, False))
+            row.connect("notify::active", lambda r, _p, n=name: modes.set_mode(n, r.get_active()))
+            remove = Gtk.Button(icon_name="edit-delete-symbolic", tooltip_text="Remove this mode",
+                                valign=Gtk.Align.CENTER, css_classes=["flat"])
+            remove.connect("clicked", lambda _b, n=name: self.remove_mode(n))
+            row.add_prefix(remove)
+            self.modes_group.add(row)
+            self.mode_rows.append(row)
+        self.modes_group.add(self.add_mode_row)
+
+    def add_mode(self, entry):
+        name = " ".join(entry.get_text().split())
+        if not name:
+            return
+        if name.lower() in (n.lower() for n in self.mode_names):
+            self.add_toast(Adw.Toast(title=f"There's already a mode called “{name}”", use_markup=False))
+            return
+        self.mode_names.append(name)
+        entry.set_text("")
+        self.fill_modes()
+
+    def remove_mode(self, name):
+        self.mode_names.remove(name)
+        self.fill_modes()
 
     def obs_values(self):
         return {"host": self.host.get_text().strip() or "localhost",
@@ -974,7 +1020,8 @@ class SettingsDialog(Adw.PreferencesDialog):
         cfg = self.win.cfg
         new = {"obs": self.obs_values(), "grab": self.grab.get_active(),
                "feedback": self.feedback.get_active(),
-               "layer_key": self.layer_choices[self.layer_key.get_selected()]}
+               "layer_key": self.layer_choices[self.layer_key.get_selected()],
+               "modes": self.mode_names}
         if any(cfg.get(k) != v for k, v in new.items()):
             self.win.commit_params()
             cfg.update(new)
