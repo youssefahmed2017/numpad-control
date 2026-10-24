@@ -30,7 +30,7 @@ class DaemonTest(unittest.IsolatedAsyncioTestCase):
         for p in self.patches:
             p.start()
         self.fired = []
-        self.d = daemon.Daemon(run_action=lambda key, binding: self.fired.append(binding["action"]))
+        self.d = daemon.Daemon(run_action=lambda key, binding, slot: self.fired.append(binding["action"]))
 
     def tearDown(self):
         self.d.reset()
@@ -132,6 +132,18 @@ class DaemonTest(unittest.IsolatedAsyncioTestCase):
 if __name__ == "__main__":
     unittest.main()
 
+    async def test_daemon_passes_the_slot_that_fired(self):
+        slots = []
+        self.d.run_action = lambda key, binding, slot: slots.append(slot)
+        self.d.cfg = make_cfg({"5": {"tap": b("media_next"), "hold": b("shutdown"),
+                                     "double": b("reboot")}})
+        await self.tap(ecodes.KEY_KP5, hold=0.2)            # hold
+        await self.tap(ecodes.KEY_KP5)                       # double tap
+        await asyncio.sleep(0.02)
+        await self.tap(ecodes.KEY_KP5)
+        await asyncio.sleep(0.15)
+        self.assertEqual(slots, ["hold", "double"])
+
 
 class SocketTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -143,7 +155,7 @@ class SocketTest(unittest.IsolatedAsyncioTestCase):
         self.reload_patch = mock.patch.object(daemon.Daemon, "reload_if_changed", lambda self: None)
         self.reload_patch.start()
         self.fired = []
-        self.d = daemon.Daemon(run_action=lambda key, binding: self.fired.append(binding["action"]))
+        self.d = daemon.Daemon(run_action=lambda key, binding, slot: self.fired.append(binding["action"]))
         self.d.cfg = make_cfg({"5": {"tap": b("media_play_pause")}})
         await self.d.serve()
         self.reader, self.writer = await asyncio.open_unix_connection(str(daemon.SOCKET_PATH))
@@ -202,3 +214,4 @@ class SocketTest(unittest.IsolatedAsyncioTestCase):
             await self.message()  # the key event
             self.assertEqual(await self.message(), {"event": "detected", "spec": {
                 "vendor": "c0f4", "product": "05f5", "name": "Usb KeyBoard"}})
+

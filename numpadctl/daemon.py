@@ -133,14 +133,14 @@ class Daemon:
     # ------------------------------------------------------------ running actions
     def fire(self, key, slot, binding):
         log.info("key %s %s: %s", key, slot, binding["action"])
-        self.run_action(key, binding)
+        self.run_action(key, binding, slot)
 
-    def _submit(self, key, binding):
-        self.pool.submit(self._run, key, binding)
+    def _submit(self, key, binding, slot):
+        self.pool.submit(self._run, key, binding, slot)
 
-    def _run(self, key, binding):
+    def _run(self, key, binding, slot):
         try:
-            output = actions.run(self.cfg, binding)
+            output = actions.run(self.cfg, binding, trigger=slot)
             if output and not actions.BY_ID[binding["action"]].osd_icon:
                 log.info("key %s output:\n%s", key, output)
         except Exception as e:
@@ -157,7 +157,7 @@ class Daemon:
         async def repeat():
             await asyncio.sleep(delay)
             while True:
-                self.run_action(key, binding)
+                self.run_action(key, binding, slot)
                 await asyncio.sleep(REPEAT_INTERVAL)
         press.repeater = asyncio.get_running_loop().create_task(repeat())
 

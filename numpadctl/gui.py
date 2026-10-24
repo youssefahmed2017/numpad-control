@@ -331,6 +331,10 @@ class Window(Adw.ApplicationWindow):
         combo.set_selected(actions.ACTIONS.index(action))
         if action.repeat and slot != "double":
             combo.set_subtitle("Repeats while held")
+        if action.confirm:
+            how = {"tap": "Press once, then again", "hold": "Hold once, then hold again",
+                   "double": "Double-tap, then double-tap again"}[slot]
+            combo.set_subtitle(f"{how} within {actions.CONFIRM_MAX_SECONDS:g} s to confirm")
         combo.connect("notify::selected", self.on_action_changed, slot)
         group.add(combo)
 
@@ -696,6 +700,10 @@ class Window(Adw.ApplicationWindow):
     def test(self, slot):
         self.commit_params()
         key, binding = self.selected, self.slot_binding(self.selected, slot)
+        if actions.BY_ID[binding["action"]].confirm:
+            self.toast("Not run from here, to keep your session safe. On the numpad: "
+                       "press once, then again to confirm.")
+            return
         self.toast(f"Running key {key} ({SLOT_TITLES[slot].lower()})…")
 
         def done(output, error):

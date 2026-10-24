@@ -3,6 +3,7 @@
 import copy
 import shutil
 import subprocess
+import threading
 import time
 import webbrowser
 from dataclasses import dataclass, field
@@ -28,6 +29,7 @@ class Action:
     group: str = "General"
     osd_icon: str = ""     # if set, the returned message is shown on screen
     repeat: bool = False   # keeps running while the key is held
+    confirm: bool = False  # needs a second press; never run by "Test now" or macros
 
 
 class ActionError(Exception):
@@ -40,9 +42,9 @@ def notify(title, body=""):
                        check=False, timeout=5)
 
 
-def show_osd(cfg, message, icon="dialog-information-symbolic"):
+def show_osd(cfg, message, icon="dialog-information-symbolic", force=False):
     """Short on-screen confirmation (SwayOSD if available, else a notification)."""
-    if not cfg.get("feedback", True):
+    if not force and not cfg.get("feedback", True):
         return
     if shutil.which("swayosd-client"):
         done = subprocess.run(["swayosd-client", "--custom-message", message,
@@ -195,6 +197,38 @@ def _set_volume(cfg, percent):
         subprocess.run(["swayosd-client", "--output-volume", "+0"], capture_output=True, timeout=5)
 
 
+# Shutdown / restart: the second press must come within this window. Presses
+# closer together than the minimum count as a bounce and just re-arm.
+CONFIRM_MIN_SECONDS = 0.4
+CONFIRM_MAX_SECONDS = 5.0
+_armed = {}
+_armed_lock = threading.Lock()
+
+
+def _confirmed(action_id):
+    """True on a deliberate second press; otherwise arms and returns False."""
+    now = time.monotonic()
+    with _armed_lock:
+        armed_at = _armed.pop(action_id, None)
+        if armed_at is not None and CONFIRM_MIN_SECONDS <= now - armed_at <= CONFIRM_MAX_SECONDS:
+            return True
+        _armed[action_id] = now
+        return False
+
+
+AGAIN = {"tap": "Press again", "hold": "Hold again", "double": "Double-tap again"}
+
+
+def _power(action_id, verb, question, doing, icon):
+    def run(cfg, trigger="tap"):
+        if not _confirmed(action_id):
+            show_osd(cfg, f"{AGAIN.get(trigger, AGAIN['tap'])} {question}", icon, force=True)
+            return
+        show_osd(cfg, doing, icon, force=True)
+        _command("systemctl", verb)
+    return run
+
+
 MAX_WAIT_SECONDS = 60
 MAX_MACRO_STEPS = 30
 
@@ -333,6 +367,12 @@ ACTIONS = [
            osd_icon="notifications-disabled-symbolic"),
     Action("lock_screen", "Lock screen", _lock_screen, group="System"),
     Action("suspend", "Sleep (suspend)", lambda cfg: _command("systemctl", "suspend"), group="System"),
+    Action("shutdown", "Shut down (press twice)",
+           _power("shutdown", "poweroff", "to shut down", "Shutting down…",
+                  "system-shutdown-symbolic"), group="System", confirm=True),
+    Action("reboot", "Restart (press twice)",
+           _power("reboot", "reboot", "to restart", "Restarting…",
+                  "system-reboot-symbolic"), group="System", confirm=True),
 
     Action("macro", "Macro", _macro,
            [Param("steps", "Steps", kind="macro", default=[])], group="Advanced"),
@@ -346,14 +386,16 @@ ACTIONS = [
 WAIT = Action("wait", "Wait", _wait, [Param("seconds", "Seconds", default="1")],
               group="Macro")
 
-# What a macro step can be: no nested macros, and no Python (it has its own editor).
-STEP_ACTIONS = [WAIT] + [a for a in ACTIONS if a.id not in ("none", "macro", "run_python")]
+# What a macro step can be: no nested macros, no Python (it has its own editor),
+# and nothing that needs a confirming second press (shutdown / restart).
+STEP_ACTIONS = [WAIT] + [a for a in ACTIONS
+                         if a.id not in ("none", "macro", "run_python") and not a.confirm]
 STEP_IDS = {a.id for a in STEP_ACTIONS}
 
 BY_ID = {a.id: a for a in ACTIONS + [WAIT]}
 
 
-def perform(cfg, binding):
+def perform(cfg, binding, trigger="tap"):
     """Run a binding dict {"action": id, "params": {...}}. Raises on failure."""
     action = BY_ID.get(binding.get("action", "none"))
     if action is None:
@@ -361,14 +403,19 @@ def perform(cfg, binding):
     given = binding.get("params", {})
     params = {p.name: given.get(p.name, copy.deepcopy(p.default)) for p in action.params}
     try:
+        if action.confirm:  # the prompt says how to confirm: press / hold / double-tap
+            params["trigger"] = trigger
         return action.run(cfg, **params)
     except obs.OBSError as e:
         raise ActionError(str(e))
 
 
-def run(cfg, binding):
-    """perform() plus the on-screen confirmation. Returns any text output."""
-    output = perform(cfg, binding)
+def run(cfg, binding, trigger="tap"):
+    """perform() plus the on-screen confirmation. Returns any text output.
+
+    trigger is the slot that fired it ("tap", "hold" or "double").
+    """
+    output = perform(cfg, binding, trigger)
     action = BY_ID[binding.get("action", "none")]
     if action.osd_icon and isinstance(output, str) and output:
         show_osd(cfg, output, action.osd_icon)
