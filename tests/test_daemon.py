@@ -8,7 +8,7 @@ from numpadctl import daemon
 
 # Shrink the timings so the tests run fast.
 FAST = dict(ZERO_BURST_WINDOW=0.02, HOLD_TIME=0.1, DOUBLE_TAP_TIME=0.08,
-            REPEAT_DELAY=0.1, REPEAT_INTERVAL=0.03)
+            REPEAT_DELAY=0.1, REPEAT_INTERVAL=0.03, RAPID_DELAY=0.2)
 
 
 def b(action, **params):
@@ -78,6 +78,40 @@ class DaemonTest(unittest.IsolatedAsyncioTestCase):
         self.d.cfg = make_cfg({"5": {"tap": b("media_play_pause")}})
         await self.tap(ecodes.KEY_KP5, hold=0.25)
         self.assertEqual(self.fired, ["media_play_pause"])
+
+    async def hold(self, binding, seconds):
+        self.d.cfg = make_cfg({"5": {"hold": binding}})
+        await self.tap(ecodes.KEY_KP5, hold=seconds)
+        count = len(self.fired)
+        await asyncio.sleep(0.1)
+        self.assertEqual(len(self.fired), count, "must stop when the key is let go")
+        return count
+
+    async def test_hold_fires_once_before_the_rapid_delay(self):
+        # hold time 0.1 + rapid delay 0.2: held 0.25 s is past the hold but before rapid-fire
+        self.assertEqual(await self.hold(b("volume_down"), 0.25), 1)
+
+    async def test_hold_rapid_fires_after_the_delay_for_safe_actions(self):
+        self.assertGreaterEqual(await self.hold(b("volume_down"), 0.5), 4)
+
+    async def test_rapid_fire_switched_off(self):
+        self.assertEqual(await self.hold(dict(b("volume_down"), rapid=False), 0.5), 1)
+
+    async def test_unsafe_actions_fire_once_unless_switched_on(self):
+        self.assertEqual(await self.hold(b("open_browser"), 0.5), 1)
+        self.fired.clear()
+        self.assertGreaterEqual(await self.hold(dict(b("open_browser"), rapid=True), 0.5), 4)
+
+    async def test_confirm_actions_never_rapid_fire(self):
+        self.assertEqual(await self.hold(dict(b("shutdown"), rapid=True), 0.5), 1)
+
+    async def test_slow_actions_do_not_pile_up(self):
+        import concurrent.futures
+        still_running = concurrent.futures.Future()  # never finishes, like a long macro
+        calls = []
+        self.d.run_action = lambda key, binding, slot: calls.append(slot) or still_running
+        await self.hold(dict(b("macro", steps=[]), rapid=True), 0.5)
+        self.assertEqual(calls, ["hold", "hold"], "the first run, then one rapid-fire run that never ends")
 
     async def test_000_burst_and_single_zero(self):
         self.d.cfg = make_cfg({"0": {"tap": b("media_stop")}, "000": {"tap": b("open_browser")}})

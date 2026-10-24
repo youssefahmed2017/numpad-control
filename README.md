@@ -50,8 +50,8 @@ uses that desktop's own tools:
 | Mode | Toggle a mode · Turn a mode on · Turn a mode off · If a mode is on… (if / otherwise) |
 | Advanced | Macro · Run Python (sandboxed) |
 
-Volume up/down (system and per-app) and next/previous workspace repeat while the
-key is held.
+On a Press slot, volume up/down (system and per-app) and next/previous workspace
+repeat while the key is held.
 
 **Per-app audio** uses PipeWire (`pactl`). An app only has sound to control while
 it's playing something; otherwise the action says "Spotify isn't playing any sound
@@ -80,6 +80,13 @@ used in macros or run from the window's Test button.
 ## Per key: Press, Hold, Double tap
 Every key (except `000`) has three slots. A key with only a Press action fires
 instantly; once Hold or Double tap is set, Press fires on release instead.
+
+**Hold** fires its action once after about half a second. If its **"Rapid-fire
+after holding 2 s"** switch is on, keeping the key held 2 more seconds makes it fire
+repeatedly until you let go. The switch is on by default for actions that are safe
+to repeat (volume and app volume, workspaces, next/previous track, Press keys, Type
+text) and off for the rest; Sleep / Shut down / Restart never rapid-fire. A slow
+action (e.g. a macro) finishes before the next round starts, so runs never pile up.
 
 ## Layer key and profiles
 - **Layer key** (Settings): hold it and every other key uses its "Layer" actions,

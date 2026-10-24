@@ -317,7 +317,7 @@ class Window(Adw.ApplicationWindow):
                              enable_search=True, search_match_mode=Gtk.StringFilterMatchMode.SUBSTRING,
                              expression=Gtk.PropertyExpression.new(Gtk.StringObject, None, "string"))
         combo.set_selected(actions.ACTIONS.index(action))
-        if action.repeat and slot != "double":
+        if action.repeat and slot == "tap":
             combo.set_subtitle("Repeats while held")
         if action.confirm:
             how = {"tap": "Press once, then again", "hold": "Hold once, then hold again",
@@ -325,6 +325,17 @@ class Window(Adw.ApplicationWindow):
             combo.set_subtitle(f"{how} within {actions.CONFIRM_MAX_SECONDS:g} s to confirm")
         combo.connect("notify::selected", self.on_action_changed, slot)
         group.add(combo)
+
+        if slot == "hold" and action.id != "none" and not action.confirm:
+            rapid = Adw.SwitchRow(title="Rapid-fire after holding 2 s",
+                                  subtitle="Fires once, then keeps firing if you hold 2 more seconds",
+                                  active=actions.rapid_fire(binding))
+
+            def on_rapid(row, _pspec):
+                binding["rapid"] = row.get_active()
+                self.mark_dirty()
+            rapid.connect("notify::active", on_rapid)
+            group.add(rapid)
 
         params = binding.get("params", {})
         widgets = self.param_widgets[slot] = {}

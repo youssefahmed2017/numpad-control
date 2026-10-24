@@ -26,6 +26,7 @@ HOLD_TIME = 0.45          # held this long = "hold"
 DOUBLE_TAP_TIME = 0.3     # second press within this = "double tap"
 REPEAT_DELAY = 0.4        # repeating actions start after this...
 REPEAT_INTERVAL = 0.08    # ...and then run this often
+RAPID_DELAY = 2.0         # a Hold action with rapid-fire on starts repeating after this much more holding
 
 SOCKET_PATH = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) \
     / "numpad-control.sock"
@@ -126,7 +127,7 @@ class Daemon:
         self.run_action(key, binding, slot)
 
     def _submit(self, key, binding, slot):
-        self.pool.submit(self._run, key, binding, slot)
+        return self.pool.submit(self._run, key, binding, slot)
 
     def _run(self, key, binding, slot):
         try:
@@ -137,17 +138,24 @@ class Daemon:
             log.warning("key %s failed: %s", key, e)
             actions.notify(f"Numpad key {key} failed", str(e))
 
-    def start_repeat(self, key, press, slot, delay=None):
+    def start_repeat(self, key, press, slot, delay=None, force=False):
+        """Re-run the slot's action while the key stays down.
+
+        Repeats actions marked repeat=True, or any action when force is set
+        (a Hold slot with rapid-fire on)."""
         delay = REPEAT_DELAY if delay is None else delay
         binding = press.slots[slot]
         action = actions.BY_ID.get(binding["action"])
-        if action is None or not action.repeat:
+        if action is None or action.confirm or not (action.repeat or force):
             return
 
         async def repeat():
             await asyncio.sleep(delay)
+            running = None
             while True:
-                self.run_action(key, binding, slot)
+                # A slow action (e.g. a macro) finishes before the next one starts.
+                if running is None or running.done():
+                    running = self.run_action(key, binding, slot)
                 await asyncio.sleep(REPEAT_INTERVAL)
         press.repeater = asyncio.get_running_loop().create_task(repeat())
 
@@ -242,7 +250,8 @@ class Daemon:
         press.timer = None
         press.done = True
         self.fire(key, "hold", press.slots["hold"])
-        self.start_repeat(key, press, "hold", delay=0)  # already held long enough
+        if actions.rapid_fire(press.slots["hold"]):
+            self.start_repeat(key, press, "hold", delay=RAPID_DELAY, force=True)
 
     def release(self, key):
         press = self.presses.get(key)

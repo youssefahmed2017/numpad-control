@@ -34,6 +34,7 @@ class Action:
     osd_icon: str = ""     # if set, the returned message is shown on screen
     repeat: bool = False   # keeps running while the key is held
     confirm: bool = False  # needs a second press; never run by "Test now" or macros
+    rapid: bool = False    # safe to rapid-fire, so a Hold slot does it by default
     check: callable = None # check(**params) raises ActionError for bad settings
 
 
@@ -530,11 +531,11 @@ ACTIONS = [
            [Param("title", "Title", placeholders=True), Param("body", "Message", placeholders=True)]),
 
     Action("type_text", "Type text", _type_text, [Param("text", "Text to type", placeholders=True)],
-           group="Keyboard", check=lambda text: None if text else _raise("no text set")),
+           group="Keyboard", rapid=True, check=lambda text: None if text else _raise("no text set")),
     Action("press_keys", "Press keys", _press_keys,
            [Param("keys", "Keys: + presses together (super+q), spaces one after another (Down Down Enter)",
                   default="Enter")],
-           group="Keyboard", check=lambda keys: parse_keys(keys)),
+           group="Keyboard", rapid=True, check=lambda keys: parse_keys(keys)),
 
     Action("screenshot_full", "Full screen", lambda cfg: _screenshot(cfg), group="Screenshot"),
     Action("screenshot_region", "Select a region", lambda cfg: _screenshot(cfg, region=True),
@@ -587,8 +588,8 @@ ACTIONS = [
 
     Action("media_play_pause", "Play / pause", _playerctl("play-pause"), group="Media"),
     Action("media_stop", "Stop", _playerctl("stop"), group="Media"),
-    Action("media_next", "Next track", _playerctl("next"), group="Media"),
-    Action("media_previous", "Previous track", _playerctl("prev"), group="Media"),
+    Action("media_next", "Next track", _playerctl("next"), group="Media", rapid=True),
+    Action("media_previous", "Previous track", _playerctl("prev"), group="Media", rapid=True),
     Action("volume_up", "Volume up",
            _volume(["--max-volume", "100", "--output-volume", "+5"],
                    ["set-volume", "-l", "1.0", SINK, "5%+"]), group="Media", repeat=True),
@@ -713,6 +714,17 @@ def run(cfg, binding, trigger="tap"):
     if action.osd_icon and isinstance(output, str) and output:
         show_osd(cfg, output, action.osd_icon)
     return output
+
+
+def rapid_fire(binding):
+    """Whether a Hold slot keeps firing after being held 2 more seconds.
+
+    Set per binding ("rapid"); defaults to on for actions that are safe to repeat.
+    Never for actions that need confirming (sleep, shut down, restart)."""
+    action = BY_ID.get(binding.get("action"))
+    if action is None or action.confirm or action.id == "none":
+        return False
+    return bool(binding.get("rapid", action.repeat or action.rapid))
 
 
 def is_set(binding):
