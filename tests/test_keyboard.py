@@ -1,3 +1,9 @@
+import sys
+import unittest
+
+if sys.platform == "win32":
+    raise unittest.SkipTest("tests the Linux code (Windows has its own tests)")
+
 import unittest
 from unittest import mock
 

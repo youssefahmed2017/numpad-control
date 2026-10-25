@@ -1,3 +1,4 @@
+import sys
 import unittest
 from types import SimpleNamespace
 from unittest import mock
@@ -98,6 +99,7 @@ class PlaceholderTest(unittest.TestCase):
             actions.fill_placeholders("plain text {time}")
         clipboard.assert_not_called()
 
+    @unittest.skipIf(sys.platform == "win32", "checks the Linux typing tool")
     def test_type_text_fills_placeholders(self):
         from numpadctl.platform import linux_system
         with mock.patch.object(linux_system, "_ydotool") as ydotool, \

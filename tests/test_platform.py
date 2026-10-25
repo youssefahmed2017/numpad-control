@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 import threading
 import time
@@ -10,6 +11,7 @@ from numpadctl.platform import paths
 
 
 class PathsTest(unittest.TestCase):
+    @unittest.skipIf(sys.platform == "win32", "os.getuid doesn't exist")
     def test_linux_folders(self):
         env = {"XDG_CONFIG_HOME": "/c", "XDG_STATE_HOME": "/s", "XDG_RUNTIME_DIR": "/r"}
         with mock.patch.object(paths, "IS_WINDOWS", False), mock.patch.dict(os.environ, env):

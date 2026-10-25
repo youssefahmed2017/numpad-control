@@ -1,6 +1,7 @@
 """The Windows system actions, tested on Linux: SendInput calls are captured."""
 
 import ctypes
+import importlib.util
 import inspect
 import unittest
 from unittest import mock
@@ -42,6 +43,7 @@ class WindowsSystemTest(unittest.TestCase):
                                       (ord("Q"), True, False), (0x5B, True, True),
                                       (0x0D, False, False), (0x0D, True, False)]])
 
+    @unittest.skipIf(importlib.util.find_spec("evdev") is None, "compares with the Linux key names (needs evdev)")
     def test_same_key_names_as_linux_for_the_common_keys(self):
         for name in ("LEFTCTRL", "LEFTSHIFT", "LEFTALT", "LEFTMETA", "ENTER", "DOWN", "F5", "Q", "1"):
             with self.subTest(name):
