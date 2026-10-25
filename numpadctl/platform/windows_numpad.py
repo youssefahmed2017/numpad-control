@@ -30,6 +30,7 @@ WAIT_MS = 200              # how often the reader thread checks whether it shoul
 PRESENCE_CHECK_SECONDS = 2 # Interception doesn't report unplugging, so look regularly
 PRESENCE_MISSES = 3        # ...and only believe "gone" after this many checks in a row
 REPEAT_WINDOW = 1.0        # a held key repeats faster than this; a "down" after longer is a new press
+BURST_WINDOW = 0.06        # the 000 key sends its three 0s this fast, even without releases between
 
 # Scan codes (set 1); (code, has E0 prefix) -> key name. Independent of NumLock.
 KEY_CODES = {
@@ -185,7 +186,8 @@ class Numpad:
 
     def _read_loop(self, emit):
         lib, context, stroke = self._lib, self._context, Stroke()
-        last_down = {}  # key -> when Windows last reported it down; repeats are reported once
+        last_seen = {}     # key -> when Windows last reported it down (repeats included)
+        last_emitted = {}  # key -> when we last passed a press on
         next_check, misses = time.monotonic() + PRESENCE_CHECK_SECONDS, 0
         while not self._stop.is_set():
             if time.monotonic() >= next_check:
@@ -206,13 +208,17 @@ class Numpad:
                 continue
             now = time.monotonic()
             if down:
-                # A lost key-up must not make the key dead: only a recent down counts as a repeat.
-                if now - last_down.get(key, -REPEAT_WINDOW) < REPEAT_WINDOW:
-                    last_down[key] = now
+                # Windows repeats a held key as more presses: pass on only the first, but still the
+                # quick presses of the 000 key, and a press after a lost key-up (nothing seen for a while).
+                seen, emitted = last_seen.get(key), last_emitted.get(key)
+                last_seen[key] = now
+                if seen is not None and now - seen < REPEAT_WINDOW \
+                        and not (key == "0" and emitted is not None and now - emitted < BURST_WINDOW):
                     continue
-                last_down[key] = now
+                last_emitted[key] = now
             else:
-                last_down.pop(key, None)
+                last_seen.pop(key, None)
+                last_emitted.pop(key, None)
             emit((key, down))
 
     async def events(self):

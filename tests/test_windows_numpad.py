@@ -128,6 +128,14 @@ class WindowsNumpadTest(unittest.IsolatedAsyncioTestCase):
         with mock.patch.object(wn, "REPEAT_WINDOW", 0.0):
             self.assertEqual(await self.collect(numpad, 2), [("5", True), ("5", True)])
 
+    async def test_000_key_without_releases_between_still_bursts(self):
+        """The three 0s of the 000 key arrive within ms; a held key's repeat arrives much later."""
+        self.use(FakeInterception([(3, 0x52, 0)] * 3 + [(3, 0x52, wn.KEY_UP)] * 3))
+        numpad = wn.open_numpad(NUMPAD, grab=True)
+        self.addCleanup(numpad.close)
+        got = await self.collect(numpad, 6)
+        self.assertEqual(got, [("0", True)] * 3 + [("0", False)] * 3)
+
     async def test_one_failed_presence_check_is_not_unplugging(self):
         fake = self.use(FakeInterception([(3, 0x4C, 0)]))
         numpad = wn.open_numpad(NUMPAD, grab=True)
