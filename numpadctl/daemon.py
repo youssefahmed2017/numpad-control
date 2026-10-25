@@ -8,6 +8,7 @@ import asyncio
 import json
 import logging
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 from . import actions, config
@@ -53,6 +54,7 @@ class Daemon:
         self.paused = False  # Windows tray "Pause": keys are still captured, but do nothing
         self.clients = set()
         self.capturing = set()
+        self.raw_clients = set()  # key tester windows: want every raw key event
         self.detect_future = None
 
     def reload_if_changed(self):
@@ -267,6 +269,8 @@ class Daemon:
                         self.capturing.add(writer)
                     else:
                         self.capturing.discard(writer)
+                elif command == "raw":
+                    (self.raw_clients.add if message.get("on") else self.raw_clients.discard)(writer)
                 elif command == "detect":
                     asyncio.create_task(self.detect(writer))
                 elif command == "status":
@@ -276,6 +280,7 @@ class Daemon:
         finally:
             self.clients.discard(writer)
             self.capturing.discard(writer)
+            self.raw_clients.discard(writer)
             writer.close()
 
     async def detect(self, writer):
@@ -304,6 +309,8 @@ class Daemon:
     # ------------------------------------------------------------ device loop
     async def read(self, numpad):
         async for key, down in numpad.events():
+            for writer in list(self.raw_clients):
+                self.send(writer, {"event": "raw", "key": key, "down": down, "t": time.monotonic()})
             self.on_key(key, down)
 
     async def watch_device_settings(self):

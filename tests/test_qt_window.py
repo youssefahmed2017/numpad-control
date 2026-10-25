@@ -12,7 +12,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication, QLineEdit, QMessageBox  # noqa: E402
 
 from numpadctl import config, modes, ui_common  # noqa: E402
-from numpadctl.qt import dialogs, widgets, window as window_module  # noqa: E402
+from numpadctl.qt import dialogs, tools, widgets, window as window_module  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
@@ -171,6 +171,31 @@ class QtWindowTest(unittest.TestCase):
         [a for a in button.menu().actions() if a.text().startswith("{time}")][0].trigger()
         self.assertEqual(field.edit.text(), "Live since {time} today")
         self.assertEqual(self.w.keymap()["3"]["tap"]["params"]["text"], "Live since {time} today")
+
+    def test_key_tester_lists_raw_events_and_the_000_result(self):
+        self.w.link.connected = True
+        self.w.open_tester()
+        self.assertIn({"cmd": "raw", "on": True}, self.w.link.sent)
+        for event in ({"event": "raw", "key": "0", "down": True, "t": 1.000},
+                      {"event": "raw", "key": "0", "down": True, "t": 1.004},
+                      {"event": "key", "key": "000"}):
+            self.w.on_service_message(event)
+        text = self.w.tester.text.toPlainText()
+        self.assertIn("+     4 ms", text)
+        self.assertIn("→ 000", text)
+        self.w.tester.accept()
+        self.assertIn({"cmd": "raw", "on": False}, self.w.link.sent)
+        self.assertIsNone(self.w.tester)
+
+    def test_diagnostics_dialog_shows_a_report_and_copies_it(self):
+        from numpadctl import diagnostics
+        with mock.patch.object(diagnostics, "collect", return_value="REPORT TEXT"), \
+                mock.patch.object(ui_common, "run_in_background", lambda work, done, dispatch: done(work(), None)):
+            dialog = tools.DiagnosticsDialog(self.w)
+        self.assertEqual(dialog.text.toPlainText(), "REPORT TEXT")
+        dialog.copy()
+        self.assertEqual(APP.clipboard().text(), "REPORT TEXT")
+        dialog.deleteLater()
 
     def test_learn_needs_the_service(self):
         self.w.learn.setChecked(True)

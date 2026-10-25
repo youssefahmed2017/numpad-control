@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFrame, QGrid
                                QToolButton, QVBoxLayout, QWidget)
 
 from .. import actions, config, ui_common
-from . import dialogs
+from . import dialogs, tools
 from .widgets import Dispatcher, SearchCombo, add_param_widgets, card, label
 
 FLASH_MS = 250
@@ -58,6 +58,8 @@ class MainWindow(QMainWindow):
         self.profile_index, self.layer, self.selected = 0, False, None
         self.dirty = False
         self.on_detected = None
+        self.last_status = {"running": False}
+        self.tester = None
         self.key_buttons = {}
 
         central = QWidget()
@@ -89,6 +91,13 @@ class MainWindow(QMainWindow):
         self.learn.setToolTip("Learn mode: press a numpad key to select it here (its action won't run)")
         self.learn.toggled.connect(self.on_learn_toggled)
         row.addWidget(self.learn)
+        extra = QToolButton(text="Tools ▾")
+        extra.setPopupMode(QToolButton.InstantPopup)
+        menu = QMenu(extra)
+        menu.addAction("Key tester…", self.open_tester)
+        menu.addAction("Diagnostics…", self.open_diagnostics)
+        extra.setMenu(menu)
+        row.addWidget(extra)
         row.addStretch()
         self.dirty_label = label("", "dim")
         row.addWidget(self.dirty_label)
@@ -367,12 +376,30 @@ class MainWindow(QMainWindow):
                 from PySide6.QtWidgets import QApplication
                 theme.apply(QApplication.instance(), new["appearance"])
 
+    # ---------------------------------------------------------------- tools
+    def open_diagnostics(self):
+        tools.DiagnosticsDialog(self).exec()
+
+    def open_tester(self):
+        if self.tester is None:
+            self.tester = tools.KeyTesterDialog(self)
+            self.tester.finished.connect(lambda _: setattr(self, "tester", None))
+        self.tester.show()
+        self.tester.raise_()
+
     # ---------------------------------------------------------------- service link
     def on_service_message(self, message):
         event = message.get("event")
         if event == "status":
+            self.last_status = message
             self.update_status(message)
+            if self.tester:  # the service (re)started: ask for the raw keys again
+                self.tester.start()
+        elif event == "raw" and self.tester:
+            self.tester.add_raw(message["key"], message["down"], message["t"])
         elif event == "key":
+            if self.tester:
+                self.tester.add_key(message["key"])
             button = self.key_buttons.get(message["key"])
             if button:
                 button.flash()

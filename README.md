@@ -248,6 +248,17 @@ don't trust.
     .venv/bin/python -m numpadctl list      # list input devices
     journalctl --user -u numpad-control -f  # service log
 
+## When something doesn't work
+Settings window → **Tools**:
+- **Key tester** lists, live, every press and release the numpad sends, with the time
+  between them, and what the service made of it (→ `000`, for instance). Use it when a
+  key does nothing or the `000` key doesn't register.
+- **Diagnostics** collects one block of text for a bug report: version, system, whether
+  the service runs and the numpad is connected, the keyboards the system sees (the
+  configured numpad marked), USB set-up failures from the kernel log (Linux), keys with
+  problems, and the last 50 log lines. **Copy** puts it on the clipboard. It never
+  contains passwords.
+
 ## Code layout
 - `numpadctl/daemon.py`: the background service: key timing (press / hold / double
   tap, repeat, rapid-fire, layer key, `000`), profiles, and the link to the window
@@ -255,7 +266,8 @@ don't trust.
 - `numpadctl/qt/`: the settings window (Qt / PySide6, shared by Linux and Windows):
   `window.py` (numpad + key editor), `widgets.py` (searchable dropdowns, fields with
   list and placeholder buttons, step lists for macros and if/otherwise),
-  `dialogs.py` (settings, profiles), `app.py` (one copy at a time, `--hidden`, tray
+  `dialogs.py` (settings, profiles), `tools.py` (key tester, diagnostics; the report itself is
+  `numpadctl/diagnostics.py`), `app.py` (one copy at a time, `--hidden`, tray
   icon on KDE), `theme.py` (dark/light following the system). `numpadctl/ui_common.py`
   holds what doesn't depend on the toolkit.
 - `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)

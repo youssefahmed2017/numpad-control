@@ -241,6 +241,23 @@ class SocketTest(unittest.IsolatedAsyncioTestCase):
         self.d.key_event("5", True)
         self.assertEqual(self.fired, ["media_play_pause"])
 
+    async def test_raw_feed_shows_every_event_only_while_asked(self):
+        class Fake:
+            def __init__(self, items):
+                self.items = items
+
+            async def events(self):
+                for item in self.items:
+                    yield item
+        await self.message()
+        await self.send({"cmd": "raw", "on": True})
+        await self.d.read(Fake([("0", True), ("0", False)]))
+        first, second = await self.message(), await self.message()
+        self.assertEqual((first["event"], first["key"], first["down"]), ("raw", "0", True))
+        self.assertFalse(second["down"])
+        await self.send({"cmd": "raw", "on": False})
+        self.assertEqual(self.d.raw_clients, set())
+
     async def test_detect_uses_next_key_on_our_device(self):
         await self.message()
         self.d.numpad = SimpleNamespace(spec={"vendor": "c0f4", "product": "05f5", "name": "Usb KeyBoard"})
