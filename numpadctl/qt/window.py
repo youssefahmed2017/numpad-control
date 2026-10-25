@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFrame, QGrid
                                QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea, QSizePolicy,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import actions, config, ui_common
+from .. import actions, config, presets, ui_common
 from . import dialogs, tools
 from .widgets import Dispatcher, SearchCombo, add_param_widgets, card, label
 
@@ -140,6 +140,8 @@ class MainWindow(QMainWindow):
         menu.addAction("Duplicate profile…", lambda: self.profile_dialog(None, copy_from=self.profile_index))
         menu.addAction("Edit profile…", lambda: self.profile_dialog(self.profile_index))
         menu.addAction("Delete profile", self.delete_profile)
+        menu.addSeparator()
+        menu.addAction("Add a starter preset…", self.add_preset)
         menu_button.setMenu(menu)
         profiles.addWidget(menu_button)
         layout.addLayout(profiles)
@@ -344,6 +346,17 @@ class MainWindow(QMainWindow):
         self.refresh_profiles()
         self.refresh_pad()
         self.build_editor()
+
+    def add_preset(self):
+        preset = dialogs.PresetDialog.ask(self, self.profile["name"])
+        if preset is None:
+            return
+        added, kept = presets.apply(preset, self.keymap())
+        if added:
+            self.mark_dirty()
+            self.refresh_pad()
+            self.build_editor()
+        self.toast(f"{preset.name}: {added} key actions added" + (f", {kept} kept as they were" if kept else ""))
 
     def delete_profile(self):
         if self.profile_index == 0:

@@ -2,9 +2,9 @@
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QLineEdit,
-                               QPushButton, QScrollArea, QSpinBox, QVBoxLayout, QWidget)
+                               QListWidget, QPushButton, QScrollArea, QSpinBox, QVBoxLayout, QWidget)
 
-from .. import desktop, modes, obs, ui_common
+from .. import desktop, modes, obs, presets, ui_common
 from .widgets import card, label
 
 APPEARANCES = [("auto", "Follow the system"), ("light", "Light"), ("dark", "Dark")]
@@ -238,3 +238,40 @@ class ProfileDialog(QDialog):
         if dialog.exec() != QDialog.Accepted or not dialog.name.text().strip():
             return None
         return dialog.name.text().strip(), dialog.classes.text().strip()
+
+
+class PresetDialog(QDialog):
+    """Pick a starter setup; it fills only the keys that have nothing yet."""
+
+    def __init__(self, parent, profile_name):
+        super().__init__(parent)
+        self.setWindowTitle("Starter preset")
+        self.setMinimumWidth(460)
+        layout = QVBoxLayout(self)
+        layout.addWidget(label("Starter preset", "title"))
+        layout.addWidget(label(f"Fills the empty keys of “{profile_name}”. Keys that already do something are kept.",
+                               "dim", wrap=True))
+        self.list = QListWidget()
+        for preset in presets.PRESETS:
+            self.list.addItem(preset.name)
+        layout.addWidget(self.list)
+        self.description = label("", "small", wrap=True)
+        layout.addWidget(self.description)
+        self.list.currentRowChanged.connect(
+            lambda row: self.description.setText(presets.PRESETS[row].description if row >= 0 else ""))
+        self.list.setCurrentRow(0)
+        self.list.itemDoubleClicked.connect(lambda _: self.accept())
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+        buttons.button(QDialogButtonBox.Ok).setText("Add keys")
+        buttons.button(QDialogButtonBox.Ok).setObjectName("primary")
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def chosen(self):
+        return presets.PRESETS[self.list.currentRow()]
+
+    @classmethod
+    def ask(cls, parent, profile_name):
+        dialog = cls(parent, profile_name)
+        return dialog.chosen() if dialog.exec() == QDialog.Accepted else None

@@ -197,6 +197,16 @@ class QtWindowTest(unittest.TestCase):
         self.assertEqual(APP.clipboard().text(), "REPORT TEXT")
         dialog.deleteLater()
 
+    def test_starter_preset_fills_only_empty_keys(self):
+        from numpadctl import presets
+        with mock.patch.object(dialogs.PresetDialog, "ask", return_value=presets.BY_NAME["Media and volume"]):
+            self.w.add_preset()
+        self.assertIn("kept as they were", self.w.statusBar().currentMessage())
+        self.assertTrue(self.w.save())
+        keymap = self.saved()
+        self.assertEqual(keymap["8"]["tap"]["action"], "if_mode", "key 8 already had a setup: kept")
+        self.assertEqual(keymap["7"]["tap"]["action"], "media_previous")
+
     def test_learn_needs_the_service(self):
         self.w.learn.setChecked(True)
         self.assertFalse(self.w.learn.isChecked())

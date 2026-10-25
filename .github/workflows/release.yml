@@ -1,0 +1,19 @@
+name: Release
+
+# Push a tag like v0.2.0 (git tag v0.2.0 && git push --tags) to publish a release
+# with notes generated from the commits since the last one.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: gh release create "$GITHUB_REF_NAME" --generate-notes --title "Numpad Control $GITHUB_REF_NAME"
+        env:
+          GH_TOKEN: ${{ github.token }}

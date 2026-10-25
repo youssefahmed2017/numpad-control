@@ -248,6 +248,12 @@ don't trust.
     .venv/bin/python -m numpadctl list      # list input devices
     journalctl --user -u numpad-control -f  # service log
 
+## Starter presets
+The ⋯ menu next to Profile → **Add a starter preset…** fills a profile's empty keys for
+a common job: *Streaming (OBS)*, *Media and volume*, *Editing*, *Windows and desktops*.
+Keys that already do something are never changed, and you can edit everything after.
+(`numpadctl/presets.py`)
+
 ## When something doesn't work
 Settings window → **Tools**:
 - **Key tester** lists, live, every press and release the numpad sends, with the time
@@ -294,6 +300,10 @@ Settings window → **Tools**:
 
 ## Tests
     .venv/bin/python -m unittest discover -s tests -t .
+
+GitHub runs them on Linux and Windows for every push and pull request
+(`.github/workflows/tests.yml`). Pushing a tag such as `v0.2.0` publishes a GitHub
+release with generated notes (`release.yml`).
 
 ## Plans
 - A Windows version (with one Qt settings window for both systems) is planned
