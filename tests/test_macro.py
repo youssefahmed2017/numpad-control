@@ -31,7 +31,7 @@ class MacroTest(unittest.TestCase):
         start = time.monotonic()
         self.run_macro(step("a"), step("wait", seconds="0.2"), step("b"))
         self.assertEqual(self.ran, ["a", "b"])
-        self.assertGreaterEqual(time.monotonic() - start, 0.2)
+        self.assertGreaterEqual(time.monotonic() - start, 0.15)  # Windows timers are coarse
 
     def test_stops_at_failing_step(self):
         with self.assertRaisesRegex(actions.ActionError, r"step 2 \(Boom\) failed: nope"):
