@@ -35,7 +35,8 @@ class DiagnosticsTest(unittest.TestCase):
     def test_no_problems_is_said_plainly(self):
         cfg = {**CFG, "profiles": [{"name": "Default", "bindings": {}}]}
         with mock.patch.object(diagnostics, "devices", return_value=[]), mock.patch.object(diagnostics, "log_tail", return_value=[]), \
-                mock.patch.object(diagnostics, "usb_errors", return_value=([], 0)):
+                mock.patch.object(diagnostics, "usb_errors", return_value=([], 0)), \
+                mock.patch.object(diagnostics, "version", return_value="abc1234"):
             self.assertIn("Key problems: none", diagnostics.collect(cfg, {}))
 
 
