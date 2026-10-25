@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from .. import config, desktop, ui_common
 from ..platform import IS_WINDOWS, paths
-from . import theme
+from . import effects, theme, tokens
 from .window import MainWindow
 
 PID_PATH = paths.runtime_dir() / "numpad-control-window.pid"  # for bar modules listing hidden apps
@@ -60,7 +60,10 @@ def run(args=()):
     server = QLocalServer()
     server.listen(_server_name())
 
-    theme.apply(app, config.load().get("appearance", "auto"))
+    settings = config.load()
+    app.installEventFilter(ripples := effects.RippleFilter(app))  # ripples on every button press
+    theme.apply(app, settings.get("appearance", "auto"), settings.get("accent", tokens.DEFAULT_ACCENT),
+                settings.get("contrast", "standard"))
     icon = draw_icon()
     app.setWindowIcon(icon)
     window = MainWindow(keep_running=not IS_WINDOWS)

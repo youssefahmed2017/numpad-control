@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QPlainTextEdit
 
 from .. import diagnostics, ui_common
 from .widgets import label
+from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, ToolButton
 
 
 def _monospace(edit):
@@ -26,11 +27,11 @@ class DiagnosticsDialog(QDialog):
         self.text = _monospace(QPlainTextEdit())
         layout.addWidget(self.text, 1)
         row = QHBoxLayout()
-        self.copy_button = QPushButton("Copy")
+        self.copy_button = PushButton("Copy")
         self.copy_button.clicked.connect(self.copy)
-        refresh = QPushButton("Refresh")
+        refresh = PushButton("Refresh")
         refresh.clicked.connect(self.refresh)
-        close = QPushButton("Close")
+        close = PushButton("Close")
         close.clicked.connect(self.accept)
         row.addWidget(self.copy_button)
         row.addWidget(refresh)
@@ -73,9 +74,9 @@ class KeyTesterDialog(QDialog):
         self.state = label("", "small")
         layout.addWidget(self.state)
         row = QHBoxLayout()
-        clear = QPushButton("Clear")
+        clear = PushButton("Clear")
         clear.clicked.connect(self.text.clear)
-        close = QPushButton("Close")
+        close = PushButton("Close")
         close.clicked.connect(self.accept)
         row.addWidget(clear)
         row.addStretch()

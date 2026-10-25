@@ -1,21 +1,17 @@
-"""Colors and styling: a clean look close to GNOME's, in dark or light."""
+"""Material 3 look for the settings window: tokens (tokens.py) -> Qt palette and stylesheet."""
 
 import subprocess
 import sys
+from string import Template
 
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QPalette, QPen, QPixmap
+from PySide6.QtGui import QColor, QFont, QFontDatabase, QPainter, QPainterPath, QPalette, QPen, QPixmap
 
 from ..platform import paths
+from . import tokens
 
-DARK = dict(window="#242424", panel="#2b2b2b", card="#353535", base="#1d1d1d", text="#f2f2f2",
-            dim="#a0a0a0", border="#3e3e3e", button="#404040", hover="#4b4b4b",
-            accent="#3584e4", accent_text="#ffffff", success="#8ff0a4", warning="#f8e45c",
-            error="#ff7b63", banner="#5a4a12")
-LIGHT = dict(window="#f6f5f4", panel="#ffffff", card="#ffffff", base="#ffffff", text="#1e1e1e",
-             dim="#6e6e6e", border="#d8d8d8", button="#e8e8e7", hover="#dcdcdb",
-             accent="#3584e4", accent_text="#ffffff", success="#1b8a3e", warning="#9c6e03",
-             error="#c01c28", banner="#fdf0b8")
+current = {}  # the colours in use, for widgets that paint themselves (the numpad keys)
+FONT_FAMILIES = ("Roboto", "Google Sans", "Inter", "Noto Sans")  # the first one installed is used
 
 
 def system_prefers_dark(app):
@@ -45,9 +41,28 @@ def system_prefers_dark(app):
     return False
 
 
-def colors_for(app, appearance="auto"):
-    dark = appearance == "dark" or (appearance == "auto" and system_prefers_dark(app))
-    return DARK if dark else LIGHT
+def is_dark(app, appearance="auto"):
+    return appearance == "dark" or (appearance == "auto" and system_prefers_dark(app))
+
+
+def style_colors(accent, dark, contrast="standard"):
+    """The tokens the stylesheet needs: M3 roles plus the state-layer mixes of the controls that have them."""
+    c = tokens.colors(accent, dark, contrast)
+    hover, pressed = tokens.STATE["hover"], tokens.STATE["pressed"]
+    for name, base, content in (("tonal", "secondaryContainer", "onSecondaryContainer"),
+                                ("filled", "primary", "onPrimary"),
+                                ("key", "surfaceContainerHigh", "onSurface"),
+                                ("keysel", "primaryContainer", "onPrimaryContainer"),
+                                ("card", "surfaceContainer", "onSurface")):
+        c[name + "Hover"] = tokens.blend(c[base], c[content], hover)
+        c[name + "Pressed"] = tokens.blend(c[base], c[content], pressed)
+    c["stateHover"] = tokens.rgba(c["onSurface"], hover)       # over transparent: text buttons, menu items
+    c["statePressed"] = tokens.rgba(c["onSurface"], pressed)
+    # a barely-there tonal gradient (lighter at the top) for the app bar and the primary button
+    c["barTop"], c["primaryTop"] = tokens.blend(c["surfaceContainer"], c["onSurface"], 0.06), tokens.blend(c["primary"], "#ffffff", 0.14)
+    c["primaryHover"] = tokens.rgba(c["primary"], hover)
+    c["primaryPressed"] = tokens.rgba(c["primary"], pressed)
+    return c
 
 
 def _draw_images(c):
@@ -55,8 +70,8 @@ def _draw_images(c):
     folder = paths.state_dir() / "qt-theme"
     folder.mkdir(parents=True, exist_ok=True)
     images = {}
-    for name, color, points in (("arrow", c["dim"], [(3, 6), (8, 11), (13, 6)]),
-                                ("check", c["accent_text"], [(3.5, 8.5), (6.5, 11.5), (12.5, 4.5)])):
+    for name, color, points in (("arrow", c["onSurfaceVariant"], [(3, 6), (8, 11), (13, 6)]),
+                                ("check", c["onPrimary"], [(3.5, 8.5), (6.5, 11.5), (12.5, 4.5)])):
         pixmap = QPixmap(32, 32)  # drawn at 2x for sharp edges on HiDPI
         pixmap.fill(Qt.transparent)
         painter = QPainter(pixmap)
@@ -67,88 +82,123 @@ def _draw_images(c):
             path.lineTo(x * 2, y * 2)
         painter.drawPath(path)
         painter.end()
-        file = folder / f"{name}-{c['dim'].strip('#')}.png"
+        file = folder / f"{name}-{color.strip('#')}.png"
         pixmap.save(str(file))
         images[name] = file.as_posix()  # forward slashes, also on Windows
     return images
 
 
-def apply(app, appearance="auto"):
-    c = colors_for(app, appearance)
+def _font(app):
+    installed = set(QFontDatabase.families())
+    family = next((f for f in FONT_FAMILIES if f in installed), None)
+    if family:
+        app.setFont(QFont(family))
+
+
+def apply(app, appearance="auto", accent=tokens.DEFAULT_ACCENT, contrast="standard"):
+    c = style_colors(accent, is_dark(app, appearance), contrast)
     app.setStyle("Fusion")
+    _font(app)
     palette = QPalette()
-    for role, key in ((QPalette.Window, "window"), (QPalette.Base, "base"), (QPalette.AlternateBase, "panel"),
-                      (QPalette.Text, "text"), (QPalette.WindowText, "text"), (QPalette.Button, "button"),
-                      (QPalette.ButtonText, "text"), (QPalette.ToolTipBase, "card"), (QPalette.ToolTipText, "text"),
-                      (QPalette.Highlight, "accent"), (QPalette.HighlightedText, "accent_text"),
-                      (QPalette.PlaceholderText, "dim")):
+    for role, key in ((QPalette.Window, "surface"), (QPalette.Base, "surfaceContainerLowest"),
+                      (QPalette.AlternateBase, "surfaceContainerLow"), (QPalette.Text, "onSurface"),
+                      (QPalette.WindowText, "onSurface"), (QPalette.Button, "secondaryContainer"),
+                      (QPalette.ButtonText, "onSecondaryContainer"), (QPalette.ToolTipBase, "inverseSurface"),
+                      (QPalette.ToolTipText, "inverseOnSurface"), (QPalette.Highlight, "primary"),
+                      (QPalette.HighlightedText, "onPrimary"), (QPalette.PlaceholderText, "onSurfaceVariant")):
         palette.setColor(role, QColor(c[key]))
-    palette.setColor(QPalette.Disabled, QPalette.Text, QColor(c["dim"]))
-    palette.setColor(QPalette.Disabled, QPalette.ButtonText, QColor(c["dim"]))
+    palette.setColor(QPalette.Disabled, QPalette.Text, QColor(c["onSurfaceVariant"]))
+    palette.setColor(QPalette.Disabled, QPalette.ButtonText, QColor(c["onSurfaceVariant"]))
     app.setPalette(palette)
-    app.setStyleSheet(STYLE.format(**c, **_draw_images(c)))
+    shape = {f"r_{name}": f"{px}px" for name, px in tokens.SHAPE.items()}
+    type_ = {}
+    for name, (px, weight) in tokens.TYPE.items():
+        type_[f"{name}_size"], type_[f"{name}_weight"] = f"{px}px", weight
+    current.clear()
+    current.update(c)
+    app.setStyleSheet(Template(STYLE).substitute(**c, **shape, **type_, **_draw_images(c)))
     return c
 
 
 STYLE = """
-QWidget {{ font-size: 10pt; }}
-QMainWindow, QDialog {{ background: {window}; }}
-QLabel#title {{ font-size: 13pt; font-weight: 700; }}
-QLabel#heading {{ font-weight: 700; }}
-QLabel#dim {{ color: {dim}; }}
-QLabel#small {{ color: {dim}; font-size: 9pt; }}
-QLabel#ok {{ color: {success}; }}
-QLabel#warn {{ color: {warning}; }}
-QLabel#bad {{ color: {error}; }}
-QFrame#card {{ background: {card}; border: 1px solid {border}; border-radius: 12px; }}
-QFrame#banner {{ background: {banner}; border-radius: 10px; }}
-QFrame#separator {{ background: {border}; max-width: 1px; }}
+* { font-size: ${bodyMedium_size}; }
+QMainWindow, QDialog { background: ${surface}; color: ${onSurface}; }
+QLabel { color: ${onSurface}; background: transparent; }
+QLabel#title { font-size: ${titleLarge_size}; font-weight: ${titleLarge_weight}; }
+QLabel#heading { font-size: ${titleMedium_size}; font-weight: ${titleMedium_weight}; }
+QLabel#dim { color: ${onSurfaceVariant}; }
+QLabel#small { color: ${onSurfaceVariant}; font-size: ${bodySmall_size}; }
+QLabel#appname { font-size: ${titleLarge_size}; font-weight: ${titleLarge_weight}; }
+QLabel#ok, QLabel#warn, QLabel#bad { font-size: ${labelMedium_size}; font-weight: ${labelMedium_weight};
+    border-radius: 14px; }
+QLabel#ok { background: ${okContainer}; color: ${onOkContainer}; }
+QLabel#warn { background: ${warnContainer}; color: ${onWarnContainer}; }
+QLabel#bad { background: ${errorContainer}; color: ${onErrorContainer}; }
 
-QPushButton {{ background: {button}; border: none; border-radius: 8px; padding: 6px 14px; color: {text}; }}
-QPushButton:hover {{ background: {hover}; }}
-QPushButton:disabled {{ color: {dim}; }}
-QPushButton#primary {{ background: {accent}; color: {accent_text}; font-weight: 600; }}
-QPushButton#primary:disabled {{ background: {button}; color: {dim}; }}
-QPushButton#flat {{ background: transparent; padding: 4px 8px; }}
-QPushButton#flat:hover {{ background: {hover}; }}
-QPushButton#segment {{ border-radius: 8px; padding: 6px 10px; background: transparent; }}
-QPushButton#segment:checked {{ background: {hover}; font-weight: 600; }}
-QFrame#segments {{ background: {button}; border-radius: 10px; }}
+QFrame#appbar { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 ${barTop}, stop:1 ${surfaceContainer}); border-radius: ${r_xl}; }
+QFrame#card { background: ${surfaceContainer}; border: none; border-radius: ${r_xl}; }
+QFrame#banner { background: ${errorContainer}; border-radius: ${r_m}; }
+QFrame#banner QLabel { color: ${onErrorContainer}; }
+QFrame#separator { background: ${outlineVariant}; max-width: 1px; }
 
-QPushButton#numkey {{ background: {button}; border-radius: 14px; padding: 4px; min-width: 76px; min-height: 58px; }}
-QPushButton#numkey:hover {{ background: {hover}; }}
-QPushButton#numkey[selected="true"] {{ background: {accent}; }}
-QPushButton#numkey[selected="true"] QLabel {{ color: {accent_text}; }}
-QPushButton#numkey[flash="true"] {{ border: 3px solid {accent}; }}
-QLabel#keyname {{ font-size: 15pt; font-weight: 800; background: transparent; }}
-QLabel#keyaction {{ font-size: 8pt; color: {dim}; background: transparent; }}
+/* Buttons paint their own animated shape (buttons.py); the stylesheet gives text, padding and size only. */
+QPushButton, QToolButton { background: transparent; border: none; }
+QPushButton { color: ${onSecondaryContainer}; padding: 0 20px; min-height: 40px; font-size: ${labelLarge_size}; font-weight: ${labelLarge_weight}; }
+QPushButton:disabled { color: ${onSurfaceVariant}; }
+QPushButton#primary { color: ${onPrimary}; }
+QPushButton#flat { color: ${primary}; padding: 0 12px; min-height: 36px; }
+QPushButton#segment { color: ${onSurface}; padding: 0 16px; min-height: 36px; }
+QPushButton#segment:checked { color: ${onSecondaryContainer}; }
+QFrame#segments { background: transparent; border: 1px solid ${outline}; border-radius: ${r_full}; }
 
-QToolButton {{ border: none; border-radius: 6px; padding: 4px; }}
-QToolButton:hover {{ background: {hover}; }}
-QToolButton:checked {{ background: {accent}; color: {accent_text}; }}
-QToolButton::menu-indicator {{ image: none; }}
+QPushButton#numkey { padding: 4px; min-width: 76px; min-height: 60px; }
+QPushButton#numkey[selected="true"] QLabel#keyname, QPushButton#numkey[selected="true"] QLabel#keyaction { color: ${onPrimaryContainer}; }
+QPushButton#numkey[layer="true"] QLabel#keyname, QPushButton#numkey[layer="true"] QLabel#keyaction { color: ${onTertiaryContainer}; }
+QLabel#keyname { font-size: ${titleLarge_size}; font-weight: 600; color: ${onSurface}; }
+QLabel#keyaction { font-size: ${bodySmall_size}; color: ${onSurfaceVariant}; }
 
-QLineEdit, QPlainTextEdit, QComboBox, QSpinBox {{
-    background: {base}; border: 1px solid {border}; border-radius: 8px; padding: 5px 8px; color: {text};
-    selection-background-color: {accent}; selection-color: {accent_text}; }}
-QLineEdit:focus, QPlainTextEdit:focus, QComboBox:focus, QSpinBox:focus {{ border: 1px solid {accent}; }}
-QComboBox::drop-down {{ border: none; width: 24px; }}
-QComboBox::down-arrow {{ image: url("{arrow}"); width: 12px; height: 12px; }}
-QCheckBox::indicator {{ width: 18px; height: 18px; border-radius: 5px; border: 1px solid {border}; background: {base}; }}
-QCheckBox::indicator:checked {{ background: {accent}; border-color: {accent}; image: url("{check}"); }}
-QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
-QScrollBar:horizontal {{ background: transparent; height: 10px; margin: 2px; }}
-QScrollBar::handle {{ background: {border}; border-radius: 3px; min-height: 30px; min-width: 30px; }}
-QScrollBar::handle:hover {{ background: {dim}; }}
-QScrollBar::add-line, QScrollBar::sub-line {{ width: 0; height: 0; }}
-QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
-QComboBox QAbstractItemView {{ background: {card}; border: 1px solid {border}; selection-background-color: {accent}; }}
-QMenu {{ background: {card}; border: 1px solid {border}; border-radius: 8px; padding: 4px; }}
-QMenu::item {{ padding: 6px 16px; border-radius: 6px; }}
-QMenu::item:selected {{ background: {accent}; color: {accent_text}; }}
-QMenu::item:disabled {{ color: {dim}; }}
-QScrollArea {{ border: none; background: transparent; }}
-QScrollArea > QWidget > QWidget {{ background: transparent; }}
-QStatusBar {{ color: {dim}; }}
-QCheckBox {{ spacing: 8px; }}
+QToolButton { color: ${primary}; padding: 8px 14px; font-size: ${labelLarge_size}; font-weight: ${labelLarge_weight}; }
+QToolButton:checked { color: ${onTertiaryContainer}; }
+QToolButton::menu-indicator { image: none; }
+
+QLineEdit, QPlainTextEdit, QComboBox, QSpinBox, QListWidget { background: transparent; color: ${onSurface};
+    border: 1px solid ${outline}; border-radius: ${r_m}; padding: 8px 14px;
+    selection-background-color: ${primary}; selection-color: ${onPrimary}; }
+QLineEdit:hover, QPlainTextEdit:hover, QComboBox:hover, QSpinBox:hover { border-color: ${onSurface}; }
+QLineEdit:focus, QPlainTextEdit:focus, QComboBox:focus, QSpinBox:focus, QListWidget:focus {
+    border: 2px solid ${primary}; padding: 7px 13px; }
+QComboBox::drop-down { border: none; width: 28px; }
+QComboBox::down-arrow { image: url("${arrow}"); width: 12px; height: 12px; }
+QComboBox QAbstractItemView { background: ${surfaceContainerHigh}; color: ${onSurface}; border: none;
+    border-radius: ${r_s}; padding: 6px; outline: none; }
+QComboBox QAbstractItemView::item { padding: 10px 14px; border-radius: ${r_s}; min-height: 24px; }
+QComboBox QAbstractItemView::item:hover { background: ${stateHover}; }
+QComboBox QAbstractItemView::item:selected { background: ${secondaryContainer}; color: ${onSecondaryContainer}; }
+QListWidget { padding: 4px; }
+QListWidget::item { padding: 8px 12px; border-radius: ${r_s}; }
+QListWidget::item:hover { background: ${stateHover}; }
+QListWidget::item:selected { background: ${secondaryContainer}; color: ${onSecondaryContainer}; }
+
+QCheckBox { spacing: 12px; color: ${onSurface}; }
+QCheckBox::indicator { width: 18px; height: 18px; border-radius: ${r_xs}; border: 2px solid ${onSurfaceVariant}; background: transparent; }
+QCheckBox::indicator:hover { border-color: ${onSurface}; }
+QCheckBox::indicator:checked { background: ${primary}; border-color: ${primary}; image: url("${check}"); }
+
+QScrollBar:vertical { background: transparent; width: 12px; margin: 2px; }
+QScrollBar:horizontal { background: transparent; height: 12px; margin: 2px; }
+QScrollBar::handle { background: ${outlineVariant}; border-radius: 4px; min-height: 32px; min-width: 32px; }
+QScrollBar::handle:hover { background: ${outline}; }
+QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
+QScrollBar::add-page, QScrollBar::sub-page { background: none; }
+QMenu { background: ${surfaceContainer}; color: ${onSurface}; border: none; border-radius: ${r_l}; padding: 8px 6px; }
+QMenu::item { border-radius: ${r_s}; }
+QMenu::item { padding: 10px 24px; }
+QMenu::item:selected { background: ${stateHover}; }
+QMenu::item:disabled { color: ${onSurfaceVariant}; }
+QMenu::separator { height: 1px; background: ${outlineVariant}; margin: 6px 0; }
+QToolTip { background: ${inverseSurface}; color: ${inverseOnSurface}; border: none; padding: 4px 8px; }
+QScrollArea { border: none; background: transparent; }
+QScrollArea > QWidget > QWidget { background: transparent; }
+QStatusBar { color: ${onSurfaceVariant}; background: transparent; }
+QDialogButtonBox QPushButton { min-width: 72px; }
 """

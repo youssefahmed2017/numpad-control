@@ -2,25 +2,35 @@
 
 import copy
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QRectF, Qt, QTimer, QVariantAnimation
+from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFrame, QGridLayout, QHBoxLayout,
                                QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea, QSizePolicy,
                                QToolButton, QVBoxLayout, QWidget)
 
 from .. import actions, config, presets, ui_common
-from . import dialogs, tools
+from . import dialogs, effects, theme, tokens, tools
+from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, ToolButton, _Morph
 from .widgets import Dispatcher, SearchCombo, add_param_widgets, card, label
 
 FLASH_MS = 250
+KEY_FADE_MS = 160
+KEY_RADIUS = 20
+KEY_HOVER_RADIUS = 30
+KEY_PRESSED_RADIUS = 10
+DEFAULTS_LOOK = {"appearance": "auto", "accent": tokens.DEFAULT_ACCENT, "contrast": "standard"}
 
 
-class KeyButton(QPushButton):
+class KeyButton(_Morph, QPushButton):
     """A numpad key: its name, and below it what it does."""
 
     def __init__(self, key):
         super().__init__()
         self.key = key
         self.setObjectName("numkey")
+        self._morph_setup()  # hover and press animation (buttons.py)
+        self._sel = 0.0      # 0..1, animated
+        self._sel_animation = self._animation(lambda v: setattr(self, "_sel", v))
         self.setToolTip(key)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Enter fills its two rows
         layout = QVBoxLayout(self)
@@ -33,18 +43,69 @@ class KeyButton(QPushButton):
             part.setAttribute(Qt.WA_TransparentForMouseEvents)
             layout.addWidget(part)
 
+    def _animation(self, apply):
+        animation = QVariantAnimation(self, duration=KEY_FADE_MS)
+        animation.valueChanged.connect(lambda value: (apply(value), self.update()))
+        return animation
+
+    def _fade(self, animation, current, target):
+        animation.stop()
+        animation.setStartValue(float(current))
+        animation.setEndValue(float(target))
+        animation.start()
+
     def _set(self, prop, value):
         self.setProperty(prop, value)
         for widget in (self, self.name, self.action):
             widget.style().unpolish(widget)
             widget.style().polish(widget)
+        self.update()
 
     def set_selected(self, on):
+        if bool(self.property("selected")) != on:
+            self._fade(self._sel_animation, self._sel, on)
         self._set("selected", on)
 
     def flash(self):
         self._set("flash", True)
         QTimer.singleShot(FLASH_MS, lambda: self._set("flash", False))
+
+    def current_radius(self):
+        """Rounded tile at rest, rounder on hover, squeezed while pressed (like the other buttons)."""
+        radius = KEY_RADIUS + (KEY_HOVER_RADIUS - KEY_RADIUS) * self._hover
+        return radius + (KEY_PRESSED_RADIUS - radius) * self._press
+
+    def ripple_color(self):
+        c = theme.current
+        return QColor(c["onPrimaryContainer" if self.property("selected") else "onSurface"] if c else "#000000")
+
+    def paintEvent(self, event):
+        """The tile: tonal container, state layers that fade in and out, a selected look that cross-fades."""
+        c = theme.current
+        if not c:
+            return super().paintEvent(event)
+        resting = c["tertiaryContainer"] if self.property("layer") else c["surfaceContainerHigh"]
+        content = c["onTertiaryContainer"] if self.property("layer") else c["onSurface"]
+        look = tokens.blend(resting, content, tokens.STATE["hover"] * self._hover)
+        chosen = tokens.blend(c["primaryContainer"], c["onPrimaryContainer"], tokens.STATE["hover"] * self._hover)
+        color = QColor(tokens.blend(look, chosen, self._sel))
+        color = QColor(tokens.blend(color.name(), content, tokens.STATE["pressed"] * min(1.0, max(0.0, self._press))))
+        self._update_press()
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        rect = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        top = QColor(tokens.blend(color.name(), "#ffffff", 0.05))  # the same barely-there gradient as the app bar
+        gradient = QLinearGradient(rect.topLeft(), rect.bottomLeft())
+        gradient.setColorAt(0, top)
+        gradient.setColorAt(1, color)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(gradient)
+        radius = self.current_radius()
+        painter.drawRoundedRect(rect, radius, radius)
+        if self.property("flash"):
+            painter.setPen(QPen(QColor(c["primary"]), 2.5))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRoundedRect(rect.adjusted(1, 1, -1, -1), radius - 1, radius - 1)
 
 
 class MainWindow(QMainWindow):
@@ -64,19 +125,22 @@ class MainWindow(QMainWindow):
 
         central = QWidget()
         outer = QVBoxLayout(central)
-        outer.setContentsMargins(14, 10, 14, 6)
-        outer.addLayout(self._build_header())
+        outer.setContentsMargins(12, 12, 12, 8)
+        outer.setSpacing(12)
+        self.appbar = self._build_header()
+        outer.addWidget(self.appbar)
         outer.addWidget(self._build_banner())
         body = QHBoxLayout()
         body.addWidget(self._build_left())
         line = QFrame()
         line.setObjectName("separator")
         body.addWidget(line)
-        self.editor_scroll = QScrollArea()
+        self.editor_scroll = SmoothScrollArea()
         self.editor_scroll.setWidgetResizable(True)
         body.addWidget(self.editor_scroll, 1)
         outer.addLayout(body, 1)
         self.setCentralWidget(central)
+        effects.elevate(self.appbar, 1, dark=theme.current.get("surface", "#000000") < "#808080")
 
         self.refresh_profiles()
         self.refresh_layer_switch()
@@ -85,37 +149,46 @@ class MainWindow(QMainWindow):
 
     # ---------------------------------------------------------------- layout
     def _build_header(self):
-        row = QHBoxLayout()
-        self.learn = QToolButton(text="⌨ Learn")
+        """The top app bar: name, connection status, tools, Settings and Save."""
+        bar = QFrame()
+        bar.setObjectName("appbar")
+        row = QHBoxLayout(bar)
+        row.setContentsMargins(20, 8, 12, 8)
+        row.setSpacing(8)
+        row.addWidget(label("Numpad Control", "appname"))
+        self.status = label("Connecting…", "dim")
+        self.status.setContentsMargins(10, 4, 10, 4)  # the chip's padding (a stylesheet padding doesn't size a label)
+        row.addWidget(self.status)
+        row.addStretch()
+        self.dirty_label = label("", "dim")
+        row.addWidget(self.dirty_label)
+        self.learn = ToolButton(text="⌨ Learn")
         self.learn.setCheckable(True)
         self.learn.setToolTip("Learn mode: press a numpad key to select it here (its action won't run)")
         self.learn.toggled.connect(self.on_learn_toggled)
         row.addWidget(self.learn)
-        extra = QToolButton(text="Tools ▾")
+        extra = ToolButton(text="Tools ▾")
         extra.setPopupMode(QToolButton.InstantPopup)
-        menu = QMenu(extra)
+        menu = Menu(extra)
         menu.addAction("Key tester…", self.open_tester)
         menu.addAction("Diagnostics…", self.open_diagnostics)
         extra.setMenu(menu)
         row.addWidget(extra)
-        row.addStretch()
-        self.dirty_label = label("", "dim")
-        row.addWidget(self.dirty_label)
-        settings = QPushButton("Settings")
+        settings = PushButton("Settings")
         settings.clicked.connect(self.open_settings)
         row.addWidget(settings)
-        self.save_button = QPushButton("Save")
+        self.save_button = PushButton("Save")
         self.save_button.setObjectName("primary")
         self.save_button.clicked.connect(self.save)
         row.addWidget(self.save_button)
-        return row
+        return bar
 
     def _build_banner(self):
         self.banner = QFrame()
         self.banner.setObjectName("banner")
         row = QHBoxLayout(self.banner)
         row.addWidget(label("The background service isn't running, so the numpad does nothing."), 1)
-        start = QPushButton("Start service")
+        start = PushButton("Start service")
         start.clicked.connect(self.start_service)
         row.addWidget(start)
         self.banner.hide()
@@ -130,12 +203,12 @@ class MainWindow(QMainWindow):
 
         profiles = QHBoxLayout()
         profiles.addWidget(label("Profile", "heading"))
-        self.profile_combo = QComboBox()
+        self.profile_combo = ComboBox()
         self.profile_combo.currentIndexChanged.connect(self.on_profile_changed)
         profiles.addWidget(self.profile_combo, 1)
-        menu_button = QToolButton(text="⋯", toolTip="Profiles: different keys per app")
+        menu_button = ToolButton(text="⋯", toolTip="Profiles: different keys per app")
         menu_button.setPopupMode(QToolButton.InstantPopup)
-        menu = QMenu(menu_button)
+        menu = Menu(menu_button)
         menu.addAction("New profile…", lambda: self.profile_dialog(None))
         menu.addAction("Duplicate profile…", lambda: self.profile_dialog(None, copy_from=self.profile_index))
         menu.addAction("Edit profile…", lambda: self.profile_dialog(self.profile_index))
@@ -152,7 +225,7 @@ class MainWindow(QMainWindow):
         segments.setContentsMargins(3, 3, 3, 3)
         group = QButtonGroup(self)
         for i, text in enumerate(("Normal", "Layer (key held)")):
-            button = QPushButton(text)
+            button = PushButton(text)
             button.setObjectName("segment")
             button.setCheckable(True)
             button.setChecked(i == 0)
@@ -171,8 +244,6 @@ class MainWindow(QMainWindow):
             self.key_buttons[key] = button
         layout.addLayout(grid)
 
-        self.status = label("●  Connecting to the service…", "dim")
-        layout.addWidget(self.status)
         layout.addWidget(label("Click a key to choose what it does, or turn on Learn and press it on the numpad.",
                                "small", wrap=True))
         layout.addStretch()
@@ -201,6 +272,7 @@ class MainWindow(QMainWindow):
     def refresh_pad(self):
         layer_key = self.cfg.get("layer_key")
         for key, button in self.key_buttons.items():
+            button._set("layer", key == layer_key)
             if key == layer_key:
                 text = "Layer key"
             else:
@@ -214,12 +286,13 @@ class MainWindow(QMainWindow):
             button.set_selected(key == self.selected)
 
     def select(self, key):
+        changed = key != self.selected
         self.selected = key
         self.refresh_pad()
-        self.build_editor()
+        self.build_editor(fade=changed)
 
     # ---------------------------------------------------------------- the editor
-    def build_editor(self):
+    def build_editor(self, fade=False):
         key = self.selected
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -249,6 +322,8 @@ class MainWindow(QMainWindow):
         layout.addStretch()
         old = self.editor_scroll.takeWidget()
         self.editor_scroll.setWidget(page)
+        if fade:
+            effects.fade_in(page)
         if old is not None:
             old.deleteLater()
 
@@ -282,7 +357,7 @@ class MainWindow(QMainWindow):
                 rapid.setChecked(actions.rapid_fire(binding))
                 rapid.toggled.connect(lambda on: (binding.__setitem__("rapid", on), self.mark_dirty()))
                 layout.addWidget(rapid)
-            test = QPushButton("▶ Test now")
+            test = PushButton("▶ Test now")
             test.clicked.connect(lambda: self.test(slot))
             layout.addWidget(test)
         return frame
@@ -378,16 +453,17 @@ class MainWindow(QMainWindow):
         dialog.exec()
         new = dialog.values()
         if any(self.cfg.get(k) != v for k, v in new.items()):
-            appearance_changed = new["appearance"] != self.cfg.get("appearance", "auto")
+            look = ("appearance", "accent", "contrast")
+            look_changed = any(new[k] != self.cfg.get(k, DEFAULTS_LOOK[k]) for k in look)
             self.cfg.update(new)
             self.mark_dirty()
             self.refresh_layer_switch()
             self.refresh_pad()
             self.build_editor()
-            if appearance_changed:
+            if look_changed:
                 from . import theme
                 from PySide6.QtWidgets import QApplication
-                theme.apply(QApplication.instance(), new["appearance"])
+                theme.apply(QApplication.instance(), new["appearance"], new["accent"], new["contrast"])
 
     # ---------------------------------------------------------------- tools
     def open_diagnostics(self):
@@ -424,7 +500,7 @@ class MainWindow(QMainWindow):
 
     def update_status(self, message):
         if not message.get("running"):
-            self.status.setText("●  Service not running")
+            self.status.setText("Service not running")
             self.status.setObjectName("bad")
             self.banner.show()
             if self.learn.isChecked():
@@ -433,10 +509,10 @@ class MainWindow(QMainWindow):
             self.banner.hide()
             if message.get("connected"):
                 devices = message.get("devices") or ["numpad"]
-                self.status.setText(f"●  Running · {min(devices, key=len)} connected")
+                self.status.setText(f"{min(devices, key=len)} connected")
                 self.status.setObjectName("ok")
             else:
-                self.status.setText("●  Running · numpad not plugged in")
+                self.status.setText("Numpad not plugged in")
                 self.status.setObjectName("warn")
             if self.learn.isChecked():  # reconnected: turn capture back on
                 self.link.send({"cmd": "capture", "on": True})

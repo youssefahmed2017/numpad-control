@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (QComboBox, QCompleter, QFrame, QHBoxLayout, QLabe
                                QPlainTextEdit, QPushButton, QToolButton, QVBoxLayout, QWidget)
 
 from .. import actions, sandbox, ui_common
+from .buttons import ComboBox, Menu, PushButton, ToolButton
 
 
 class Dispatcher(QObject):
@@ -39,7 +40,7 @@ def card():
     return frame, layout
 
 
-class SearchCombo(QComboBox):
+class SearchCombo(ComboBox):
     """A dropdown you can type into; typing filters by any part of the name."""
     picked = Signal(int)
 
@@ -93,9 +94,9 @@ class TextField(QWidget):
         self.get_params = lambda: {}  # set by the editor: the other fields' values
 
     def _picker(self, suggest, window):
-        button = QToolButton(text="☰", toolTip="Pick from a list")
+        button = ToolButton(text="☰", toolTip="Pick from a list")
         button.setPopupMode(QToolButton.InstantPopup)
-        menu = QMenu(button)
+        menu = Menu(button)
         button.setMenu(menu)
 
         def fill(names, error):
@@ -117,9 +118,9 @@ class TextField(QWidget):
         return button
 
     def _placeholders(self):
-        button = QToolButton(text="{…}", toolTip="Insert a placeholder")
+        button = ToolButton(text="{…}", toolTip="Insert a placeholder")
         button.setPopupMode(QToolButton.InstantPopup)
-        menu = QMenu(button)
+        menu = Menu(button)
         for token, description in actions.PLACEHOLDERS.items():
             menu.addAction(f"{token}    {description}", lambda t=token: self.edit.insert(t))
         button.setMenu(menu)
@@ -159,7 +160,7 @@ class CodeField(QWidget):
         edit.textChanged.connect(lambda: on_change(edit.toPlainText()))
         layout.addWidget(edit)
         layout.addWidget(label(ui_common.PYTHON_HELP, "small", wrap=True))
-        check = QPushButton("Check code")
+        check = PushButton("Check code")
         check.clicked.connect(lambda: window.show_problems(sandbox.validate(edit.toPlainText()), "Code looks OK"))
         layout.addWidget(check, alignment=Qt.AlignLeft)
 
@@ -211,7 +212,7 @@ class StepCard(QFrame):
         layout.setContentsMargins(10, 6, 10, 6)
 
         header = QHBoxLayout()
-        self.toggle = QToolButton(text="▾" if owner.expanded == index else "▸")
+        self.toggle = ToolButton(text="▾" if owner.expanded == index else "▸")
         self.toggle.clicked.connect(lambda: owner.expand(None if owner.expanded == index else index))
         header.addWidget(self.toggle)
         titles = QVBoxLayout()
@@ -220,7 +221,7 @@ class StepCard(QFrame):
         self.summary = label(ui_common.step_summary(step, action), "small")
         titles.addWidget(self.summary)
         header.addLayout(titles, 1)
-        remove = QPushButton("Remove")
+        remove = PushButton("Remove")
         remove.setObjectName("flat")
         remove.clicked.connect(lambda: owner.change(lambda: steps.pop(index), None))
         header.addWidget(remove)
@@ -239,7 +240,7 @@ class StepCard(QFrame):
                 order.addWidget(label("Order", "dim"))
                 order.addStretch()
                 for text, delta, enabled in (("Move up", -1, index > 0), ("Move down", 1, index < len(steps) - 1)):
-                    button = QPushButton(text)
+                    button = PushButton(text)
                     button.setEnabled(enabled)
                     button.clicked.connect(lambda _=False, d=delta: owner.move(index, d))
                     order.addWidget(button)
@@ -278,9 +279,9 @@ class StepList(QWidget):
         for i in range(len(self.steps)):
             self.layout_.addWidget(StepCard(self.steps, i, self))
         buttons = QHBoxLayout()
-        add = QPushButton("＋ Add action")
+        add = PushButton("＋ Add action")
         add.clicked.connect(lambda: self.add("open_browser"))
-        wait = QPushButton("⏱ Add wait")
+        wait = PushButton("⏱ Add wait")
         wait.clicked.connect(lambda: self.add("wait"))
         buttons.addWidget(add)
         buttons.addWidget(wait)

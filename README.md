@@ -250,6 +250,22 @@ don't trust.
     .venv/bin/python -m numpadctl list      # list input devices
     journalctl --user -u numpad-control -f  # service log
 
+## Look: Material 3 ("Material You")
+The settings window follows Google's Material 3 design, in light or dark (it follows your
+system):
+- **Colours** come from Material design tokens. Pick an accent in Settings (Orchid is the
+  default; Blue, Purple, Green, Orange, Pink and Teal too) and a contrast level (standard,
+  medium or high). The palettes are the exact output of Google's Material Theme Builder: a
+  test compares them with a real export (`tests/fixtures/material-theme-orchid.json`).
+  `tools/generate_m3_palettes.py` makes `numpadctl/qt/m3_palettes.json` from a seed colour, so
+  adding an accent is one line there (it needs `pip install materialyoucolor`; the app itself
+  doesn't).
+- **Shape and motion:** rounded cards, tonal key tiles, state layers on hover and press, a
+  touch ripple on every button, and buttons that morph: soft at rest, fully round on hover,
+  squeezed small while pressed and then spring back. Dropdowns and menus grow open, the wheel
+  scrolls smoothly, and the key editor fades in. It is all drawn on the CPU with small,
+  short animations, so it stays smooth on integrated graphics.
+
 ## Starter presets
 The ⋯ menu next to Profile → **Add a starter preset…** fills a profile's empty keys for
 a common job: *Streaming (OBS)*, *Media and volume*, *Editing*, *Windows and desktops*.
@@ -276,8 +292,9 @@ Settings window → **Tools**:
   list and placeholder buttons, step lists for macros and if/otherwise),
   `dialogs.py` (settings, profiles), `tools.py` (key tester, diagnostics; the report itself is
   `numpadctl/diagnostics.py`), `app.py` (one copy at a time, `--hidden`, tray
-  icon on KDE), `theme.py` (dark/light following the system). `numpadctl/ui_common.py`
-  holds what doesn't depend on the toolkit.
+  icon on KDE), `theme.py` + `tokens.py` (the Material 3 look, below), `buttons.py` (buttons
+  that morph their shape, animated dropdowns and menus, smooth scrolling), `effects.py`
+  (ripples, shadows, fade-ins). `numpadctl/ui_common.py` holds what doesn't depend on the toolkit.
 - `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
 - `numpadctl/platform/`: everything that differs between operating systems, so a

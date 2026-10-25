@@ -1,10 +1,13 @@
 """Settings and profile dialogs."""
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QLineEdit,
                                QListWidget, QPushButton, QScrollArea, QSpinBox, QVBoxLayout, QWidget)
 
 from .. import desktop, modes, obs, presets, ui_common
+from . import tokens
+from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, ToolButton
 from .widgets import card, label
 
 APPEARANCES = [("auto", "Follow the system"), ("light", "Light"), ("dark", "Dark")]
@@ -20,7 +23,7 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("Settings")
         self.resize(560, 720)
         outer = QVBoxLayout(self)
-        scroll = QScrollArea()
+        scroll = SmoothScrollArea()
         scroll.setWidgetResizable(True)
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -33,7 +36,7 @@ class SettingsDialog(QDialog):
         self.device = dict(cfg["device"])
         self._show_device()
         row.addWidget(self.device_label, 1)
-        self.detect_button = QPushButton("Detect…")
+        self.detect_button = PushButton("Detect…")
         self.detect_button.clicked.connect(self.detect)
         row.addWidget(self.detect_button)
         box.addLayout(row)
@@ -46,7 +49,7 @@ class SettingsDialog(QDialog):
         box.addWidget(label("Keys", "heading"))
         box.addWidget(label("Layer key: hold it to give every other key a second set of actions", "small"))
         self.layer_choices = [None] + ui_common.LAYER_KEY_CHOICES
-        self.layer_key = QComboBox()
+        self.layer_key = ComboBox()
         self.layer_key.addItems(["Off"] + ui_common.LAYER_KEY_CHOICES)
         self.layer_key.setCurrentIndex(self.layer_choices.index(cfg.get("layer_key")))
         box.addWidget(self.layer_key)
@@ -54,10 +57,29 @@ class SettingsDialog(QDialog):
         self.feedback.setChecked(cfg.get("feedback", True))
         box.addWidget(self.feedback)
         box.addWidget(label("Appearance of this window", "small"))
-        self.appearance = QComboBox()
+        self.appearance = ComboBox()
         self.appearance.addItems([text for _, text in APPEARANCES])
         self.appearance.setCurrentIndex([k for k, _ in APPEARANCES].index(cfg.get("appearance", "auto")))
         box.addWidget(self.appearance)
+        box.addWidget(label("Accent colour", "small"))
+        self.accent = ComboBox()
+        for name, seed in tokens.SEEDS.items():
+            swatch = QPixmap(16, 16)
+            swatch.fill(Qt.transparent)
+            painter = QPainter(swatch)
+            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setBrush(QColor(seed))
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(0, 0, 16, 16)
+            painter.end()
+            self.accent.addItem(QIcon(swatch), name)
+        self.accent.setCurrentText(cfg.get("accent", tokens.DEFAULT_ACCENT))
+        box.addWidget(self.accent)
+        box.addWidget(label("Contrast", "small"))
+        self.contrast = ComboBox()
+        self.contrast.addItems(["Standard", "Medium", "High"])
+        self.contrast.setCurrentIndex(tokens.CONTRASTS.index(cfg.get("contrast", "standard")))
+        box.addWidget(self.contrast)
         layout.addWidget(frame)
 
         frame, box = card()
@@ -70,7 +92,7 @@ class SettingsDialog(QDialog):
         add_row = QHBoxLayout()
         self.new_mode = QLineEdit(placeholderText="Add a mode (e.g. Stream mode)")
         self.new_mode.returnPressed.connect(self.add_mode)
-        add = QPushButton("Add")
+        add = PushButton("Add")
         add.clicked.connect(self.add_mode)
         add_row.addWidget(self.new_mode, 1)
         add_row.addWidget(add)
@@ -93,7 +115,7 @@ class SettingsDialog(QDialog):
             box.addWidget(label(text, "small"))
             box.addWidget(widget)
         test_row = QHBoxLayout()
-        test = QPushButton("Test connection")
+        test = PushButton("Test connection")
         test.clicked.connect(self.test_obs)
         self.obs_result = label("", "dim")
         test_row.addWidget(test)
@@ -104,7 +126,8 @@ class SettingsDialog(QDialog):
 
         scroll.setWidget(page)
         outer.addWidget(scroll)
-        buttons = QDialogButtonBox(QDialogButtonBox.Close)
+        buttons = QDialogButtonBox()
+        buttons.addButton(PushButton("Close"), QDialogButtonBox.RejectRole)
         buttons.rejected.connect(self.accept)
         outer.addWidget(buttons)
 
@@ -142,7 +165,7 @@ class SettingsDialog(QDialog):
             switch = QCheckBox(name)
             switch.setChecked(state.get(name, False))
             switch.toggled.connect(lambda on, n=name: modes.set_mode(n, on))
-            remove = QPushButton("Remove")
+            remove = PushButton("Remove")
             remove.setObjectName("flat")
             remove.clicked.connect(lambda _=False, n=name: self.remove_mode(n))
             row.addWidget(switch, 1)
@@ -181,6 +204,8 @@ class SettingsDialog(QDialog):
                 "layer_key": self.layer_choices[self.layer_key.currentIndex()],
                 "feedback": self.feedback.isChecked(),
                 "appearance": APPEARANCES[self.appearance.currentIndex()][0],
+                "accent": self.accent.currentText(),
+                "contrast": tokens.CONTRASTS[self.contrast.currentIndex()],
                 "modes": self.mode_names, "obs": self.obs_values()}
 
 
@@ -213,13 +238,16 @@ class ProfileDialog(QDialog):
         windows = desktop.open_windows()
         if windows:
             layout.addWidget(label("Add an open window", "small"))
-            picker = QComboBox()
+            picker = ComboBox()
             picker.addItems(["—"] + [f"{t[:40]}  ({c})" for c, t in windows])
             picker.currentIndexChanged.connect(lambda i: i > 0 and self._add_class(windows[i - 1][0]))
             layout.addWidget(picker)
-        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
-        buttons.button(QDialogButtonBox.Ok).setText("Save" if index else "Create")
-        buttons.button(QDialogButtonBox.Ok).setObjectName("primary")
+        buttons = QDialogButtonBox()
+        ok = PushButton("Save" if index else "Create")
+        ok.setObjectName("primary")
+        ok.setDefault(True)
+        buttons.addButton(ok, QDialogButtonBox.AcceptRole)
+        buttons.addButton(PushButton("Cancel"), QDialogButtonBox.RejectRole)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -261,9 +289,12 @@ class PresetDialog(QDialog):
             lambda row: self.description.setText(presets.PRESETS[row].description if row >= 0 else ""))
         self.list.setCurrentRow(0)
         self.list.itemDoubleClicked.connect(lambda _: self.accept())
-        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
-        buttons.button(QDialogButtonBox.Ok).setText("Add keys")
-        buttons.button(QDialogButtonBox.Ok).setObjectName("primary")
+        buttons = QDialogButtonBox()
+        ok = PushButton("Add keys")
+        ok.setObjectName("primary")
+        ok.setDefault(True)
+        buttons.addButton(ok, QDialogButtonBox.AcceptRole)
+        buttons.addButton(PushButton("Cancel"), QDialogButtonBox.RejectRole)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
