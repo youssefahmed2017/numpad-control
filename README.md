@@ -1,5 +1,7 @@
 # Numpad Control
 
+[![Tests](https://github.com/youssefahmed2017/numpad-control/actions/workflows/tests.yml/badge.svg)](https://github.com/youssefahmed2017/numpad-control/actions/workflows/tests.yml)
+
 Turns a cheap USB numpad into a control pad (like a Stream Deck) on Linux and Windows.
 Each key runs an action: open apps and websites, control OBS, media and volume,
 manage windows and desktops, type text, run multi-step macros, and more.
