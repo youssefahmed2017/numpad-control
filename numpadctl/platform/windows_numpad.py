@@ -13,11 +13,14 @@ three "0"s (the "000" key) is recognised by the service.
 import asyncio
 import ctypes
 import os
+import logging
 import re
 import struct
 import threading
 import time
 from pathlib import Path
+
+log = logging.getLogger("numpadctl")
 
 MAX_KEYBOARD = 10
 FILTER_KEY_NONE, FILTER_KEY_ALL = 0x0000, 0xFFFF
@@ -25,6 +28,8 @@ KEY_UP, KEY_E0 = 0x01, 0x02
 STROKE_SIZE = 20           # sizeof(InterceptionMouseStroke): every stroke has this size
 WAIT_MS = 200              # how often the reader thread checks whether it should stop
 PRESENCE_CHECK_SECONDS = 2 # Interception doesn't report unplugging, so look regularly
+PRESENCE_MISSES = 3        # ...and only believe "gone" after this many checks in a row
+REPEAT_WINDOW = 1.0        # a held key repeats faster than this; a "down" after longer is a new press
 
 # Scan codes (set 1); (code, has E0 prefix) -> key name. Independent of NumLock.
 KEY_CODES = {
@@ -172,13 +177,21 @@ class Numpad:
 
     def _read(self, emit):
         """Reader thread: blocking Interception calls; emit((key, down)) or emit(error)."""
+        try:
+            self._read_loop(emit)
+        except Exception as e:  # never die silently: the service would wait for keys forever
+            log.exception("numpad reader stopped")
+            emit(OSError(f"the numpad reader failed: {e}"))
+
+    def _read_loop(self, emit):
         lib, context, stroke = self._lib, self._context, Stroke()
-        held = set()  # Windows may repeat a held key as more presses; report it once
-        next_check = time.monotonic() + PRESENCE_CHECK_SECONDS
+        last_down = {}  # key -> when Windows last reported it down; repeats are reported once
+        next_check, misses = time.monotonic() + PRESENCE_CHECK_SECONDS, 0
         while not self._stop.is_set():
             if time.monotonic() >= next_check:
                 next_check = time.monotonic() + PRESENCE_CHECK_SECONDS
-                if not self._still_there():
+                misses = 0 if self._still_there() else misses + 1
+                if misses >= PRESENCE_MISSES:
                     emit(OSError("the numpad was unplugged"))
                     return
             device = lib.interception_wait_with_timeout(context, WAIT_MS)
@@ -189,9 +202,17 @@ class Numpad:
             code, state, _ = struct.unpack_from("<HHI", bytes(stroke))
             key = KEY_CODES.get((code, bool(state & KEY_E0)))
             down = not state & KEY_UP
-            if key is None or (down and key in held):
+            if key is None:
                 continue
-            (held.add if down else held.discard)(key)
+            now = time.monotonic()
+            if down:
+                # A lost key-up must not make the key dead: only a recent down counts as a repeat.
+                if now - last_down.get(key, -REPEAT_WINDOW) < REPEAT_WINDOW:
+                    last_down[key] = now
+                    continue
+                last_down[key] = now
+            else:
+                last_down.pop(key, None)
             emit((key, down))
 
     async def events(self):

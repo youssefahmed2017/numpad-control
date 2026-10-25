@@ -120,6 +120,34 @@ class WindowsNumpadTest(unittest.IsolatedAsyncioTestCase):
             with self.assertRaisesRegex(OSError, "unplugged"):
                 await self.collect(numpad, 1)
 
+    async def test_key_with_a_lost_release_still_works_later(self):
+        """Regression: a lost key-up left the key 'held' forever until the numpad was replugged."""
+        self.use(FakeInterception([(3, 0x4C, 0), (3, 0x4C, 0)]))
+        numpad = wn.open_numpad(NUMPAD, grab=True)
+        self.addCleanup(numpad.close)
+        with mock.patch.object(wn, "REPEAT_WINDOW", 0.0):
+            self.assertEqual(await self.collect(numpad, 2), [("5", True), ("5", True)])
+
+    async def test_one_failed_presence_check_is_not_unplugging(self):
+        fake = self.use(FakeInterception([(3, 0x4C, 0)]))
+        numpad = wn.open_numpad(NUMPAD, grab=True)
+        self.addCleanup(numpad.close)
+        real, calls = wn._hardware_id, []
+
+        def flaky(lib, context, device):
+            calls.append(device)
+            return "" if len(calls) == 2 else real(lib, context, device)
+        with mock.patch.object(wn, "PRESENCE_CHECK_SECONDS", 0.02), mock.patch.object(wn, "_hardware_id", flaky):
+            self.assertEqual(await self.collect(numpad, 1), [("5", True)])
+
+    async def test_a_crashing_reader_reports_instead_of_hanging(self):
+        fake = self.use(FakeInterception())
+        numpad = wn.open_numpad(NUMPAD, grab=True)
+        self.addCleanup(numpad.close)
+        fake.interception_wait_with_timeout = lambda *a: 1 / 0
+        with self.assertLogs("numpadctl", "ERROR"), self.assertRaisesRegex(OSError, "reader failed"):
+            await self.collect(numpad, 1)
+
     def test_missing_numpad(self):
         fake = self.use(FakeInterception())
         self.assertIsNone(wn.open_numpad({"vendor": "1234", "product": "5678"}, grab=True))

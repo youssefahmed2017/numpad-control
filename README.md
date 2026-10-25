@@ -222,6 +222,10 @@ sleep, the numpad is re-detected. It installs `/usr/local/bin/numpad-control-usb
 `numpad-control-usb.service` and a systemd sleep hook, and remembers the numpad's port
 in `/etc/numpad-control/usb.conf`. (New; not yet confirmed on real hardware.)
 
+If the kernel log shows those `-71` errors, the numpad never reaches the service at
+all (a flaky cable, port or the numpad itself); try another port, ideally directly on
+the PC, not a hub.
+
 ## OBS
 In OBS: Tools → WebSocket Server Settings → Enable WebSocket server. Put the
 password in the window's Settings (gear icon) → OBS, and use "Test connection".
@@ -296,5 +300,8 @@ don't trust.
   Run Python, and on-screen popups (notifications instead). Install with
   `install.ps1` (see Install → Windows).
 
-# License 
-GPLv3, see [License](LICENSE)
+## License
+Numpad Control is free software under the [GNU General Public License v3.0](LICENSE).
+Parts it uses keep their own licenses: PySide6 (LGPL), evdev, obsws-python, pystray,
+pycaw (MIT), and on Windows the Interception driver (LGPL for non-commercial use; a
+paid license is needed to sell it with a product).
