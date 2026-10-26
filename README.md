@@ -321,10 +321,10 @@ system; your user name and home folder taken out) is also kept in
   - `ipc.py`: the service ↔ window connection
   - `numpad_input.py`: reading the numpad; the service itself only sees key names
     like `"5"`, `"Enter"`, `"000"`. Linux: `linux_numpad.py` (evdev). Windows:
-    `windows_rawinput.py`, with no driver: Raw Input tells which keyboard a key came
-    from, and a low-level keyboard hook holds back the keys a numpad has until that's
-    known (about a millisecond), so only the numpad is captured, even next to a keyboard
-    with its own number pad. Keys from other keyboards are sent on unchanged. The older
+    `windows_rawinput.py`, with no driver: Raw Input tells the service about every key
+    and which keyboard it came from, and a small hook DLL (`numpadhook.dll`, built from
+    `numpadhook/numpadhook.c`) stops the numpad's keys from reaching apps, so only the
+    numpad is captured, even next to a keyboard with its own number pad. The older
     `windows_numpad.py` uses the [Interception](https://github.com/oblitum/Interception)
     driver instead (`NUMPADCTL_WINDOWS_BACKEND=interception`).
   - `system.py`: system actions: opening apps, URLs and files, clipboard,
@@ -347,12 +347,11 @@ release with generated notes (`release.yml`).
 
 ## Plans
 - A Windows version (with one Qt settings window for both systems) is planned
-  for later. It reads the numpad with Raw Input and a keyboard hook (no driver), so
-  it can tell an external numpad apart from a main keyboard that has its own number
-  pad. Known limits of the hook: while a program running as administrator is
-  focused, Windows doesn't show it the keys (run Numpad Control as administrator
-  too if that matters), and the main keyboard's number-pad keys and Backspace reach
-  programs as sent-again ("injected") keys, which a few games ignore.
+  for later. It reads the numpad with Raw Input and a keyboard hook DLL (no driver),
+  so it can tell an external numpad apart from a main keyboard that has its own number
+  pad. Known limits: 32-bit apps and apps running as administrator don't load the
+  DLL, so the numpad's keys still type there (their actions still run), and NumLock on
+  the numpad still switches NumLock.
   [`tools/windows-poc/`](tools/windows-poc/) has the tests for a Windows PC.
   Working: reading the numpad, the background service, a tray app
   (`numpad-control.pyw`: Settings…, Edit settings file, Pause, Start at login, Show
