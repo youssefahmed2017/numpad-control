@@ -101,6 +101,8 @@ class TrayApp:
             return f"Stopped: {self.error}"
         if self.daemon.paused:
             return "Paused"
+        if getattr(self.daemon, "paused_for", None):
+            return f"Paused while {self.daemon.paused_for} runs"
         return "Numpad connected" if self.daemon.numpad is not None else "Numpad not found - plug it in"
 
     def refresh(self):
