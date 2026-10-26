@@ -101,6 +101,8 @@ class TrayApp:
             return f"Stopped: {self.error}"
         if self.daemon.paused:
             return "Paused"
+        if getattr(self.daemon, "paused_for", None):
+            return f"Paused while {self.daemon.paused_for} runs"
         return "Numpad connected" if self.daemon.numpad is not None else "Numpad not found - plug it in"
 
     def refresh(self):
@@ -129,6 +131,14 @@ class TrayApp:
         set_autostart(not autostart_enabled())
         self.refresh()
 
+    def restart_after_update(self):
+        """Start the updated copy once this one has quit (only one copy may run at a time)."""
+        from .windows_system import spawn
+        python = Path(sys.executable).with_name("pythonw.exe")
+        wait_then_start = "import subprocess, sys, time; time.sleep(4); subprocess.Popen(sys.argv[1:])"
+        spawn(str(python), "-c", wait_then_start, str(python), str(LAUNCHER))
+        self.quit()
+
     def quit(self, *_):
         self._stopped.set()
         if self.main_task is not None:
@@ -149,6 +159,8 @@ class TrayApp:
             pass
         except Exception as e:  # e.g. Windows refused the keyboard hook
             log.exception("the service stopped")
+            from .. import crash
+            crash.report("service")
             self.error = str(e)
             from ..actions import notify
             notify(APP_NAME, f"Stopped: {e}")
@@ -209,6 +221,8 @@ def main():
         handler = logging.handlers.RotatingFileHandler(log_path(), maxBytes=1_000_000, backupCount=2,
                                                        encoding="utf-8")
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", handlers=[handler])
+        from .. import crash
+        crash.install("tray")
         if _already_running():
             _message_box("Numpad Control is already running - look for its icon in the system tray.")
             return
@@ -217,8 +231,13 @@ def main():
         if not config.CONFIG_PATH.exists():  # so "Open settings file" has something to open
             config.save(config.load())
         log.info("starting")
-        TrayApp(daemon.Daemon(), open_file=lambda path: spawn("notepad.exe", str(path))).run()
+        service = daemon.Daemon()
+        app = TrayApp(service, open_file=lambda path: spawn("notepad.exe", str(path)))
+        service.restart = app.restart_after_update
+        app.run()
         log.info("stopped")
     except Exception as e:
         log.exception("couldn't start")
+        from .. import crash
+        crash.report("tray")
         _message_box(f"Numpad Control couldn't start:\n\n{e}\n\nDetails are in {log_path()}")

@@ -11,8 +11,8 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import actions, config
-from .platform import ipc, numpad_input
+from . import actions, config, games, updater
+from .platform import ipc, numpad_input, processes
 
 log = logging.getLogger("numpadctl")
 
@@ -22,6 +22,11 @@ DOUBLE_TAP_TIME = 0.3     # second press within this = "double tap"
 REPEAT_DELAY = 0.4        # repeating actions start after this...
 REPEAT_INTERVAL = 0.08    # ...and then run this often
 RAPID_DELAY = 2.0         # a Hold action with rapid-fire on starts repeating after this much more holding
+GAME_CHECK_SECONDS = 3    # how often the running programs are checked for a game with anti-cheat
+RETRY_DELAYS = (1, 2, 5, 10, 30)  # seconds before reopening a numpad whose reader keeps failing at once
+QUICK_FAILURE = 5         # a reader that fails within this many seconds counts as failing at once
+UPDATE_FIRST_CHECK = 60   # seconds after starting before looking for an update (not slowing the start)
+UPDATE_LOOP_SECONDS = 3600  # how often it wakes to see whether the daily check is due
 
 # Used by the settings window and install.sh.
 detect_device = numpad_input.detect_device
@@ -40,8 +45,16 @@ class Press:
         self.waiting_double = False
 
 
+def _restart_in_place():
+    """Run the updated code: replace this process with a fresh service (same PID under systemd)."""
+    import os
+    import sys
+    os.chdir(updater.ROOT)
+    os.execv(sys.executable, [sys.executable, "-m", "numpadctl", "run"])
+
+
 class Daemon:
-    def __init__(self, run_action=None):
+    def __init__(self, run_action=None, restart=None):
         self.cfg = config.load()
         self.mtime = config.mtime()
         self.pool = ThreadPoolExecutor(max_workers=4)
@@ -52,6 +65,8 @@ class Daemon:
         self.zero_timer = None
         self.numpad = None
         self.paused = False  # Windows tray "Pause": keys are still captured, but do nothing
+        self.paused_for = None  # name of the game with anti-cheat the numpad is let go for
+        self.restart = restart or _restart_in_place  # after an update (the Windows tray brings its own)
         self.clients = set()
         self.capturing = set()
         self.raw_clients = set()  # key tester windows: want every raw key event
@@ -238,7 +253,7 @@ class Daemon:
     # ------------------------------------------------------------ settings window link
     def status(self):
         return {"event": "status", "connected": self.numpad is not None,
-                "devices": self.numpad.names if self.numpad else []}
+                "devices": self.numpad.names if self.numpad else [], "paused_for": self.paused_for}
 
     def current_device_spec(self):
         return self.numpad.spec if self.numpad else None
@@ -323,11 +338,77 @@ class Daemon:
                 log.info("device settings changed, reopening")
                 return
 
+    async def protected_game(self):
+        """The game with anti-cheat running now (when that setting is on), or None."""
+        if not games.enabled(self.cfg):
+            return None
+        try:
+            running = await asyncio.to_thread(processes.running)
+        except OSError as e:
+            log.warning("couldn't check for games: %s", e)
+            return None
+        return games.protected_game(self.cfg, running)
+
+    async def watch_games(self):
+        """Return when a game with anti-cheat starts, so the numpad is let go."""
+        while True:
+            await asyncio.sleep(GAME_CHECK_SECONDS)
+            if await self.protected_game():
+                return
+
+    def set_paused_for(self, game):
+        if game == self.paused_for:
+            return
+        self.paused_for = game
+        if game:
+            log.info("%s is running: the numpad is let go until it closes", game)
+            actions.notify("Numpad paused", f"{game} is running, so the numpad types normally until it closes.")
+        else:
+            log.info("the game closed: taking the numpad back")
+            actions.notify("Numpad back", "The game closed; your numpad keys run their actions again.")
+        self.broadcast(self.status())
+
+    async def update_loop(self):
+        """Once a day: look for a newer release; install it and restart (or only say so)."""
+        await asyncio.sleep(UPDATE_FIRST_CHECK)
+        told = None
+        while True:
+            mode = self.cfg.get("updates", "auto")
+            if mode in ("auto", "notify") and updater.due():
+                tag = await asyncio.to_thread(updater.check)
+                if tag and mode == "notify" and tag != told:
+                    told = tag
+                    actions.notify("Numpad Control update", f"Version {tag[1:]} is out: run the installer "
+                                   "or `python -m numpadctl update` to get it.")
+                elif tag and mode == "auto":
+                    while self.presses or self.layer_held:  # not in the middle of using the numpad
+                        await asyncio.sleep(5)
+                    try:
+                        await asyncio.to_thread(updater.install, tag)
+                    except (updater.UpdateError, OSError) as e:
+                        log.warning("update to %s failed: %s", tag, e)
+                        actions.notify("Numpad Control couldn't update", str(e))
+                    else:
+                        actions.notify("Numpad Control updated", f"Now version {tag[1:]}; restarting.")
+                        self.shutdown()
+                        self.restart()
+                        return
+            await asyncio.sleep(UPDATE_LOOP_SECONDS)
+
+    def shutdown(self):
+        """Let the numpad and the connection go (before restarting into new code)."""
+        if self.numpad is not None:
+            self.numpad.close()
+            self.numpad = None
+        ipc.stop_server()
+
     async def main(self):
         await self.serve()
+        updates = asyncio.create_task(self.update_loop())
         try:
             await self._device_loop()
         finally:  # quitting (the task is cancelled): let the numpad and the connection go
+            updates.cancel()
             if self.numpad is not None:
                 self.numpad.close()
                 self.numpad = None
@@ -335,8 +416,14 @@ class Daemon:
 
     async def _device_loop(self):
         waiting_logged = False
+        quick_failures = 0
         while True:
             self.reload_if_changed()
+            game = await self.protected_game()
+            self.set_paused_for(game)
+            if game:
+                await asyncio.sleep(GAME_CHECK_SECONDS)
+                continue
             numpad = numpad_input.open_numpad(self.cfg["device"], self.cfg["grab"])
             if numpad is None:
                 if not waiting_logged:
@@ -349,22 +436,42 @@ class Daemon:
             self.numpad = numpad
             self.broadcast(self.status())
 
+            opened = time.monotonic()
             tasks = [asyncio.create_task(self.read(numpad)),
                      asyncio.create_task(self.watch_device_settings())]
+            if games.enabled(self.cfg):
+                tasks.append(asyncio.create_task(self.watch_games()))
             done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             for task in pending:
                 task.cancel()
+            failed = None
             for task in done:
                 if task.exception():
-                    log.info("device disconnected: %s", task.exception())
+                    failed = task.exception()
             numpad.close()
             self.numpad = None
             self.reset()
             self.broadcast(self.status())
+            if failed is None:
+                quick_failures = 0
+                continue
+            if time.monotonic() - opened >= QUICK_FAILURE:
+                quick_failures = 0
+                log.info("device disconnected: %s", failed)
+                continue
+            # Failing right away again and again (e.g. Windows refusing the keyboard hook):
+            # wait longer each time instead of retrying thousands of times a second.
+            delay = RETRY_DELAYS[min(quick_failures, len(RETRY_DELAYS) - 1)]
+            quick_failures += 1
+            if quick_failures <= 3 or delay == RETRY_DELAYS[-1] and quick_failures % 10 == 0:
+                log.warning("the numpad reader failed (%s); trying again in %s s", failed, delay)
+            await asyncio.sleep(delay)
 
 
 def run():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+    from . import crash
+    crash.install("service")
     try:
         asyncio.run(Daemon().main())
     except KeyboardInterrupt:

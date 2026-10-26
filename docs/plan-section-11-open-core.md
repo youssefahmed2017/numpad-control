@@ -77,7 +77,7 @@ is exactly what is being sold.
 
 | Phase (section 8) | Addition |
 |---|---|
-| 0. Technical de-risking | Done: Windows reads the numpad without a driver; the UI moved to the private repository (`private-numpadctl-ui`). Next: document the IPC API. |
+| 0. Technical de-risking | Done: Windows reads the numpad without a driver; the UI moved to the private repository (`private-numpadctl-ui`); the engine–app API is documented ([ipc-api.md](ipc-api.md)). |
 | 1. Demand validation | Landing page shows both editions; GitHub stars and open-edition downloads count as demand signals. |
 | 2. Productisation | Build the wizard, HUD and licensing in the closed app only. |
 | 3. Public launch | Launch on Hacker News / Reddit with the open source story ("audit what reads your keyboard"), alongside the paid app. |

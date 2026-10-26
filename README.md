@@ -252,6 +252,8 @@ don't trust.
     .venv/bin/python -m numpadctl run       # the service (normally via systemd)
     .venv/bin/python -m numpadctl detect    # press a key to find your numpad's USB ID
     .venv/bin/python -m numpadctl list      # list input devices
+    .venv/bin/python -m numpadctl check     # guided test of a numpad (for docs/compatibility.md)
+    .venv/bin/python -m numpadctl update    # install a newer release now
     journalctl --user -u numpad-control -f  # service log
 
 ## Starter presets
@@ -271,6 +273,37 @@ service log, see Commands):
   configured numpad marked), USB set-up failures from the kernel log (Linux), keys with
   problems, and the last 50 log lines. **Copy** puts it on the clipboard. It never
   contains passwords.
+
+## Updates
+Numpad Control updates itself: once a day the service asks GitHub for the latest
+release, and if it's newer, installs it the way it was installed (git: fast-forward to the
+release; zip: swap the folders, keeping `.venv`), updates the Python packages and restarts,
+with a notification. Only releases are installed, never unfinished work. A copy with local
+changes isn't touched. Settings: `"updates"`: `"auto"` (default), `"notify"` (only tell
+you) or `"off"`; `python -m numpadctl update` checks right away.
+
+To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
+matching tag (`git tag v0.2.0 && git push --tags`).
+
+## Games with anti-cheat
+On Windows, while a game with anti-cheat runs (Valorant, Fortnite, Call of Duty,
+Battlefield, Apex Legends and others, or any game using Easy Anti-Cheat, BattlEye or EA
+Javelin), Numpad Control lets go of the numpad completely, so nothing is hooked, and
+takes it back when the game closes. The tray shows "Paused while … runs". Settings:
+`"pause_for_games"` (`"auto"`: Windows only, `true`, `false`) and `"protected_games"`
+for more program names. Tested games and numpad models: [docs/compatibility.md](docs/compatibility.md);
+test a numpad with `python -m numpadctl check`.
+
+## Privacy and crash reports
+Numpad Control collects nothing: no telemetry, no usage statistics, no account. If a part
+of it crashes, a plain system dialog asks whether to report that crash; **Yes** opens a
+pre-filled GitHub issue in your browser, so you read everything before sending it, and
+**No** sends nothing. The report (the error and where it happened, the version, the
+system; your user name and home folder taken out) is also kept in
+`~/.local/state/numpad-control/crashes/` (Windows: `%LOCALAPPDATA%\numpad-control\state\crashes`).
+(`numpadctl/crash.py`; the plan's [section 12](docs/plan-section-12-crash-reports.md).)
+
+![The crash dialog on Linux (xmessage, the most basic of the dialogs it can use)](docs/screenshots/crash-dialog-linux.png)
 
 ## Code layout
 - `numpadctl/daemon.py`: the background service: key timing (press / hold / double

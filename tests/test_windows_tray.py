@@ -125,9 +125,10 @@ class TrayAppTest(unittest.TestCase):
                 raise RuntimeError("the Interception driver isn't running")
         app = tray.TrayApp(Broken(), open_file=lambda p: None)
         app.icon = FakeIcon()
-        with mock.patch("numpadctl.actions.notify") as notify:
+        with mock.patch("numpadctl.actions.notify") as notify, mock.patch("numpadctl.crash.report") as report:
             app.run_service()
         self.assertEqual(app.status_text(), "Stopped: the Interception driver isn't running")
+        report.assert_called_once_with("service")
         notify.assert_called_once()
 
     def test_menu(self):

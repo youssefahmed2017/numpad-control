@@ -1,0 +1,36 @@
+name: Numpad model test
+description: Tested a numpad with `numpad-control check`? Add it to the compatibility list.
+title: "Numpad: "
+labels: ["compatibility", "numpad"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing! Run `python -m numpadctl check` with the service stopped, follow it,
+        and paste the line it prints at the end.
+  - type: input
+    id: model
+    attributes:
+      label: Brand and model
+      description: As on the box or the shop page (a link helps too).
+    validations:
+      required: true
+  - type: textarea
+    id: row
+    attributes:
+      label: The line from `numpad-control check`
+      render: markdown
+    validations:
+      required: true
+  - type: dropdown
+    id: connection
+    attributes:
+      label: Connection
+      options: ["USB cable", "USB receiver (wireless)", "Bluetooth"]
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Keys that behaved oddly, NumLock surprises, price and where you bought it.

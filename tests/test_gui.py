@@ -17,9 +17,10 @@ class GuiFallbackTest(unittest.TestCase):
             patch = mock.patch.object(config, name, value)
             patch.start()
             self.addCleanup(patch.stop)
-        patch = mock.patch.object(gui, "app_installed", lambda: False)
-        patch.start()
-        self.addCleanup(patch.stop)
+        for patch in [mock.patch.object(gui, "app_installed", lambda: False),
+                      mock.patch("numpadctl.crash.install")]:  # tested in test_crash
+            patch.start()
+            self.addCleanup(patch.stop)
 
     def test_opens_the_settings_file_creating_it_first(self):
         with mock.patch("numpadctl.platform.system.open_path") as open_path, \

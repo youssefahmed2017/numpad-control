@@ -18,6 +18,8 @@ def app_installed():
 
 
 def run(args=()):
+    from . import crash
+    crash.install("settings")
     if app_installed():
         from numpadctl_ui import app
         return app.run(args)
