@@ -52,7 +52,7 @@ is exactly what is being sold.
   closed app can sit next to the open engine. The engine's IPC messages become a
   documented, stable API.
 - The Qt settings window (`numpadctl/qt/`) moves to a private repository
-  (`numpad-control-ui`). The open repository keeps a fallback: `numpad-control gui`
+  (`private-numpadctl-ui`). The open repository keeps a fallback: `numpad-control gui`
   opens the settings file in a text editor when the app isn't installed.
 - The cloud backend lives in `backend/` in the open repository, under AGPL-3.0.
 - Closed Python code is compiled (e.g. with Nuitka) for the installer, which makes it
@@ -77,7 +77,7 @@ is exactly what is being sold.
 
 | Phase (section 8) | Addition |
 |---|---|
-| 0. Technical de-risking | Done: Windows reads the numpad without a driver. Next: split the UI into the private repository; document the IPC API. |
+| 0. Technical de-risking | Done: Windows reads the numpad without a driver; the UI moved to the private repository (`private-numpadctl-ui`). Next: document the IPC API. |
 | 1. Demand validation | Landing page shows both editions; GitHub stars and open-edition downloads count as demand signals. |
 | 2. Productisation | Build the wizard, HUD and licensing in the closed app only. |
 | 3. Public launch | Launch on Hacker News / Reddit with the open source story ("audit what reads your keyboard"), alongside the paid app. |
