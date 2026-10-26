@@ -11,7 +11,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import actions, config, games
+from . import actions, config, games, updater
 from .platform import ipc, numpad_input, processes
 
 log = logging.getLogger("numpadctl")
@@ -23,6 +23,8 @@ REPEAT_DELAY = 0.4        # repeating actions start after this...
 REPEAT_INTERVAL = 0.08    # ...and then run this often
 RAPID_DELAY = 2.0         # a Hold action with rapid-fire on starts repeating after this much more holding
 GAME_CHECK_SECONDS = 3    # how often the running programs are checked for a game with anti-cheat
+UPDATE_FIRST_CHECK = 60   # seconds after starting before looking for an update (not slowing the start)
+UPDATE_LOOP_SECONDS = 3600  # how often it wakes to see whether the daily check is due
 
 # Used by the settings window and install.sh.
 detect_device = numpad_input.detect_device
@@ -41,8 +43,16 @@ class Press:
         self.waiting_double = False
 
 
+def _restart_in_place():
+    """Run the updated code: replace this process with a fresh service (same PID under systemd)."""
+    import os
+    import sys
+    os.chdir(updater.ROOT)
+    os.execv(sys.executable, [sys.executable, "-m", "numpadctl", "run"])
+
+
 class Daemon:
-    def __init__(self, run_action=None):
+    def __init__(self, run_action=None, restart=None):
         self.cfg = config.load()
         self.mtime = config.mtime()
         self.pool = ThreadPoolExecutor(max_workers=4)
@@ -54,6 +64,7 @@ class Daemon:
         self.numpad = None
         self.paused = False  # Windows tray "Pause": keys are still captured, but do nothing
         self.paused_for = None  # name of the game with anti-cheat the numpad is let go for
+        self.restart = restart or _restart_in_place  # after an update (the Windows tray brings its own)
         self.clients = set()
         self.capturing = set()
         self.raw_clients = set()  # key tester windows: want every raw key event
@@ -355,11 +366,47 @@ class Daemon:
             actions.notify("Numpad back", "The game closed; your numpad keys run their actions again.")
         self.broadcast(self.status())
 
+    async def update_loop(self):
+        """Once a day: look for a newer release; install it and restart (or only say so)."""
+        await asyncio.sleep(UPDATE_FIRST_CHECK)
+        told = None
+        while True:
+            mode = self.cfg.get("updates", "auto")
+            if mode in ("auto", "notify") and updater.due():
+                tag = await asyncio.to_thread(updater.check)
+                if tag and mode == "notify" and tag != told:
+                    told = tag
+                    actions.notify("Numpad Control update", f"Version {tag[1:]} is out: run the installer "
+                                   "or `python -m numpadctl update` to get it.")
+                elif tag and mode == "auto":
+                    while self.presses or self.layer_held:  # not in the middle of using the numpad
+                        await asyncio.sleep(5)
+                    try:
+                        await asyncio.to_thread(updater.install, tag)
+                    except (updater.UpdateError, OSError) as e:
+                        log.warning("update to %s failed: %s", tag, e)
+                        actions.notify("Numpad Control couldn't update", str(e))
+                    else:
+                        actions.notify("Numpad Control updated", f"Now version {tag[1:]}; restarting.")
+                        self.shutdown()
+                        self.restart()
+                        return
+            await asyncio.sleep(UPDATE_LOOP_SECONDS)
+
+    def shutdown(self):
+        """Let the numpad and the connection go (before restarting into new code)."""
+        if self.numpad is not None:
+            self.numpad.close()
+            self.numpad = None
+        ipc.stop_server()
+
     async def main(self):
         await self.serve()
+        updates = asyncio.create_task(self.update_loop())
         try:
             await self._device_loop()
         finally:  # quitting (the task is cancelled): let the numpad and the connection go
+            updates.cancel()
             if self.numpad is not None:
                 self.numpad.close()
                 self.numpad = None

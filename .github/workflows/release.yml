@@ -1,7 +1,8 @@
 name: Release
 
-# Push a tag like v0.2.0 (git tag v0.2.0 && git push --tags) to publish a release
-# with notes generated from the commits since the last one.
+# To release: set __version__ in numpadctl/__init__.py (e.g. "0.2.0"), commit, then push
+# the matching tag (git tag v0.2.0 && git push --tags). This publishes the release with
+# notes generated from the commits since the last one, and installed copies update to it.
 on:
   push:
     tags: ["v*"]
@@ -14,6 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: The tag matches numpadctl.__version__ (installed copies compare them to update)
+        run: |
+          version=$(python3 -c "import numpadctl; print(numpadctl.__version__)")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME doesn't match __version__ = $version in numpadctl/__init__.py" >&2
+            exit 1
+          fi
       - run: gh release create "$GITHUB_REF_NAME" --generate-notes --title "Numpad Control $GITHUB_REF_NAME"
         env:
           GH_TOKEN: ${{ github.token }}

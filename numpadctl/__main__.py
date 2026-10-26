@@ -1,5 +1,6 @@
-"""numpadctl [gui [--hidden]|run|tray|detect [--json]|list|check|usb-info]"""
+"""numpadctl [gui [--hidden]|run|tray|detect [--json]|list|check|update|usb-info]"""
 
+import logging
 import sys
 
 
@@ -30,6 +31,10 @@ def main():
         from .platform import numpad_input
         for device, vendor, product, name in numpad_input.list_devices():
             print(f"{device}  {vendor}:{product}  {name}")
+    elif command == "update":
+        from . import updater
+        logging.basicConfig(level=logging.INFO, format="%(message)s")
+        sys.exit(updater.main())
     elif command == "check":
         from . import check
         sys.exit(check.main())

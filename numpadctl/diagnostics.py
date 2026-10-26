@@ -26,8 +26,9 @@ def _run(command, timeout=10):
 
 
 def version():
+    from . import __version__
     commit = _run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"])
-    return commit if commit and " " not in commit else "unknown"
+    return f"{__version__} ({commit})" if commit and " " not in commit else __version__
 
 
 def binding_problems(cfg):

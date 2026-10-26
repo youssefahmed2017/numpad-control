@@ -253,6 +253,7 @@ don't trust.
     .venv/bin/python -m numpadctl detect    # press a key to find your numpad's USB ID
     .venv/bin/python -m numpadctl list      # list input devices
     .venv/bin/python -m numpadctl check     # guided test of a numpad (for docs/compatibility.md)
+    .venv/bin/python -m numpadctl update    # install a newer release now
     journalctl --user -u numpad-control -f  # service log
 
 ## Starter presets
@@ -272,6 +273,17 @@ service log, see Commands):
   configured numpad marked), USB set-up failures from the kernel log (Linux), keys with
   problems, and the last 50 log lines. **Copy** puts it on the clipboard. It never
   contains passwords.
+
+## Updates
+Numpad Control updates itself: once a day the service asks GitHub for the latest
+release, and if it's newer, installs it the way it was installed (git: fast-forward to the
+release; zip: swap the folders, keeping `.venv`), updates the Python packages and restarts,
+with a notification. Only releases are installed, never unfinished work. A copy with local
+changes isn't touched. Settings: `"updates"`: `"auto"` (default), `"notify"` (only tell
+you) or `"off"`; `python -m numpadctl update` checks right away.
+
+To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
+matching tag (`git tag v0.2.0 && git push --tags`).
 
 ## Games with anti-cheat
 On Windows, while a game with anti-cheat runs (Valorant, Fortnite, Call of Duty,
