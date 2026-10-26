@@ -204,15 +204,16 @@ Paste this into PowerShell (as your normal user):
     irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.ps1 | iex
 
 It installs Python if needed (winget), downloads Numpad Control (git, or a zip if git
-isn't installed), creates the Python environment, installs the
-[Interception](https://github.com/oblitum/Interception) driver from its official
-release (Windows asks for administrator permission once, showing "Publisher:
-Unknown" because Interception's installer isn't signed; a restart is needed the
-first time), adds **Numpad Control** and **Numpad Control Settings** to the Start
-menu, and starts it at login with a tray icon. Running it again updates everything.
+isn't installed), creates the Python environment, adds **Numpad Control** and
+**Numpad Control Settings** to the Start menu, and starts it at login with a tray
+icon. No driver, no administrator rights and no restart are needed. Running it again
+updates everything.
 Options (set them before pasting): `$env:NUMPAD_DRYRUN = "1"` only shows what it
 would do; `$env:NUMPAD_NOAUTOSTART = "1"`; `$env:NUMPAD_UNINSTALL = "1"` removes the
-shortcuts and autostart (settings stay). From a copy of the project:
+shortcuts and autostart (settings stay); `$env:NUMPAD_INTERCEPTION = "1"` reads the
+numpad through the [Interception](https://github.com/oblitum/Interception) driver
+instead, the old way (an administrator prompt and a restart; some games' anti-cheat
+blocks that driver). From a copy of the project:
 `powershell -ExecutionPolicy Bypass -File install.ps1 -DryRun`.
 
 ### Numpads that need replugging after boot or sleep
@@ -303,9 +304,12 @@ Settings window → **Tools**:
   - `ipc.py`: the service ↔ window connection
   - `numpad_input.py`: reading the numpad; the service itself only sees key names
     like `"5"`, `"Enter"`, `"000"`. Linux: `linux_numpad.py` (evdev). Windows:
-    `windows_numpad.py`, using the [Interception](https://github.com/oblitum/Interception)
-    driver to capture only the numpad, even next to a keyboard with its own number pad
-    (tested on a real Windows PC)
+    `windows_rawinput.py`, with no driver: Raw Input tells which keyboard a key came
+    from, and a low-level keyboard hook holds back the keys a numpad has until that's
+    known (about a millisecond), so only the numpad is captured, even next to a keyboard
+    with its own number pad. Keys from other keyboards are sent on unchanged. The older
+    `windows_numpad.py` uses the [Interception](https://github.com/oblitum/Interception)
+    driver instead (`NUMPADCTL_WINDOWS_BACKEND=interception`).
   - `system.py`: system actions: opening apps, URLs and files, clipboard,
     notifications, typing and key presses, media, volume, power. Linux:
     `linux_system.py`; Windows: `windows_system.py` (SendInput, Windows' own volume
@@ -326,8 +330,12 @@ release with generated notes (`release.yml`).
 
 ## Plans
 - A Windows version (with one Qt settings window for both systems) is planned
-  for later. It will read the numpad through the Interception driver, so it can
-  tell an external numpad apart from a main keyboard that has its own number pad.
+  for later. It reads the numpad with Raw Input and a keyboard hook (no driver), so
+  it can tell an external numpad apart from a main keyboard that has its own number
+  pad. Known limits of the hook: while a program running as administrator is
+  focused, Windows doesn't show it the keys (run Numpad Control as administrator
+  too if that matters), and the main keyboard's number-pad keys and Backspace reach
+  programs as sent-again ("injected") keys, which a few games ignore.
   [`tools/windows-poc/`](tools/windows-poc/) has the tests for a Windows PC.
   Working: reading the numpad, the background service, a tray app
   (`numpad-control.pyw`: Settings…, Edit settings file, Pause, Start at login, Show
@@ -344,5 +352,5 @@ release with generated notes (`release.yml`).
 ## License
 Numpad Control is free software under the [GNU General Public License v3.0](LICENSE).
 Parts it uses keep their own licenses: PySide6 (LGPL), evdev, obsws-python, pystray,
-pycaw (MIT), and on Windows the Interception driver (LGPL for non-commercial use; a
-paid license is needed to sell it with a product).
+pycaw (MIT), and on Windows, only if you choose it, the Interception driver (LGPL for
+non-commercial use; a paid license is needed to sell it with a product).

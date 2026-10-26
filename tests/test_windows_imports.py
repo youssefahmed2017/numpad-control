@@ -30,7 +30,7 @@ class WindowsImportTest(unittest.TestCase):
                               cwd=Path(__file__).parent.parent, timeout=60)
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(done.stdout.split(),
-                         ["numpadctl.platform.windows_numpad", "numpadctl.platform.windows_system",
+                         ["numpadctl.platform.windows_rawinput", "numpadctl.platform.windows_system",
                           "numpadctl.platform.windows_desktop", "windows", "numpadctl.platform.windows_audio"])
 
 

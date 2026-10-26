@@ -1,4 +1,8 @@
-"""Reading the numpad on Windows: the Interception driver, via its interception.dll.
+"""Reading the numpad on Windows with the Interception driver, via its interception.dll.
+
+The default is windows_rawinput.py, which needs no driver; this one is used only with
+NUMPADCTL_WINDOWS_BACKEND=interception (Interception is blocked by some games'
+anti-cheat, and needs a paid license in anything sold).
 
 Interception can capture one keyboard without touching the others, which a
 plain Windows keyboard hook can't. Only the numpad's devices are captured (a
@@ -156,6 +160,28 @@ def detect_device(timeout=15):
         lib.interception_destroy_context(context)
 
 
+class RepeatFilter:
+    """Windows repeats a held key as more presses: pass on only the first, but still the quick
+    presses of the 000 key, and a press after a lost key-up (nothing seen for a while)."""
+
+    def __init__(self):
+        self.last_seen = {}     # key -> when Windows last reported it down (repeats included)
+        self.last_emitted = {}  # key -> when we last passed a press on
+
+    def passes(self, key, down, now):
+        if not down:
+            self.last_seen.pop(key, None)
+            self.last_emitted.pop(key, None)
+            return True
+        seen, emitted = self.last_seen.get(key), self.last_emitted.get(key)
+        self.last_seen[key] = now
+        if seen is not None and now - seen < REPEAT_WINDOW \
+                and not (key == "0" and emitted is not None and now - emitted < BURST_WINDOW):
+            return False
+        self.last_emitted[key] = now
+        return True
+
+
 class Numpad:
     """The numpad's keyboard devices (one numpad can show up as several)."""
 
@@ -186,8 +212,7 @@ class Numpad:
 
     def _read_loop(self, emit):
         lib, context, stroke = self._lib, self._context, Stroke()
-        last_seen = {}     # key -> when Windows last reported it down (repeats included)
-        last_emitted = {}  # key -> when we last passed a press on
+        repeats = RepeatFilter()
         next_check, misses = time.monotonic() + PRESENCE_CHECK_SECONDS, 0
         while not self._stop.is_set():
             if time.monotonic() >= next_check:
@@ -206,20 +231,8 @@ class Numpad:
             down = not state & KEY_UP
             if key is None:
                 continue
-            now = time.monotonic()
-            if down:
-                # Windows repeats a held key as more presses: pass on only the first, but still the
-                # quick presses of the 000 key, and a press after a lost key-up (nothing seen for a while).
-                seen, emitted = last_seen.get(key), last_emitted.get(key)
-                last_seen[key] = now
-                if seen is not None and now - seen < REPEAT_WINDOW \
-                        and not (key == "0" and emitted is not None and now - emitted < BURST_WINDOW):
-                    continue
-                last_emitted[key] = now
-            else:
-                last_seen.pop(key, None)
-                last_emitted.pop(key, None)
-            emit((key, down))
+            if repeats.passes(key, down, time.monotonic()):
+                emit((key, down))
 
     async def events(self):
         """Yield (key name, pressed) until the numpad goes away (then raises OSError)."""

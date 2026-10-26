@@ -5,14 +5,16 @@
 # or, from a copy of the project:  powershell -ExecutionPolicy Bypass -File install.ps1 [options]
 #
 # It installs Python if needed (winget), gets the code (git, or a zip download),
-# creates the Python environment, installs the Interception driver (one admin
-# prompt; the numpad needs it), adds Start-menu entries and starts Numpad Control
-# at login. Running it again updates everything.
+# creates the Python environment, adds Start-menu entries and starts Numpad Control
+# at login. No driver and no administrator rights are needed. Running it again
+# updates everything.
 #
 # Options: -Dir PATH     where to put it (default: your user folder\numpad-control)
 #          -NoAutostart  don't start Numpad Control at login
 #          -DryRun       only show what it would do
 #          -Uninstall    remove the shortcuts and autostart (keeps your settings)
+#          -Interception also install the Interception driver and use it to read the numpad
+#                        (the old way: one admin prompt and a restart; some games' anti-cheat blocks it)
 # "irm | iex" can't pass options; set them first instead, e.g.
 #   $env:NUMPAD_DRYRUN = "1"; irm ... | iex
 
@@ -75,6 +77,7 @@ function Install-NumpadControl {
         [switch]$NoAutostart = [bool]$env:NUMPAD_NOAUTOSTART,
         [switch]$DryRun = [bool]$env:NUMPAD_DRYRUN,
         [switch]$Uninstall = [bool]$env:NUMPAD_UNINSTALL,
+        [switch]$Interception = [bool]$env:NUMPAD_INTERCEPTION,
         [string]$ScriptRoot = ""
     )
     $ErrorActionPreference = "Stop"
@@ -162,11 +165,21 @@ function Install-NumpadControl {
         Assert-Ok "Installing the Python packages"
     }
 
-    # ---------------------------------------------------------------- 4. Interception
-    Step "4/6  Interception driver (lets Numpad Control tell your numpad apart from the keyboard)"
+    # ---------------------------------------------------------------- 4. reading the numpad
+    Step "4/6  Reading the numpad"
     $Dll = Join-Path $Dir "numpadctl\platform\interception.dll"
     $NeedsRestart = $false
-    if ((Test-Path $Dll) -and (Test-InterceptionDriver)) {
+    if (-not $Interception) {
+        Note "no driver needed (Raw Input and a keyboard hook, like Discord's or OBS's hotkeys)"
+        Run "use the built-in way to read the numpad" {
+            [Environment]::SetEnvironmentVariable("NUMPADCTL_WINDOWS_BACKEND", $null, "User")
+            Remove-Item Env:NUMPADCTL_WINDOWS_BACKEND -ErrorAction SilentlyContinue  # for the copy started below
+        }
+        if (Test-InterceptionDriver) {
+            Note "The Interception driver from an earlier install isn't used any more. To remove it:"
+            Note "run its 'install-interception.exe /uninstall' as administrator, then restart."
+        }
+    } elseif ((Test-Path $Dll) -and (Test-InterceptionDriver)) {
         Note "already installed"
     } else {
         $unpacked = Join-Path $env:TEMP "interception"
@@ -195,6 +208,12 @@ function Install-NumpadControl {
                 if ($process.ExitCode -ne 0) { throw "The Interception installer didn't finish (exit code $($process.ExitCode))." }
             }
             $NeedsRestart = $true
+        }
+    }
+    if ($Interception) {
+        Run "read the numpad through Interception" {
+            [Environment]::SetEnvironmentVariable("NUMPADCTL_WINDOWS_BACKEND", "interception", "User")
+            $env:NUMPADCTL_WINDOWS_BACKEND = "interception"  # for the copy started below
         }
     }
 
