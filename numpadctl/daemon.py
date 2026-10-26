@@ -365,6 +365,8 @@ class Daemon:
 
 def run():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+    from . import crash
+    crash.install("service")
     try:
         asyncio.run(Daemon().main())
     except KeyboardInterrupt:

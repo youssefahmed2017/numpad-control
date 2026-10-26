@@ -149,6 +149,8 @@ class TrayApp:
             pass
         except Exception as e:  # e.g. Windows refused the keyboard hook
             log.exception("the service stopped")
+            from .. import crash
+            crash.report("service")
             self.error = str(e)
             from ..actions import notify
             notify(APP_NAME, f"Stopped: {e}")
@@ -209,6 +211,8 @@ def main():
         handler = logging.handlers.RotatingFileHandler(log_path(), maxBytes=1_000_000, backupCount=2,
                                                        encoding="utf-8")
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", handlers=[handler])
+        from .. import crash
+        crash.install("tray")
         if _already_running():
             _message_box("Numpad Control is already running - look for its icon in the system tray.")
             return
@@ -221,4 +225,6 @@ def main():
         log.info("stopped")
     except Exception as e:
         log.exception("couldn't start")
+        from .. import crash
+        crash.report("tray")
         _message_box(f"Numpad Control couldn't start:\n\n{e}\n\nDetails are in {log_path()}")

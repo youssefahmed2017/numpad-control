@@ -272,6 +272,17 @@ service log, see Commands):
   problems, and the last 50 log lines. **Copy** puts it on the clipboard. It never
   contains passwords.
 
+## Privacy and crash reports
+Numpad Control collects nothing: no telemetry, no usage statistics, no account. If a part
+of it crashes, a plain system dialog asks whether to report that crash; **Yes** opens a
+pre-filled GitHub issue in your browser, so you read everything before sending it, and
+**No** sends nothing. The report (the error and where it happened, the version, the
+system; your user name and home folder taken out) is also kept in
+`~/.local/state/numpad-control/crashes/` (Windows: `%LOCALAPPDATA%\numpad-control\state\crashes`).
+(`numpadctl/crash.py`; the plan's [section 12](docs/plan-section-12-crash-reports.md).)
+
+![The crash dialog on Linux (xmessage, the most basic of the dialogs it can use)](docs/screenshots/crash-dialog-linux.png)
+
 ## Code layout
 - `numpadctl/daemon.py`: the background service: key timing (press / hold / double
   tap, repeat, rapid-fire, layer key, `000`), profiles, and the link to the window
