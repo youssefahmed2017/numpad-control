@@ -252,6 +252,7 @@ don't trust.
     .venv/bin/python -m numpadctl run       # the service (normally via systemd)
     .venv/bin/python -m numpadctl detect    # press a key to find your numpad's USB ID
     .venv/bin/python -m numpadctl list      # list input devices
+    .venv/bin/python -m numpadctl check     # guided test of a numpad (for docs/compatibility.md)
     journalctl --user -u numpad-control -f  # service log
 
 ## Starter presets
@@ -271,6 +272,15 @@ service log, see Commands):
   configured numpad marked), USB set-up failures from the kernel log (Linux), keys with
   problems, and the last 50 log lines. **Copy** puts it on the clipboard. It never
   contains passwords.
+
+## Games with anti-cheat
+On Windows, while a game with anti-cheat runs (Valorant, Fortnite, Call of Duty,
+Battlefield, Apex Legends and others, or any game using Easy Anti-Cheat, BattlEye or EA
+Javelin), Numpad Control lets go of the numpad completely, so nothing is hooked, and
+takes it back when the game closes. The tray shows "Paused while … runs". Settings:
+`"pause_for_games"` (`"auto"`: Windows only, `true`, `false`) and `"protected_games"`
+for more program names. Tested games and numpad models: [docs/compatibility.md](docs/compatibility.md);
+test a numpad with `python -m numpadctl check`.
 
 ## Privacy and crash reports
 Numpad Control collects nothing: no telemetry, no usage statistics, no account. If a part

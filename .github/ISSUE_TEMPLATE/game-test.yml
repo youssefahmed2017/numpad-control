@@ -1,0 +1,44 @@
+name: Game with anti-cheat test
+description: Played a game with anti-cheat while Numpad Control was running? Report how it went.
+title: "Game: "
+labels: ["compatibility", "anti-cheat"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Numpad Control lets go of the numpad by itself while a known game with anti-cheat runs
+        (the tray shows "Paused while … runs"). This test checks that the game is happy with
+        Numpad Control running. Please don't change `pause_for_games` to test games on an account
+        you care about.
+  - type: input
+    id: game
+    attributes:
+      label: Game
+    validations:
+      required: true
+  - type: dropdown
+    id: anticheat
+    attributes:
+      label: Anti-cheat
+      options: ["Riot Vanguard", "Easy Anti-Cheat", "BattlEye", "EA Javelin", "RICOCHET", "FACEIT", "Other / not sure"]
+    validations:
+      required: true
+  - type: checkboxes
+    id: results
+    attributes:
+      label: What happened
+      options:
+        - label: The game started and played normally
+        - label: The tray showed "Paused while … runs" during the game
+        - label: The numpad worked again after closing the game
+        - label: No warning, kick or ban (still none a few days later)
+  - type: input
+    id: version
+    attributes:
+      label: Numpad Control version
+      description: The commit shown in Diagnostics, or `git rev-parse --short HEAD` in its folder.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Error messages, the game's program name if it wasn't recognised (Task Manager → Details).

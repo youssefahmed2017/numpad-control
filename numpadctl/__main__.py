@@ -1,4 +1,4 @@
-"""numpadctl [gui [--hidden]|run|tray|detect [--json]|list|usb-info]"""
+"""numpadctl [gui [--hidden]|run|tray|detect [--json]|list|check|usb-info]"""
 
 import sys
 
@@ -30,6 +30,9 @@ def main():
         from .platform import numpad_input
         for device, vendor, product, name in numpad_input.list_devices():
             print(f"{device}  {vendor}:{product}  {name}")
+    elif command == "check":
+        from . import check
+        sys.exit(check.main())
     elif command == "usb-info":
         # For install-usb-fix.sh: which USB port the configured numpad is on.
         from pathlib import Path
