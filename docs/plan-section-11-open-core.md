@@ -32,12 +32,12 @@ review the code, report bugs and write plugins.
 
 | Part | License | Why |
 |---|---|---|
-| Numpad engine (`numpadctl/`: input backends, service, actions, config) | Open: GPL-3.0 (as today) | It sees every key the user types. Open code proves it logs nothing and shows anti-cheat-sensitive users exactly what it does (section 9: privacy and anti-cheat risks). |
-| Command line, settings file, tray icon | Open: GPL-3.0 | They make the open edition fully usable without the UI. |
-| Cloud backend (profile library, sync, accounts) | Open: AGPL-3.0, in `backend/` | The value is the community's profiles on the official server, not the code. A self-hosted copy starts empty and needs its own servers. AGPL stops anyone from running an improved closed copy as a competing service. |
+| Numpad engine (`numpadctl/`: input backends, service, actions, config) | Open: AGPL-3.0 | It sees every key the user types. Open code proves it logs nothing and shows anti-cheat-sensitive users exactly what it does (section 9: privacy and anti-cheat risks). |
+| Command line, settings file, tray icon | Open: AGPL-3.0 | They make the open edition fully usable without the UI. |
+| Cloud backend (profile library, sync, accounts) | Open: AGPL-3.0, in `backend/` (like everything open) | The value is the community's profiles on the official server, not the code. A self-hosted copy starts empty and needs its own servers. AGPL stops anyone from running an improved closed copy as a competing service. |
 | Settings app, setup wizard, HUD, profile editor | **Closed** (proprietary, private repository) | This is what buyers actually pay for: the ease of use the free alternatives lack (section 3). |
 | Installer, code signing, auto-update, license keys | **Closed** | Part of the polished product; also needed against Windows SmartScreen (section 9). |
-| Plugin SDK (later) | Open | So the community can build integrations (section 4). |
+| Plugin SDK (later) | Open (license to decide: see 11.4) | So the community can build integrations (section 4). |
 
 **Why the UI and not the backend:** closing the backend would cripple the open edition
 (no profile library) while protecting little, because the backend's value is its data,
@@ -48,13 +48,15 @@ is exactly what is being sold.
 
 - The settings app already talks to the background service over a local connection
   (`numpadctl/platform/ipc.py`) rather than running inside it. A closed program that
-  only talks to a GPL program this way is generally not considered part of it, so the
+  only talks to an AGPL program this way is generally not considered part of it, so the
   closed app can sit next to the open engine. The engine's IPC messages become a
   documented, stable API.
 - The Qt settings window (`numpadctl/qt/`) moves to a private repository
   (`private-numpadctl-ui`). The open repository keeps a fallback: `numpad-control gui`
   opens the settings file in a text editor when the app isn't installed.
-- The cloud backend lives in `backend/` in the open repository, under AGPL-3.0.
+- The cloud backend lives in `backend/` in the open repository. The whole open
+  repository is AGPL-3.0 (one license for everything open, so nobody has to wonder
+  which part is under what); versions before October 27, 2026 were GPL-3.0.
 - Closed Python code is compiled (e.g. with Nuitka) for the installer, which makes it
   much harder to recover from the shipped files. At this price, that is enough.
 
@@ -65,11 +67,15 @@ is exactly what is being sold.
    work is closed.
 2. **Contributor agreement (CLA).** All code so far was written by the project owner,
    so relicensing it is the owner's decision. Before accepting outside contributions,
-   require a CLA, or contributed code will lock the engine to GPL-only.
-3. **Dependencies.** PySide6 (LGPL) may be used in a closed app if it is linked
+   require a CLA, or contributed code will lock the engine to AGPL-only.
+3. **Plugin SDK license (to decide).** Under the AGPL, plugins that run inside the
+   engine would likely have to be AGPL too, which rules out closed paid plugins
+   (section 6). Options: a permissive license (MIT) for the SDK alone, or a written
+   plugin exception to the AGPL.
+4. **Dependencies.** PySide6 (LGPL) may be used in a closed app if it is linked
    dynamically and users can replace it. The Interception driver is no longer needed
    (Windows now uses Raw Input), which removes its non-commercial license problem.
-4. **Trademarks.** The open edition can't stop forks, but the product name and logo can
+5. **Trademarks.** The open edition can't stop forks, but the product name and logo can
    be protected: register the trademark and say in the README that forks must use
    another name.
 
