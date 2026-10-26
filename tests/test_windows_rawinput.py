@@ -110,6 +110,15 @@ class KeySorterTest(unittest.TestCase):
         self.assertEqual(self.emitted, [("5", True), ("5", False)])
         self.assertEqual(self.replayed, [], "the repeats don't type either")
 
+    def test_an_unexpected_key_from_the_numpad_is_logged_once(self):
+        s = self.sorter()
+        with self.assertLogs("numpadctl", "WARNING") as logs:
+            for _ in range(3):
+                self.press(s, NUMPAD, "a")
+        self.assertEqual(len(logs.output), 1)
+        self.assertIn("0x1e", logs.output[0])
+        self.assertEqual((self.emitted, self.replayed), ([], []))
+
     def test_000_key_bursts(self):
         s = self.sorter()
         for _ in range(3):

@@ -214,6 +214,7 @@ class KeySorter:
         self.grab, self.emit, self.replay = grab, emit, replay
         self.held = collections.deque()
         self.repeats = RepeatFilter()
+        self.unknown = set()  # codes the numpad sent that aren't numpad keys (logged once each)
 
     def hook(self, scan, extended, up, vk, now):
         """True: hold the key back (the hook swallows it; it's sent again later if it isn't the numpad's)."""
@@ -224,7 +225,13 @@ class KeySorter:
         return True
 
     def raw(self, device, scan, e0, up):
-        if scan not in NUMPAD_SCANS or not self.held:
+        if scan not in NUMPAD_SCANS:
+            if not up and (scan, e0) not in self.unknown and self.is_numpad(device):
+                self.unknown.add((scan, e0))
+                log.warning("the numpad sent a key that isn't a numpad key (scan code %#x%s): it types as usual",
+                            scan, ", E0" if e0 else "")
+            return
+        if not self.held:
             return
         head = self.held[0]
         if head.scan != scan or head.up != up:
@@ -262,7 +269,7 @@ def _replay(held):
 
 
 def _read_raw(lparam):
-    """(device handle, scan code, E0?, released?, extra info) of a WM_INPUT keyboard message, or None."""
+    """(device handle, scan code, E0?, released?, extra info, virtual key) of a WM_INPUT keyboard message, or None."""
     data, size = RAWINPUT(), wintypes.UINT(ctypes.sizeof(RAWINPUT))
     if _api().GetRawInputData(lparam, RID_INPUT, ctypes.byref(data), ctypes.byref(size),
                               ctypes.sizeof(RAWINPUTHEADER)) in (0, 0xFFFFFFFF):
@@ -271,7 +278,7 @@ def _read_raw(lparam):
         return None
     k = data.keyboard
     return data.header.hDevice, k.MakeCode, bool(k.Flags & RI_KEY_E0), bool(k.Flags & RI_KEY_BREAK), \
-        k.ExtraInformation
+        k.ExtraInformation, k.VKey
 
 
 # Windows gives a process one Raw Input window for keyboards, so while the numpad is open,
@@ -287,8 +294,9 @@ class _Listener:
     Everything runs on the thread that calls run(): Windows calls the hook on the thread
     that installed it, while that thread waits for messages."""
 
-    def __init__(self, on_raw, on_tick, sorter=None):
+    def __init__(self, on_raw, on_tick, sorter=None, everything=False):
         self.on_raw, self.on_tick, self.sorter = on_raw, on_tick, sorter
+        self.everything = everything  # on_raw also gets the extra info and virtual key (the --all test)
         self.thread_id = None
         self.stopped = threading.Event()
 
@@ -339,7 +347,7 @@ class _Listener:
                                 observers = list(_observers)
                             for observer in observers:
                                 observer(*raw[:4])
-                        if self.on_raw(*raw[:4]):
+                        if self.on_raw(*(raw if self.everything else raw[:4])):
                             break
                 elif msg.message == WM_TIMER and msg.hWnd == hwnd:
                     if self.on_tick(time.monotonic()):
@@ -496,6 +504,28 @@ if __name__ == "__main__":
 
     spec = config.load()["device"]
     print("Keyboards:", *[f"  {n}: {name}" for n, _, _, name in list_devices()], sep="\n")
+    if "--all" in sys.argv:
+        # Every key from every keyboard, exactly as Windows reports it (nothing is held back or swallowed).
+        import re
+        wanted = (spec["vendor"].lower(), spec["product"].lower())
+        names = {}
+
+        def show_raw(device, scan, e0, up, extra, vkey):
+            if device not in names:
+                name = _device_name(device)
+                part = "".join(re.findall(r"&(MI_\w\w|Col\w\w)", name, re.I))
+                names[device] = f"{'NUMPAD ' if parse_ids(name) == wanted else 'other  '}{part or name[:40]}"
+            key = KEY_CODES.get((scan, e0), "(not a numpad key)")
+            print(f"  {names[device]:<22} scan {scan:#04x}{' E0' if e0 else '   '} vkey {vkey:#04x}  "
+                  f"{'up  ' if up else 'down'}  -> {key}")
+            return False
+
+        print("\nPress keys (numpad and main keyboard); everything types as usual. Ctrl+C stops.\n")
+        try:
+            _Listener(show_raw, lambda now: False, everything=True).run()
+        except KeyboardInterrupt:
+            pass
+        sys.exit(0)
     numpad = open_numpad(spec, grab=True)
     if numpad is None:
         sys.exit(f"No keyboard with vendor {spec['vendor']} / product {spec['product']} - is the numpad plugged in?")
