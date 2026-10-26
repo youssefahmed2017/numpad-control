@@ -147,7 +147,7 @@ class TrayApp:
             self.loop.run_until_complete(self.main_task)
         except asyncio.CancelledError:
             pass
-        except Exception as e:  # e.g. the Interception driver isn't installed
+        except Exception as e:  # e.g. Windows refused the keyboard hook
             log.exception("the service stopped")
             self.error = str(e)
             from ..actions import notify

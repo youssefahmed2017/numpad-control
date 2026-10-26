@@ -5,7 +5,10 @@
 Turns a cheap USB numpad into a control pad (like a Stream Deck) on Linux and Windows.
 Each key runs an action: open apps and websites, control OBS, media and volume,
 manage windows and desktops, type text, run multi-step macros, and more.
-Everything is set up in a settings window (Qt, the same on Linux and Windows). No code needed.
+Everything is set up in the Numpad Control app's settings window (the same on Linux and
+Windows; no code needed), or for free by editing one settings file: this repository is the
+open-source engine, and the app is a separate, closed-source download
+([why](docs/plan-section-11-open-core.md)).
 
 Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland), and on
 **Windows** (newer: its installer and some of its actions are still being tested).
@@ -37,8 +40,9 @@ action, Save. What the installers do, and their options:
 - A **background service** (systemd user service) reads the numpad directly with
   evdev and grabs it, so its keys only trigger actions and never type digits.
   The `000` key (which sends three 0s in a burst) is detected as its own key.
-- The **settings window** edits `~/.config/numpad-control/config.json`. The service
-  reloads it automatically after Save.
+- The **settings window** (in the app), or you in a text editor, edits
+  `~/.config/numpad-control/config.json`. The service reloads it automatically after
+  Save.
 - The service fetches the desktop's display variables on every key press, so
   apps open correctly even if it started before the desktop at boot, and it
   switches between Hyprland and KDE tools when you log out of one desktop and
@@ -182,8 +186,7 @@ It:
    extras for each desktop it finds (Hyprland: SwayOSD, grim, slurp, dunst, hyprlock;
    KDE Plasma: Spectacle, and kdotool from the AUR via yay/paru)
 2. clones the code to `~/numpad-control` (or updates it if it's already there)
-3. creates the Python environment (`.venv`, with `requirements.txt`; this downloads
-   Qt for the settings window, about 250 MB)
+3. creates the Python environment (`.venv`, with `requirements.txt`)
 4. asks you to press a key on your numpad, to find it
 5. installs a udev rule so you can read that numpad (and only that one)
 6. installs and starts the background service (and ydotool's service)
@@ -204,15 +207,16 @@ Paste this into PowerShell (as your normal user):
     irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.ps1 | iex
 
 It installs Python if needed (winget), downloads Numpad Control (git, or a zip if git
-isn't installed), creates the Python environment, installs the
-[Interception](https://github.com/oblitum/Interception) driver from its official
-release (Windows asks for administrator permission once, showing "Publisher:
-Unknown" because Interception's installer isn't signed; a restart is needed the
-first time), adds **Numpad Control** and **Numpad Control Settings** to the Start
-menu, and starts it at login with a tray icon. Running it again updates everything.
+isn't installed), creates the Python environment, adds **Numpad Control** and
+**Numpad Control Settings** to the Start menu, and starts it at login with a tray
+icon. No driver, no administrator rights and no restart are needed. Running it again
+updates everything.
 Options (set them before pasting): `$env:NUMPAD_DRYRUN = "1"` only shows what it
 would do; `$env:NUMPAD_NOAUTOSTART = "1"`; `$env:NUMPAD_UNINSTALL = "1"` removes the
-shortcuts and autostart (settings stay). From a copy of the project:
+shortcuts and autostart (settings stay); `$env:NUMPAD_INTERCEPTION = "1"` reads the
+numpad through the [Interception](https://github.com/oblitum/Interception) driver
+instead, the old way (an administrator prompt and a restart; some games' anti-cheat
+blocks that driver). From a copy of the project:
 `powershell -ExecutionPolicy Bypass -File install.ps1 -DryRun`.
 
 ### Numpads that need replugging after boot or sleep
@@ -244,27 +248,11 @@ This is a solid guardrail, not a perfect jail. Don't run snippets from people yo
 don't trust.
 
 ## Commands
-    numpad-control                          # open the settings window
+    numpad-control                          # open the settings (the app, or else the settings file)
     .venv/bin/python -m numpadctl run       # the service (normally via systemd)
     .venv/bin/python -m numpadctl detect    # press a key to find your numpad's USB ID
     .venv/bin/python -m numpadctl list      # list input devices
     journalctl --user -u numpad-control -f  # service log
-
-## Look: Material 3 ("Material You")
-The settings window follows Google's Material 3 design, in light or dark (it follows your
-system):
-- **Colours** come from Material design tokens. Pick an accent in Settings (Orchid is the
-  default; Blue, Purple, Green, Orange, Pink and Teal too) and a contrast level (standard,
-  medium or high). The palettes are the exact output of Google's Material Theme Builder: a
-  test compares them with a real export (`tests/fixtures/material-theme-orchid.json`).
-  `tools/generate_m3_palettes.py` makes `numpadctl/qt/m3_palettes.json` from a seed colour, so
-  adding an accent is one line there (it needs `pip install materialyoucolor`; the app itself
-  doesn't).
-- **Shape and motion:** rounded cards, tonal key tiles, state layers on hover and press, a
-  touch ripple on every button, and buttons that morph: soft at rest, fully round on hover,
-  squeezed small while pressed and then spring back. Dropdowns and menus grow open, the wheel
-  scrolls smoothly, and the key editor fades in. It is all drawn on the CPU with small,
-  short animations, so it stays smooth on integrated graphics.
 
 ## Starter presets
 The ⋯ menu next to Profile → **Add a starter preset…** fills a profile's empty keys for
@@ -273,7 +261,8 @@ Keys that already do something are never changed, and you can edit everything af
 (`numpadctl/presets.py`)
 
 ## When something doesn't work
-Settings window → **Tools**:
+The app's settings window → **Tools** (without the app: `python -m numpadctl list` and the
+service log, see Commands):
 - **Key tester** lists, live, every press and release the numpad sends, with the time
   between them, and what the service made of it (→ `000`, for instance). Use it when a
   key does nothing or the `000` key doesn't register.
@@ -287,14 +276,10 @@ Settings window → **Tools**:
 - `numpadctl/daemon.py`: the background service: key timing (press / hold / double
   tap, repeat, rapid-fire, layer key, `000`), profiles, and the link to the window
 - `numpadctl/actions.py`: every action, plus macros and modes logic
-- `numpadctl/qt/`: the settings window (Qt / PySide6, shared by Linux and Windows):
-  `window.py` (numpad + key editor), `widgets.py` (searchable dropdowns, fields with
-  list and placeholder buttons, step lists for macros and if/otherwise),
-  `dialogs.py` (settings, profiles), `tools.py` (key tester, diagnostics; the report itself is
-  `numpadctl/diagnostics.py`), `app.py` (one copy at a time, `--hidden`, tray
-  icon on KDE), `theme.py` + `tokens.py` (the Material 3 look, below), `buttons.py` (buttons
-  that morph their shape, animated dropdowns and menus, smooth scrolling), `effects.py`
-  (ripples, shadows, fade-ins). `numpadctl/ui_common.py` holds what doesn't depend on the toolkit.
+- `numpadctl/gui.py`: opens the settings: the closed-source app (`numpadctl_ui`) if
+  it's installed, otherwise the settings file. `numpadctl/ui_common.py` holds what any
+  settings window needs (the link to the service, the key layout, action names): the
+  interface the app builds on.
 - `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
 - `numpadctl/platform/`: everything that differs between operating systems, so a
@@ -303,9 +288,12 @@ Settings window → **Tools**:
   - `ipc.py`: the service ↔ window connection
   - `numpad_input.py`: reading the numpad; the service itself only sees key names
     like `"5"`, `"Enter"`, `"000"`. Linux: `linux_numpad.py` (evdev). Windows:
-    `windows_numpad.py`, using the [Interception](https://github.com/oblitum/Interception)
-    driver to capture only the numpad, even next to a keyboard with its own number pad
-    (tested on a real Windows PC)
+    `windows_rawinput.py`, with no driver: Raw Input tells which keyboard a key came
+    from, and a low-level keyboard hook holds back the keys a numpad has until that's
+    known (about a millisecond), so only the numpad is captured, even next to a keyboard
+    with its own number pad. Keys from other keyboards are sent on unchanged. The older
+    `windows_numpad.py` uses the [Interception](https://github.com/oblitum/Interception)
+    driver instead (`NUMPADCTL_WINDOWS_BACKEND=interception`).
   - `system.py`: system actions: opening apps, URLs and files, clipboard,
     notifications, typing and key presses, media, volume, power. Linux:
     `linux_system.py`; Windows: `windows_system.py` (SendInput, Windows' own volume
@@ -326,8 +314,12 @@ release with generated notes (`release.yml`).
 
 ## Plans
 - A Windows version (with one Qt settings window for both systems) is planned
-  for later. It will read the numpad through the Interception driver, so it can
-  tell an external numpad apart from a main keyboard that has its own number pad.
+  for later. It reads the numpad with Raw Input and a keyboard hook (no driver), so
+  it can tell an external numpad apart from a main keyboard that has its own number
+  pad. Known limits of the hook: while a program running as administrator is
+  focused, Windows doesn't show it the keys (run Numpad Control as administrator
+  too if that matters), and the main keyboard's number-pad keys and Backspace reach
+  programs as sent-again ("injected") keys, which a few games ignore.
   [`tools/windows-poc/`](tools/windows-poc/) has the tests for a Windows PC.
   Working: reading the numpad, the background service, a tray app
   (`numpad-control.pyw`: Settings…, Edit settings file, Pause, Start at login, Show
@@ -343,6 +335,10 @@ release with generated notes (`release.yml`).
 
 ## License
 Numpad Control is free software under the [GNU General Public License v3.0](LICENSE).
+The cloud backend in [`backend/`](backend/) is under the
+[GNU Affero General Public License v3.0](backend/LICENSE). A polished, closed-source
+app (settings window, setup wizard, installer) is planned on top of this open engine;
+see [the open-core plan](docs/plan-section-11-open-core.md).
 Parts it uses keep their own licenses: PySide6 (LGPL), evdev, obsws-python, pystray,
-pycaw (MIT), and on Windows the Interception driver (LGPL for non-commercial use; a
-paid license is needed to sell it with a product).
+pycaw (MIT), and on Windows, only if you choose it, the Interception driver (LGPL for
+non-commercial use; a paid license is needed to sell it with a product).
