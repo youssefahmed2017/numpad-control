@@ -189,15 +189,14 @@ Check each of these, and send back what happened:
 1. Every numpad key shows as **pressed** / **released**, and none of them types
    (try it with Notepad focused).
 2. **The main keyboard still types normally**, including its own number pad (if it has
-   one), Backspace and NumLock, and fast typing comes out in the right order (e.g. type
-   `12345` and `a1b2c3` quickly on the main keyboard).
+   one), Backspace and Enter.
 3. Holding a numpad key shows **one** "pressed".
 4. **Unplugging the numpad** stops it with "the numpad was unplugged" within a few seconds.
 5. With it running, open a game that has anti-cheat and that you already own: does
    the game start, and does the numpad still work in it?
 
-If the main keyboard ever gets stuck, press Ctrl+C in the window (or close it with the
-mouse): every held key is let go when it stops.
+To see exactly what Windows reports for every key (nothing is held back):
+`python -m numpadctl.platform.windows_rawinput --all`.
 
 ## If something goes wrong
 - If the keyboard stops responding while the test runs, **close the black window
