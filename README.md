@@ -351,6 +351,10 @@ release with generated notes (`release.yml`).
 
 ## License
 Numpad Control is free software under the [GNU General Public License v3.0](LICENSE).
+The cloud backend in [`backend/`](backend/) is under the
+[GNU Affero General Public License v3.0](backend/LICENSE). A polished, closed-source
+app (settings window, setup wizard, installer) is planned on top of this open engine;
+see [the open-core plan](docs/plan-section-11-open-core.md).
 Parts it uses keep their own licenses: PySide6 (LGPL), evdev, obsws-python, pystray,
 pycaw (MIT), and on Windows, only if you choose it, the Interception driver (LGPL for
 non-commercial use; a paid license is needed to sell it with a product).
