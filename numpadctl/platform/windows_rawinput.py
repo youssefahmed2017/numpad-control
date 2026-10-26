@@ -100,6 +100,19 @@ class INPUT(ctypes.Structure):
 
 
 _user32 = None
+_kernel32 = None
+
+
+def _kernel():
+    """kernel32 with return types set: without them ctypes cuts 64-bit handles down to 32 bits."""
+    global _kernel32
+    if _kernel32 is None:
+        k = ctypes.WinDLL("kernel32", use_last_error=True)
+        k.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
+        k.GetModuleHandleW.restype = wintypes.HMODULE
+        k.GetCurrentThreadId.restype = wintypes.DWORD
+        _kernel32 = k
+    return _kernel32
 
 
 def _api():
@@ -295,7 +308,7 @@ class _Listener:
         global _numpad_listener
         u = _api()
         hwnd = u.CreateWindowExW(0, "STATIC", "numpad-control", 0, 0, 0, 0, 0, HWND_MESSAGE, None, None, None)
-        self.thread_id = ctypes.windll.kernel32.GetCurrentThreadId()  # (now it has a message queue)
+        self.thread_id = _kernel().GetCurrentThreadId()  # (now it has a message queue)
         hook = None
         try:
             if self.stopped.is_set():  # stop() came before there was a thread to tell
@@ -307,8 +320,9 @@ class _Listener:
                 raise OSError(f"Windows refused Raw Input (error {ctypes.get_last_error()})")
             if self.sorter is not None:
                 self._hook_proc = HookProc(self._hook)  # keep the callback alive while hooked
-                hook = u.SetWindowsHookExW(WH_KEYBOARD_LL, self._hook_proc,
-                                           ctypes.windll.kernel32.GetModuleHandleW(None), 0)
+                hook = u.SetWindowsHookExW(WH_KEYBOARD_LL, self._hook_proc, _kernel().GetModuleHandleW(None), 0)
+                if not hook:  # some Windows versions want no module at all for a low-level hook
+                    hook = u.SetWindowsHookExW(WH_KEYBOARD_LL, self._hook_proc, None, 0)
                 if not hook:
                     raise OSError(f"Windows refused the keyboard hook (error {ctypes.get_last_error()})")
             u.SetTimer(hwnd, 1, TICK_MS, None)
@@ -437,6 +451,8 @@ class Numpad:
         """Reader thread: the window, the hook and the message loop."""
         try:
             listener.run()
+        except OSError as e:  # Windows refused something; the service logs it and tries again later
+            emit(OSError(f"the numpad reader failed: {e}"))
         except Exception as e:  # never die silently: the service would wait for keys forever
             log.exception("numpad reader stopped")
             emit(OSError(f"the numpad reader failed: {e}"))

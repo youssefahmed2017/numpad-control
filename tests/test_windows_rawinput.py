@@ -147,6 +147,18 @@ class ListenerHookTest(unittest.TestCase):
             self.assertEqual(listener._hook(wr.HC_ACTION, 0x100, wr.ctypes.addressof(info)), 0)
 
 
+class HandleTypesTest(unittest.TestCase):
+    """Regression: GetModuleHandleW's handle was cut to 32 bits, so Windows refused the hook (error 126)."""
+
+    def test_handles_keep_their_full_size(self):
+        fake = mock.MagicMock()
+        with mock.patch.object(wr.ctypes, "WinDLL", create=True, return_value=fake), \
+                mock.patch.object(wr, "_kernel32", None):
+            wr._kernel()
+        self.assertIs(fake.GetModuleHandleW.restype, wr.wintypes.HMODULE)
+        self.assertEqual(wr.ctypes.sizeof(fake.GetModuleHandleW.restype), wr.ctypes.sizeof(wr.ctypes.c_void_p))
+
+
 class StructureSizeTest(unittest.TestCase):
     @unittest.skipUnless(wr.ctypes.sizeof(wr.ctypes.c_void_p) == 8, "64-bit sizes")
     def test_sizes_match_windows_x64(self):

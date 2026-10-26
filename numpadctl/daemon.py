@@ -23,6 +23,8 @@ REPEAT_DELAY = 0.4        # repeating actions start after this...
 REPEAT_INTERVAL = 0.08    # ...and then run this often
 RAPID_DELAY = 2.0         # a Hold action with rapid-fire on starts repeating after this much more holding
 GAME_CHECK_SECONDS = 3    # how often the running programs are checked for a game with anti-cheat
+RETRY_DELAYS = (1, 2, 5, 10, 30)  # seconds before reopening a numpad whose reader keeps failing at once
+QUICK_FAILURE = 5         # a reader that fails within this many seconds counts as failing at once
 UPDATE_FIRST_CHECK = 60   # seconds after starting before looking for an update (not slowing the start)
 UPDATE_LOOP_SECONDS = 3600  # how often it wakes to see whether the daily check is due
 
@@ -414,6 +416,7 @@ class Daemon:
 
     async def _device_loop(self):
         waiting_logged = False
+        quick_failures = 0
         while True:
             self.reload_if_changed()
             game = await self.protected_game()
@@ -433,6 +436,7 @@ class Daemon:
             self.numpad = numpad
             self.broadcast(self.status())
 
+            opened = time.monotonic()
             tasks = [asyncio.create_task(self.read(numpad)),
                      asyncio.create_task(self.watch_device_settings())]
             if games.enabled(self.cfg):
@@ -440,13 +444,28 @@ class Daemon:
             done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             for task in pending:
                 task.cancel()
+            failed = None
             for task in done:
                 if task.exception():
-                    log.info("device disconnected: %s", task.exception())
+                    failed = task.exception()
             numpad.close()
             self.numpad = None
             self.reset()
             self.broadcast(self.status())
+            if failed is None:
+                quick_failures = 0
+                continue
+            if time.monotonic() - opened >= QUICK_FAILURE:
+                quick_failures = 0
+                log.info("device disconnected: %s", failed)
+                continue
+            # Failing right away again and again (e.g. Windows refusing the keyboard hook):
+            # wait longer each time instead of retrying thousands of times a second.
+            delay = RETRY_DELAYS[min(quick_failures, len(RETRY_DELAYS) - 1)]
+            quick_failures += 1
+            if quick_failures <= 3 or delay == RETRY_DELAYS[-1] and quick_failures % 10 == 0:
+                log.warning("the numpad reader failed (%s); trying again in %s s", failed, delay)
+            await asyncio.sleep(delay)
 
 
 def run():
