@@ -6,8 +6,8 @@ import sys
 def main():
     command = sys.argv[1] if len(sys.argv) > 1 else "gui"
     if command == "gui":
-        from .qt import app
-        sys.exit(app.run(sys.argv[2:]))
+        from . import gui
+        sys.exit(gui.run(sys.argv[2:]))
     elif command == "tray":
         from .platform import IS_WINDOWS
         if not IS_WINDOWS:
