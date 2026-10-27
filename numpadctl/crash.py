@@ -37,7 +37,7 @@ from pathlib import Path
 from .platform import IS_WINDOWS, paths
 
 ROOT = Path(__file__).resolve().parent.parent
-ISSUE_URL = "https://github.com/youssefahmed2017/numpad-control/issues/new"
+ISSUE_URL = "https://github.com/youssefahmed2017/numpad-pilot/issues/new"
 KEEP_REPORTS = 20          # older crash files are deleted
 REPEAT_WINDOW = 3600       # the same crash again within an hour isn't asked about again
 ASKING_TIMEOUT = 3600      # a dialog that never answered (its process died) is asked again after this

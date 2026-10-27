@@ -60,7 +60,7 @@ keyboard isn't touched at all.
 1. Get the project (Git is needed; it comes with "Git for Windows"):
 
        cd ~
-       git clone https://github.com/youssefahmed2017/numpad-control
+       git clone https://github.com/youssefahmed2017/numpad-pilot
        cd numpad-control
 
    (These work in PowerShell and Windows Terminal. If it's already there:
@@ -155,7 +155,7 @@ says why. Send that text, or the log from **Show log**.
    installs the new packages, adds Start-menu entries and restarts Numpad Control;
    Interception is already installed, so no restart is needed):
 
-       irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.ps1 | iex
+       irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.ps1 | iex
 
 3. **Open the settings window**: left-click the tray icon, or Start menu →
    **Numpad Control Settings**. It's the same window as on Linux.

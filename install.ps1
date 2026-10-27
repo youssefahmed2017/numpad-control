@@ -1,6 +1,6 @@
 # Numpad Control installer for Windows (Windows PowerShell 5.1 or PowerShell 7).
 #
-#   irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.ps1 | iex
 #
 # or, from a copy of the project:  powershell -ExecutionPolicy Bypass -File install.ps1 [options]
 #
@@ -18,7 +18,7 @@
 # "irm | iex" can't pass options; set them first instead, e.g.
 #   $env:NUMPAD_DRYRUN = "1"; irm ... | iex
 
-$RepoUrl = "https://github.com/youssefahmed2017/numpad-control"
+$RepoUrl = "https://github.com/youssefahmed2017/numpad-pilot"
 $InterceptionZip = "https://github.com/oblitum/Interception/releases/download/v1.0.1/Interception.zip"
 
 function Step($text) { Write-Host ""; Write-Host $text -ForegroundColor Cyan }

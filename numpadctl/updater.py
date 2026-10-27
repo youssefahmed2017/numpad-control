@@ -34,7 +34,7 @@ from .platform import IS_WINDOWS, paths
 
 log = logging.getLogger("numpadctl")
 
-REPO = "youssefahmed2017/numpad-control"
+REPO = "youssefahmed2017/numpad-pilot"
 LATEST_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
 ZIP_URL = f"https://github.com/{REPO}/archive/refs/tags/{{tag}}.zip"
 ROOT = Path(__file__).resolve().parent.parent
