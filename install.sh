@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Numpad Control installer: gets the code, installs dependencies, sets up the
+# NumpadPilot installer: gets the code, installs dependencies, sets up the
 # Python environment, permissions, background service and launcher.
 #
 #   curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.sh | bash
@@ -178,6 +178,6 @@ if ask "Install the automatic re-detect fix (needs sudo)?"; then
 fi
 
 bold "Done"
-note "Open \"Numpad Control\" from your app menu to choose what each key does."
+note "Open \"NumpadPilot\" from your app menu to choose what each key does."
 has_desktop Hyprland && note "Hyprland: to start it hidden at login, add to your Hyprland autostart:  $HOME/.local/bin/numpad-control --hidden"
 note "Service log: journalctl --user -u numpad-control -f"

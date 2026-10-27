@@ -3,17 +3,17 @@
 *Added Oct 26, 2026. It explains what sections 4 and 9 mean by "optional telemetry and
 crash reports", so nobody reads it as Windows-style telemetry that records what you do.*
 
-**Numpad Control collects nothing while it works.** It has no usage statistics, no
+**NumpadPilot collects nothing while it works.** It has no usage statistics, no
 analytics, no "phone home" and no account. Its only outgoing report is a crash report,
 and only when the user says yes to that specific crash.
 
 ## 12.1 What happens when something crashes
 
 1. **It's saved on the user's own computer.** The crash (the error, where in the code it
-   happened, the version, the operating system) goes into a file in Numpad Control's
+   happened, the version, the operating system) goes into a file in NumpadPilot's
    state folder, with the user name and home folder taken out. Keys typed, settings,
    window titles and file contents are never in it.
-2. **A plain system dialog asks:** "Numpad Control crashed. Do you want to report it?
+2. **A plain system dialog asks:** "NumpadPilot crashed. Do you want to report it?
    **[Yes] [No]**". It's the operating system's own basic dialog (Windows' message box;
    on Linux zenity, kdialog or xmessage), not the app's Qt interface, because the
    interface may be what broke. The plain, old-fashioned look is on purpose.
@@ -31,7 +31,7 @@ Each step falls back to the next, so a crash can't go unnoticed:
 |---|---|
 | The crashed program can't be trusted to show anything | The dialog runs in its own separate process |
 | That process can't start | The crashing process shows the dialog itself |
-| No dialog can be shown (no desktop yet, no dialog program) | The report waits and is asked about the next time Numpad Control starts |
+| No dialog can be shown (no desktop yet, no dialog program) | The report waits and is asked about the next time NumpadPilot starts |
 | Saving the report fails too | The error is written to the log, and the program's normal error message still appears |
 | The same crash keeps repeating (a service restarted again and again) | Each one is saved, but the user is asked only once per hour |
 | The dialog's process died before an answer | Asked again later, at most 3 times |

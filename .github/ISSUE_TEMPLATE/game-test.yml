@@ -1,14 +1,14 @@
 name: Game with anti-cheat test
-description: Played a game with anti-cheat while Numpad Control was running? Report how it went.
+description: Played a game with anti-cheat while NumpadPilot was running? Report how it went.
 title: "Game: "
 labels: ["compatibility", "anti-cheat"]
 body:
   - type: markdown
     attributes:
       value: |
-        Numpad Control lets go of the numpad by itself while a known game with anti-cheat runs
+        NumpadPilot lets go of the numpad by itself while a known game with anti-cheat runs
         (the tray shows "Paused while … runs"). This test checks that the game is happy with
-        Numpad Control running. Please don't change `pause_for_games` to test games on an account
+        NumpadPilot running. Please don't change `pause_for_games` to test games on an account
         you care about.
   - type: input
     id: game
@@ -35,7 +35,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: Numpad Control version
+      label: NumpadPilot version
       description: The commit shown in Diagnostics, or `git rev-parse --short HEAD` in its folder.
   - type: textarea
     id: notes

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Numpad Control: "virtual replug" for a USB numpad that isn't detected at boot
+# NumpadPilot: "virtual replug" for a USB numpad that isn't detected at boot
 # (the kernel logs "device descriptor read/64, error -71" and gives up) or goes
 # silent after waking from sleep. Runs as root, from numpad-control-usb.service
 # (boot) and the systemd sleep hook (resume).

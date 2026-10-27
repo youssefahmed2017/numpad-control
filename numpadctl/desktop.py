@@ -213,7 +213,7 @@ def toggle_dnd():
             call("UnInhibit", GLib.Variant("(u)", (_dnd["cookie"],)), "()")
             _dnd["cookie"] = None
             return False
-        reply = call("Inhibit", GLib.Variant("(ssa{sv})", ("numpad-control", "Do not disturb (Numpad Control)", {})), "(u)")
+        reply = call("Inhibit", GLib.Variant("(ssa{sv})", ("numpad-control", "Do not disturb (NumpadPilot)", {})), "(u)")
         _dnd["cookie"] = reply.unpack()[0]
         return True
     out = _run(["dunstctl", "set-paused", "toggle"])

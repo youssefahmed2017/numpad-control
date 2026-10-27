@@ -1,4 +1,4 @@
-"""Opening the settings: the Numpad Control app if it's installed, otherwise the settings file.
+"""Opening the settings: the NumpadPilot app if it's installed, otherwise the settings file.
 
 The app (settings window, setup, tray: the numpadctl_ui package) is closed source and
 sold separately; this open engine works without it, set up through config.json.
@@ -27,7 +27,7 @@ def run(args=()):
         return 0
     if not config.CONFIG_PATH.exists():
         config.save(config.load())  # the defaults, so there's a file to edit
-    print(f"The Numpad Control app isn't installed; opening the settings file instead:\n  {config.CONFIG_PATH}\n"
+    print(f"The NumpadPilot app isn't installed; opening the settings file instead:\n  {config.CONFIG_PATH}\n"
           "The service picks up changes when you save it.", file=sys.stderr)
     from .platform import system
     system.open_path(str(config.CONFIG_PATH))

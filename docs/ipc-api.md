@@ -1,4 +1,4 @@
-# The service's API (for the Numpad Control app and other clients)
+# The service's API (for the NumpadPilot app and other clients)
 
 The open engine's background service and any settings app (the closed-source Numpad
 Control app, or one you write) talk only through two things: the **settings file** and a

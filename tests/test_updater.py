@@ -160,7 +160,7 @@ class ServiceUpdatesTest(unittest.IsolatedAsyncioTestCase):
         d, install, notify = await self.run_loop("auto")
         install.assert_called_once_with("v9.0.0")
         d.restart.assert_called_once()
-        self.assertEqual(notify.call_args.args[0], "Numpad Control updated")
+        self.assertEqual(notify.call_args.args[0], "NumpadPilot updated")
 
     async def test_notify_only_says_so_once(self):
         d, install, notify = await self.run_loop("notify")
@@ -176,7 +176,7 @@ class ServiceUpdatesTest(unittest.IsolatedAsyncioTestCase):
     async def test_a_failed_update_keeps_running(self):
         d, install, notify = await self.run_loop("auto", install_error=updater.UpdateError("local changes"))
         d.restart.assert_not_called()
-        self.assertEqual(notify.call_args.args, ("Numpad Control couldn't update", "local changes"))
+        self.assertEqual(notify.call_args.args, ("NumpadPilot couldn't update", "local changes"))
 
     async def test_waits_while_a_key_is_held(self):
         d = daemon.Daemon(run_action=lambda *a: None, restart=mock.Mock())

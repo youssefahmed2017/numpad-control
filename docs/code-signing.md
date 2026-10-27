@@ -1,6 +1,6 @@
 # Code signing (Windows)
 
-Phase 0 of the plan asks for code signing from day one: Numpad Control watches the
+Phase 0 of the plan asks for code signing from day one: NumpadPilot watches the
 keyboard, so an unsigned download gets "Windows protected your PC" (SmartScreen) and
 antivirus warnings. This page is the decision to make and the steps once it's made.
 

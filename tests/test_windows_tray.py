@@ -69,12 +69,22 @@ class AutostartTest(unittest.TestCase):
         self.assertFalse(tray.autostart_enabled(reg))
         tray.set_autostart(True, reg)
         self.assertTrue(tray.autostart_enabled(reg))
-        command = reg.values["Numpad Control"]
+        command = reg.values["NumpadPilot"]
         self.assertIn("pythonw.exe", command)
         self.assertTrue(command.endswith('numpad-control.pyw"'))
         tray.set_autostart(False, reg)
         self.assertFalse(tray.autostart_enabled(reg))
         tray.set_autostart(False, reg)  # turning it off twice is fine
+
+    def test_an_entry_from_before_the_rename_is_moved_not_doubled(self):
+        reg = FakeWinreg()
+        reg.values["Numpad Control"] = "old command"
+        self.assertTrue(tray.autostart_enabled(reg), "the old entry still counts as on")
+        tray.set_autostart(True, reg)
+        self.assertEqual(sorted(reg.values), ["NumpadPilot"], "one entry, under the new name")
+        reg.values["Numpad Control"] = "old command"
+        tray.set_autostart(False, reg)
+        self.assertEqual(reg.values, {}, "turning it off removes both")
 
 
 class TrayAppTest(unittest.TestCase):
@@ -92,7 +102,7 @@ class TrayAppTest(unittest.TestCase):
         app.toggle_pause()
         self.assertTrue(app.daemon.paused)
         self.assertEqual(app.status_text(), "Paused")
-        self.assertEqual(app.icon.title, "Numpad Control - Paused")
+        self.assertEqual(app.icon.title, "NumpadPilot - Paused")
         self.assertGreaterEqual(app.icon.menu_updates, 1, "the menu is rebuilt so it shows the change")
         app.toggle_pause()
         self.assertFalse(app.daemon.paused)

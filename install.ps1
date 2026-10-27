@@ -1,16 +1,16 @@
-# Numpad Control installer for Windows (Windows PowerShell 5.1 or PowerShell 7).
+# NumpadPilot installer for Windows (Windows PowerShell 5.1 or PowerShell 7).
 #
 #   irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.ps1 | iex
 #
 # or, from a copy of the project:  powershell -ExecutionPolicy Bypass -File install.ps1 [options]
 #
 # It installs Python if needed (winget), gets the code (git, or a zip download),
-# creates the Python environment, adds Start-menu entries and starts Numpad Control
+# creates the Python environment, adds Start-menu entries and starts NumpadPilot
 # at login. No driver and no administrator rights are needed. Running it again
 # updates everything.
 #
 # Options: -Dir PATH     where to put it (default: your user folder\numpad-control)
-#          -NoAutostart  don't start Numpad Control at login
+#          -NoAutostart  don't start NumpadPilot at login
 #          -DryRun       only show what it would do
 #          -Uninstall    remove the shortcuts and autostart (keeps your settings)
 #          -Interception also install the Interception driver and use it to read the numpad
@@ -90,7 +90,8 @@ function Install-NumpadControl {
 
     $programs = [Environment]::GetFolderPath("Programs")
     if (-not $programs) { $programs = Join-Path $HOME "Start Menu" }  # (only when testing outside Windows)
-    $StartMenu = Join-Path $programs "Numpad Control"
+    $StartMenu = Join-Path $programs "NumpadPilot"
+    $OldStartMenu = Join-Path $programs "Numpad Control"  # before the rename to NumpadPilot
 
     # A copy of the project next to this script is used as it is.
     if ($ScriptRoot -and (Test-Path (Join-Path $ScriptRoot "numpadctl"))) { $Dir = $ScriptRoot; $here = $true } else { $here = $false }
@@ -101,12 +102,13 @@ function Install-NumpadControl {
 
     # ---------------------------------------------------------------- uninstall
     if ($Uninstall) {
-        Step "Removing Numpad Control's shortcuts and autostart"
-        Run "stop Numpad Control" { Stop-NumpadControl $Launcher }
+        Step "Removing NumpadPilot's shortcuts and autostart"
+        Run "stop NumpadPilot" { Stop-NumpadControl $Launcher }
         if (Test-Path $VenvPython) {
             Run "turn off start at login" { & $VenvPython -c ($InDir + "from numpadctl.platform.windows_tray import set_autostart; set_autostart(False)") }
         }
         if (Test-Path $StartMenu) { Run "remove the Start-menu entries" { Remove-Item -Recurse -Force $StartMenu } }
+        if (Test-Path $OldStartMenu) { Run "remove the old 'Numpad Control' Start-menu entries" { Remove-Item -Recurse -Force $OldStartMenu } }
         Note "Your settings stay in $env:APPDATA\numpad-control, the program in $Dir."
         Note "To remove the Interception driver too: run its 'install-interception.exe /uninstall' as administrator, then restart."
         return
@@ -155,7 +157,7 @@ function Install-NumpadControl {
 
     # ---------------------------------------------------------------- 3. Python environment
     Step "3/6  Python environment (downloads Qt for the settings window, about 250 MB)"
-    Run "stop a running Numpad Control (it restarts at the end)" { Stop-NumpadControl $Launcher }
+    Run "stop a running NumpadPilot (it restarts at the end)" { Stop-NumpadControl $Launcher }
     if (-not (Test-Path $VenvPython)) {
         Run "create the environment in $Dir\.venv" { & $Python -m venv (Join-Path $Dir ".venv"); Assert-Ok "Creating the Python environment" }
     }
@@ -224,16 +226,19 @@ function Install-NumpadControl {
         & $VenvPython -c ($InDir + "from numpadctl.platform.windows_tray import draw_icon; draw_icon(256).save(r'$Icon', sizes=[(16, 16), (32, 32), (48, 48), (256, 256)])")
         Assert-Ok "Drawing the icon"
     }
-    Run "add 'Numpad Control' and 'Numpad Control Settings' to the Start menu" {
+    if (Test-Path $OldStartMenu) {
+        Run "remove the old 'Numpad Control' Start-menu entries" { Remove-Item -Recurse -Force $OldStartMenu }
+    }
+    Run "add 'NumpadPilot' and 'NumpadPilot Settings' to the Start menu" {
         New-Item -ItemType Directory -Force $StartMenu | Out-Null
-        New-Shortcut (Join-Path $StartMenu "Numpad Control.lnk") $VenvPythonw "`"$Launcher`"" $Dir $Icon
-        New-Shortcut (Join-Path $StartMenu "Numpad Control Settings.lnk") $VenvPythonw "`"$Launcher`" gui" $Dir $Icon
+        New-Shortcut (Join-Path $StartMenu "NumpadPilot.lnk") $VenvPythonw "`"$Launcher`"" $Dir $Icon
+        New-Shortcut (Join-Path $StartMenu "NumpadPilot Settings.lnk") $VenvPythonw "`"$Launcher`" gui" $Dir $Icon
     }
 
     # ---------------------------------------------------------------- 6. start
     Step "6/6  Starting"
     if (-not $NoAutostart) {
-        Run "start Numpad Control at login" {
+        Run "start NumpadPilot at login" {
             & $VenvPython -c ($InDir + "from numpadctl.platform.windows_tray import set_autostart; set_autostart(True)")
             Assert-Ok "Turning on start at login"
         }
@@ -241,13 +246,13 @@ function Install-NumpadControl {
     if ($NeedsRestart) {
         Write-Host ""
         Warn "Restart the PC to finish installing the Interception driver."
-        Note "After the restart Numpad Control starts by itself (tray icon, bottom right)."
+        Note "After the restart NumpadPilot starts by itself (tray icon, bottom right)."
     } else {
-        Run "start Numpad Control now (look for its icon in the tray)" {
+        Run "start NumpadPilot now (look for its icon in the tray)" {
             Start-Process $VenvPythonw -ArgumentList "`"$Launcher`"" -WorkingDirectory $Dir
         }
         Write-Host ""
-        Note "Done. Right-click the tray icon, or open 'Numpad Control Settings' from the Start menu."
+        Note "Done. Right-click the tray icon, or open 'NumpadPilot Settings' from the Start menu."
     }
 }
 

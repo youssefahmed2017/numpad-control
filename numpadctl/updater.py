@@ -136,7 +136,7 @@ def _update_zip(tag, root=ROOT):
             z.extractall(temp)
         unpacked = [p for p in Path(temp).iterdir() if p.is_dir()]
         if len(unpacked) != 1 or not (unpacked[0] / "numpadctl").is_dir():
-            raise UpdateError("the download doesn't look like Numpad Control")
+            raise UpdateError("the download doesn't look like NumpadPilot")
         new = unpacked[0]
         for item in new.iterdir():
             if item.name in KEEP:
@@ -193,6 +193,6 @@ def main():
     except (UpdateError, OSError) as e:
         print(f"Couldn't update: {e}")
         return 1
-    print(f"Updated to {tag}. Restart Numpad Control to use it "
+    print(f"Updated to {tag}. Restart NumpadPilot to use it "
           "(Linux: systemctl --user restart numpad-control; Windows: Quit in the tray, then start it).")
     return 0

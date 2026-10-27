@@ -18,9 +18,9 @@ Goal: 10 models, cheap ones first (AliExpress / local shops, wired and wireless)
 
 ## Games with anti-cheat
 
-While one of these runs, Numpad Control lets go of the numpad by itself (no keyboard
+While one of these runs, NumpadPilot lets go of the numpad by itself (no keyboard
 hook at all) and takes it back when the game closes (`numpadctl/games.py`). The test is
-that the game starts and plays normally with Numpad Control running, the tray shows
+that the game starts and plays normally with NumpadPilot running, the tray shows
 "Paused while … runs", and nothing is flagged in the days after.
 
 | Game | Anti-cheat | Free to play | Tested by | Result |

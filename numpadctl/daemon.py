@@ -380,7 +380,7 @@ class Daemon:
                 tag = await asyncio.to_thread(updater.check)
                 if tag and mode == "notify" and tag != told:
                     told = tag
-                    actions.notify("Numpad Control update", f"Version {tag[1:]} is out: run the installer "
+                    actions.notify("NumpadPilot update", f"Version {tag[1:]} is out: run the installer "
                                    "or `python -m numpadctl update` to get it.")
                 elif tag and mode == "auto":
                     while self.presses or self.layer_held:  # not in the middle of using the numpad
@@ -389,9 +389,9 @@ class Daemon:
                         await asyncio.to_thread(updater.install, tag)
                     except (updater.UpdateError, OSError) as e:
                         log.warning("update to %s failed: %s", tag, e)
-                        actions.notify("Numpad Control couldn't update", str(e))
+                        actions.notify("NumpadPilot couldn't update", str(e))
                     else:
-                        actions.notify("Numpad Control updated", f"Now version {tag[1:]}; restarting.")
+                        actions.notify("NumpadPilot updated", f"Now version {tag[1:]}; restarting.")
                         self.shutdown()
                         self.restart()
                         return
@@ -420,7 +420,7 @@ class Daemon:
         """Say once that the numpad is missing (after MISSING_NOTICE seconds of it being gone)."""
         if not self.missing_notified and time.monotonic() - since >= MISSING_NOTICE:
             self.missing_notified = True
-            actions.notify("Numpad not found", "Plug your numpad in; Numpad Control picks it up by itself.")
+            actions.notify("Numpad not found", "Plug your numpad in; NumpadPilot picks it up by itself.")
 
     def numpad_found(self):
         if self.missing_notified:
