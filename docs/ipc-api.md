@@ -3,7 +3,7 @@
 The open engine's background service and any settings app (the closed-source Numpad
 Control app, or one you write) talk only through two things: the **settings file** and a
 **local connection**. Nothing else is shared, which is what lets the app be closed source
-on top of the GPL engine (plan, section 11). Changes here are made only by adding fields
+on top of the AGPL engine (plan, section 11). Changes here are made only by adding fields
 or messages, never by changing or removing existing ones.
 
 `numpadctl/ui_common.py` (open) wraps all of this for Python apps: `ServiceLink` for the

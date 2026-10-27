@@ -23,6 +23,7 @@ REPEAT_DELAY = 0.4        # repeating actions start after this...
 REPEAT_INTERVAL = 0.08    # ...and then run this often
 RAPID_DELAY = 2.0         # a Hold action with rapid-fire on starts repeating after this much more holding
 GAME_CHECK_SECONDS = 3    # how often the running programs are checked for a game with anti-cheat
+MISSING_NOTICE = 5        # seconds the numpad must stay missing before saying so (not for a wobbly plug)
 RETRY_DELAYS = (1, 2, 5, 10, 30)  # seconds before reopening a numpad whose reader keeps failing at once
 QUICK_FAILURE = 5         # a reader that fails within this many seconds counts as failing at once
 UPDATE_FIRST_CHECK = 60   # seconds after starting before looking for an update (not slowing the start)
@@ -66,6 +67,7 @@ class Daemon:
         self.numpad = None
         self.paused = False  # Windows tray "Pause": keys are still captured, but do nothing
         self.paused_for = None  # name of the game with anti-cheat the numpad is let go for
+        self.missing_notified = False  # told the user the numpad is missing (so say when it's back)
         self.restart = restart or _restart_in_place  # after an update (the Windows tray brings its own)
         self.clients = set()
         self.capturing = set()
@@ -414,8 +416,20 @@ class Daemon:
                 self.numpad = None
             ipc.stop_server()
 
+    def numpad_missing(self, since):
+        """Say once that the numpad is missing (after MISSING_NOTICE seconds of it being gone)."""
+        if not self.missing_notified and time.monotonic() - since >= MISSING_NOTICE:
+            self.missing_notified = True
+            actions.notify("Numpad not found", "Plug your numpad in; Numpad Control picks it up by itself.")
+
+    def numpad_found(self):
+        if self.missing_notified:
+            self.missing_notified = False
+            actions.notify("Numpad connected", "Your numpad keys run their actions again.")
+
     async def _device_loop(self):
         waiting_logged = False
+        missing_since = None
         quick_failures = 0
         while True:
             self.reload_if_changed()
@@ -430,9 +444,13 @@ class Daemon:
                     log.info("numpad %s:%s not found (unplugged, or udev rule missing?)",
                              self.cfg["device"]["vendor"], self.cfg["device"]["product"])
                     waiting_logged = True
+                missing_since = missing_since or time.monotonic()
+                self.numpad_missing(missing_since)
                 await asyncio.sleep(2)
                 continue
             waiting_logged = False
+            missing_since = None
+            self.numpad_found()
             self.numpad = numpad
             self.broadcast(self.status())
 
