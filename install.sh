@@ -2,7 +2,7 @@
 # Numpad Control installer: gets the code, installs dependencies, sets up the
 # Python environment, permissions, background service and launcher.
 #
-#   curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.sh | bash
 #   ./install.sh                  # from a clone; safe to run again to update
 #
 # Options:
@@ -12,7 +12,7 @@
 #   --dry-run     only print what would be changed
 set -euo pipefail
 
-REPO_URL="${NUMPAD_CONTROL_REPO:-https://github.com/youssefahmed2017/numpad-control.git}"
+REPO_URL="${NUMPAD_CONTROL_REPO:-https://github.com/youssefahmed2017/numpad-pilot.git}"
 DIR="${NUMPAD_CONTROL_DIR:-$HOME/numpad-control}"
 DEPS=1 ASSUME_YES=0 DRY_RUN=0
 DEFAULT_VENDOR=c0f4 DEFAULT_PRODUCT=05f5   # the numpad this was built with

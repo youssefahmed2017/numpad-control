@@ -1,8 +1,9 @@
 # Numpad Control
 
-[![Tests](https://github.com/youssefahmed2017/numpad-control/actions/workflows/tests.yml/badge.svg)](https://github.com/youssefahmed2017/numpad-control/actions/workflows/tests.yml)
+[![Tests](https://github.com/youssefahmed2017/numpad-pilot/actions/workflows/tests.yml/badge.svg)](https://github.com/youssefahmed2017/numpad-pilot/actions/workflows/tests.yml)
 
 Turns a cheap USB numpad into a control pad (like a Stream Deck) on Linux and Windows.
+This is the open-source engine of **[NumpadPilot](https://youssefahmed2017.github.io/numpad-pilot/)**.
 Each key runs an action: open apps and websites, control OBS, media and volume,
 manage windows and desktops, type text, run multi-step macros, and more.
 Everything is set up in the Numpad Control app's settings window (the same on Linux and
@@ -18,11 +19,11 @@ Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland),
 ## Install
 **Linux** (in a terminal, as your normal user):
 
-    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.sh | bash
 
 **Windows** (in PowerShell, as your normal user):
 
-    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.ps1 | iex
+    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.ps1 | iex
 
 Then open **Numpad Control** from your app menu / Start menu, click a key, pick an
 action, Save. What the installers do, and their options:
@@ -179,7 +180,7 @@ Window steps use `hyprctl` on Hyprland and kdotool on KDE Plasma.
 ### Linux
 One command (as your normal user; it asks for your password when it needs sudo):
 
-    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.sh | bash
 
 It:
 1. installs the system packages (pacman, apt or dnf): Python, python-gobject, git, ydotool, playerctl, PipeWire tools, wl-clipboard, plus the
@@ -204,7 +205,7 @@ settings window start hidden at login.
 ### Windows
 Paste this into PowerShell (as your normal user):
 
-    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/install.ps1 | iex
+    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.ps1 | iex
 
 It installs Python if needed (winget), downloads Numpad Control (git, or a zip if git
 isn't installed), creates the Python environment, adds **Numpad Control** and
