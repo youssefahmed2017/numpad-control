@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pricing · NumpadPilot</title>
+<meta name="description" content="NumpadPilot: free to start, Pro paid once, never a subscription. Fair local prices in every country.">
+<meta name="theme-color" content="#fff7fa">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="preload" href="assets/fonts/roboto-flex-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/palettes.js"></script>
+<script src="assets/theme.js"></script>
+<script src="assets/site.js" defer></script>
+</head>
+<body>
+<header class="appbar"></header>
+<main>
+
+<section class="page-head">
+  <div class="blob one" aria-hidden="true"></div>
+  <div class="wrap">
+    <span class="label">Pricing</span>
+    <h1 class="display-m" style="margin-top:10px">Pay once. Keep it.</h1>
+    <p>Start free. Upgrade once if you want every key. No subscription, ever.</p>
+  </div>
+</section>
+
+<section style="padding-top:28px">
+  <div class="wrap">
+    <div class="grid g3" data-stagger>
+      <div class="card tier">
+        <h2 class="title-l">Open source</h2>
+        <div class="price">Free</div>
+        <p>The complete engine, for tinkerers. You set it up through a settings file.</p>
+        <ul><li>Every action, macro and mode</li><li>Windows and Linux</li><li>Read the code, change it, share it (AGPL-3.0)</li></ul>
+        <a class="btn outlined" href="download.html">Get the engine</a>
+      </div>
+      <div class="card tier">
+        <h2 class="title-l">NumpadPilot Free</h2>
+        <div class="price">$0</div>
+        <p>The app: setup wizard and settings window, no files to edit.</p>
+        <ul><li>One numpad, one profile</li><li>9 keys</li><li>OBS, volume, apps and shortcuts</li><li>Updates included</li></ul>
+        <a class="btn tonal" href="#waitlist" data-track="pricing-free">Join the beta</a>
+      </div>
+      <div class="card tier featured">
+        <span class="badge" style="align-self:flex-start">Launch price</span>
+        <h2 class="title-l" style="margin-top:12px">NumpadPilot Pro</h2>
+        <div class="price"><span class="pro-price"></span> <small>one-time</small></div>
+        <p>Everything, on every key.</p>
+        <ul><li>All 19 keys, layers and unlimited profiles</li><li>Profiles that follow the app in front</li><li>Several numpads at once</li><li>On-screen display of what each key does</li><li>Every update, for good</li></ul>
+        <a class="btn filled" href="#waitlist" data-track="pricing-reserve">Reserve at <span class="pro-price"></span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap grid g3" data-stagger>
+    <div class="card"><div class="feature-icon shape-cookie"><svg><use href="#i-globe"/></svg></div><h3 class="title-l">Fair everywhere</h3><p>Lower prices where $10 means a lot more: Egypt, India, Brazil, Southeast Asia and others, about $4–6.</p></div>
+    <div class="card"><div class="feature-icon shape-flower"><svg><use href="#i-money"/></svg></div><h3 class="title-l">No subscription</h3><p>NumpadPilot runs on your computer and costs us nothing to keep running, so you pay once.</p></div>
+    <div class="card"><div class="feature-icon shape-soft"><svg><use href="#i-shield"/></svg></div><h3 class="title-l">30-day refund</h3><p>If it doesn't work with your numpad or your games, you get your money back.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head reveal"><span class="label">Compare</span><h2 class="headline" style="margin-top:8px">What it costs to get started</h2></div>
+    <div class="table-wrap reveal">
+      <table class="compare">
+        <tr><th></th><th>Price</th><th>Keys</th><th>Linux</th></tr>
+        <tr><td>Elgato Stream Deck MK.2</td><td>About $150</td><td>15</td><td>No official software</td></tr>
+        <tr><td>Stream Deck Mini</td><td>$59.99</td><td>6</td><td>No official software</td></tr>
+        <tr><td>Stream Deck Mobile</td><td>$2.99/month or $49.99 lifetime</td><td>On your phone's screen</td><td>—</td></tr>
+        <tr><td>Touch Portal Pro</td><td>$13.99 once</td><td>On your phone's screen</td><td>—</td></tr>
+        <tr class="us"><td class="us">Numpad + NumpadPilot Pro</td><td class="us">~$10 + <span class="pro-price"></span> once</td><td class="us">19 real keys, ×3</td><td class="us"><span class="yes">✓</span></td></tr>
+      </table>
+    </div>
+    <p class="muted reveal" style="font-size:14px;margin-top:12px">Prices as listed by each maker in October 2026. Stream Deck is a trademark of Corsair / Elgato.</p>
+  </div>
+</section>
+
+<section class="faq">
+  <div class="wrap" style="max-width:860px">
+    <div class="section-head reveal"><span class="label">Questions</span><h2 class="headline" style="margin-top:8px">About paying</h2></div>
+    <div data-stagger>
+      <details><summary>When can I buy it?</summary><p>The app opens to the waitlist first, as a closed beta. Everyone on the list keeps the launch price.</p></details>
+      <details><summary>Do I need to buy anything else?</summary><p>Just a USB numpad, wired or wireless. Cheap ones work fine.</p></details>
+      <details><summary>Is the free version really free?</summary><p>Yes, for good: the open-source engine has every action, and NumpadPilot Free has the app with 9 keys and one profile.</p></details>
+      <details><summary>How do I pay?</summary><p>By card or the usual local methods, through a payment service that also handles taxes in your country.</p></details>
+    </div>
+  </div>
+</section>
+
+<section id="waitlist">
+  <div class="wrap"><div data-waitlist></div></div>
+</section>
+
+</main>
+<footer class="site"></footer>
+</body>
+</html>

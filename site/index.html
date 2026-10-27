@@ -8,311 +8,141 @@
 <meta property="og:title" content="NumpadPilot: turn a cheap numpad into your control deck">
 <meta property="og:description" content="A $10 numpad + NumpadPilot: OBS, volume, apps and macros on real keys. Windows and Linux, no driver.">
 <meta property="og:image" content="img/editor.png">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='6' y='6' width='52' height='52' rx='14' fill='%236750a4'/><g fill='white'><rect x='16' y='16' width='9' height='9' rx='2'/><rect x='27.5' y='16' width='9' height='9' rx='2'/><rect x='39' y='16' width='9' height='9' rx='2'/><rect x='16' y='27.5' width='9' height='9' rx='2'/><rect x='27.5' y='27.5' width='9' height='9' rx='2'/><rect x='39' y='27.5' width='9' height='20.5' rx='2'/><rect x='16' y='39' width='20.5' height='9' rx='2'/></g></svg>">
-<style>
-  :root {
-    --bg: #fdf8fd; --surface: #ffffff; --surface-2: #f3edf7; --ink: #1d1b20; --muted: #5f5b66;
-    --primary: #6750a4; --on-primary: #ffffff; --primary-soft: #eaddff; --line: #e2dbe9; --ok: #2e7d32;
-    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(103,80,164,.10);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #141218; --surface: #1d1b20; --surface-2: #26232c; --ink: #e6e0e9; --muted: #b0a9b9;
-      --primary: #d0bcff; --on-primary: #381e72; --primary-soft: #4f378b; --line: #36323d; --ok: #81c784;
-      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
-    }
-  }
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  a { color: var(--primary); }
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
-  header.top { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; }
-  .logo { display: flex; align-items: center; gap: 10px; font-weight: 750; font-size: 19px; color: var(--ink); text-decoration: none; }
-  .logo svg { width: 30px; height: 30px; }
-  nav a { margin-left: 18px; color: var(--muted); text-decoration: none; font-size: 15px; }
-  nav a:hover { color: var(--ink); }
-  .btn { display: inline-block; padding: 12px 22px; border-radius: 999px; font-weight: 650; text-decoration: none; border: 0; cursor: pointer; font-size: 16px; }
-  .btn.primary { background: var(--primary); color: var(--on-primary); }
-  .btn.ghost { background: var(--surface-2); color: var(--ink); }
-  .btn:hover { filter: brightness(1.06); }
-  .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center; padding: 40px 0 56px; }
-  .hero h1 { font-size: clamp(34px, 5vw, 54px); line-height: 1.08; margin: 0 0 18px; letter-spacing: -0.02em; }
-  .hero h1 em { font-style: normal; color: var(--primary); }
-  .lead { font-size: 19px; color: var(--muted); margin: 0 0 26px; }
-  .cta { display: flex; gap: 12px; flex-wrap: wrap; }
-  .shot { width: 100%; border-radius: 16px; box-shadow: var(--shadow); border: 1px solid var(--line); display: block; }
-  .chips { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
-  .chip { background: var(--surface-2); color: var(--muted); padding: 6px 12px; border-radius: 999px; font-size: 14px; }
-  section { padding: 56px 0; }
-  section h2 { font-size: clamp(26px, 3.4vw, 36px); margin: 0 0 10px; letter-spacing: -0.01em; }
-  .sub { color: var(--muted); margin: 0 0 32px; font-size: 18px; max-width: 720px; }
-  .grid { display: grid; gap: 18px; }
-  .g3 { grid-template-columns: repeat(3, 1fr); }
-  .g2 { grid-template-columns: repeat(2, 1fr); }
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 22px; }
-  .card h3 { margin: 0 0 6px; font-size: 18px; }
-  .card p { margin: 0; color: var(--muted); }
-  .step { font-weight: 750; color: var(--primary); font-size: 14px; letter-spacing: .04em; text-transform: uppercase; }
-  .icon { font-size: 24px; margin-bottom: 8px; }
-  table.compare { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
-  table.compare th, table.compare td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
-  table.compare th { background: var(--surface-2); font-size: 15px; }
-  table.compare tr:last-child td { border-bottom: 0; }
-  table.compare td.us { background: color-mix(in srgb, var(--primary-soft) 45%, transparent); font-weight: 600; }
-  .price { font-size: 40px; font-weight: 800; margin: 6px 0 2px; }
-  .price small { font-size: 16px; color: var(--muted); font-weight: 500; }
-  .tier ul { margin: 14px 0 0; padding-left: 20px; color: var(--muted); }
-  .tier.pro { border: 2px solid var(--primary); }
-  .badge { display: inline-block; background: var(--primary-soft); color: var(--ink); font-size: 13px; padding: 3px 10px; border-radius: 999px; font-weight: 650; }
-  details { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; margin-bottom: 10px; }
-  summary { cursor: pointer; font-weight: 650; }
-  details p { color: var(--muted); margin: 10px 0 0; }
-  .signup { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 30px; box-shadow: var(--shadow); max-width: 640px; }
-  form label { display: block; font-weight: 600; margin: 16px 0 6px; }
-  form input[type=email], form select { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 16px; }
-  .radios { display: flex; gap: 10px; flex-wrap: wrap; }
-  .radios label { font-weight: 500; margin: 0; background: var(--surface-2); padding: 8px 14px; border-radius: 999px; cursor: pointer; }
-  .radios input { margin-right: 6px; }
-  .formnote { color: var(--muted); font-size: 14px; margin-top: 14px; }
-  .thanks { display: none; color: var(--ok); font-weight: 650; margin-top: 16px; }
-  footer { color: var(--muted); font-size: 14px; padding: 40px 0 60px; border-top: 1px solid var(--line); margin-top: 30px; }
-  @media (max-width: 860px) {
-    .hero, .g3, .g2 { grid-template-columns: 1fr; }
-    nav { display: none; }
-    .hero { padding-top: 10px; }
-    table.compare { font-size: 14px; }
-    table.compare th, table.compare td { padding: 10px; }
-  }
-</style>
+<meta name="theme-color" content="#fff7fa">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="preload" href="assets/fonts/roboto-flex-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/palettes.js"></script>
+<script src="assets/theme.js"></script>
+<script src="assets/site.js" defer></script>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <a class="logo" href="#">
-      <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="6" width="52" height="52" rx="14" fill="var(--primary)"/><g fill="var(--on-primary)"><rect x="16" y="16" width="9" height="9" rx="2"/><rect x="27.5" y="16" width="9" height="9" rx="2"/><rect x="39" y="16" width="9" height="9" rx="2"/><rect x="16" y="27.5" width="9" height="9" rx="2"/><rect x="27.5" y="27.5" width="9" height="9" rx="2"/><rect x="39" y="27.5" width="9" height="20.5" rx="2"/><rect x="16" y="39" width="20.5" height="9" rx="2"/></g></svg>
-      NumpadPilot
-    </a>
-    <nav>
-      <a href="#how">How it works</a>
-      <a href="#features">Features</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#faq">FAQ</a>
-      <a class="btn primary" href="#waitlist" style="color:var(--on-primary);margin-left:18px;padding:9px 18px">Join the waitlist</a>
-    </nav>
-  </header>
+<header class="appbar"></header>
+<main>
 
-  <div class="hero">
+<section class="hero">
+  <div class="blob one" aria-hidden="true"></div>
+  <div class="blob two" aria-hidden="true"></div>
+  <div class="wrap">
     <div>
-      <h1>Your <em>$10 numpad</em> is now a control deck.</h1>
+      <span class="badge">Windows &amp; Linux · no driver</span>
+      <h1 class="display-l" style="margin-top:18px">Your <em>$10 numpad</em> is now a control deck.</h1>
       <p class="lead">NumpadPilot turns any cheap USB numpad into a macro pad. Switch OBS scenes, start recording, change the volume and launch apps, while your main keyboard keeps typing like nothing happened.</p>
       <div class="cta">
-        <a class="btn primary" href="#waitlist" data-track="hero-waitlist">Join the waitlist</a>
-        <a class="btn ghost" href="#how">See how it works</a>
+        <a class="btn filled" href="#waitlist" data-track="hero-waitlist"><svg><use href="#i-mail"/></svg>Join the waitlist</a>
+        <a class="btn tonal" href="features.html">See every feature<svg><use href="#i-arrow"/></svg></a>
       </div>
       <div class="chips">
-        <span class="chip">Windows &amp; Linux</span>
-        <span class="chip">No driver to install</span>
-        <span class="chip">Pauses itself for anti-cheat games</span>
-        <span class="chip">Collects nothing</span>
+        <span class="chip" data-icon="keyboard">Works next to your keyboard</span>
+        <span class="chip" data-icon="gamepad">Steps aside for anti-cheat games</span>
+        <span class="chip" data-icon="lock">Collects nothing</span>
       </div>
     </div>
-    <img class="shot" src="img/editor.png" alt="The NumpadPilot settings window: a numpad on the left, and the selected key's multi-step macro on the right" width="1180" height="800">
-  </div>
-</div>
-
-<section id="how">
-  <div class="wrap">
-    <h2>Ready in two minutes</h2>
-    <p class="sub">No scripts, no config files, no second keyboard getting in the way.</p>
-    <div class="grid g3">
-      <div class="card"><div class="step">Step 1</div><h3>Plug in any numpad</h3><p>A $10 wired one, a wireless one, the one in your drawer. NumpadPilot tells it apart from your main keyboard, even if that keyboard has its own number pad.</p></div>
-      <div class="card"><div class="step">Step 2</div><h3>Press a key on it</h3><p>NumpadPilot finds your numpad by itself. From now on, only its keys run actions; your main keyboard types as usual.</p></div>
-      <div class="card"><div class="step">Step 3</div><h3>Pick what each key does</h3><p>Press, hold or double-tap: three actions per key. Add a layer key and every key gets a second set.</p></div>
+    <div class="demo reveal" aria-label="A numpad you can try: tap a key to see what it does">
+      <div class="demo-top"><p class="title-m">Try it: tap a key</p><span class="live">Live demo</span></div>
+      <div class="pad" id="pad"></div>
+      <div class="demo-action">
+        <span class="feature-icon shape-cookie" id="demo-icon" style="width:44px;height:44px;margin:0"></span>
+        <div><div class="what" id="demo-what">Key 5</div><div class="how" id="demo-how">OBS: start recording</div></div>
+      </div>
+      <div class="toast" id="demo-toast" role="status" aria-live="polite"><i></i><span id="demo-toast-text">Recording</span></div>
     </div>
   </div>
 </section>
 
-<section id="features">
+<section style="padding-top:24px">
   <div class="wrap">
-    <h2>Everything a streamer or editor reaches for</h2>
-    <p class="sub">The things you'd buy a $150 deck for, on keys you can feel.</p>
-    <div class="grid g3">
-      <div class="card"><div class="icon">🎬</div><h3>OBS control</h3><p>Switch scenes, start and stop recording or streaming, save the replay buffer, mute your mic, show or hide sources.</p></div>
-      <div class="card"><div class="icon">🔊</div><h3>Volume &amp; media</h3><p>System volume, per-app volume, play/pause, next track, switch your audio output.</p></div>
-      <div class="card"><div class="icon">🚀</div><h3>Apps, sites &amp; files</h3><p>Open an app, a website, a folder or a file with one key. Type text and press shortcuts for you.</p></div>
-      <div class="card"><div class="icon">🧩</div><h3>Macros</h3><p>Chain steps: switch scene, wait 3 seconds, go live, show "Live!". With modes, one key can do different things.</p></div>
-      <div class="card"><div class="icon">🪟</div><h3>Per-app profiles</h3><p>Different keys in OBS, Premiere or Blender: the right profile follows the app in front.</p></div>
-      <div class="card"><div class="icon">🎮</div><h3>Game-safe</h3><p>No driver, so there's nothing for anti-cheat to block, and NumpadPilot steps aside by itself while games like Valorant or Fortnite run.</p></div>
-      <div class="card"><div class="icon">🔒</div><h3>Private by design</h3><p>No telemetry, no account. If something crashes, it asks before sending a report, and shows you every word first.</p></div>
-      <div class="card"><div class="icon">🐧</div><h3>Linux, for real</h3><p>First-class on Linux (KDE, Hyprland), where the big-name decks don't even have software.</p></div>
-      <div class="card"><div class="icon">0️⃣</div><h3>Even the 000 key</h3><p>That odd "000" key on cheap numpads becomes a key of its own.</p></div>
+    <div class="stats" data-stagger>
+      <div class="stat"><b>~$15</b><span>a numpad + NumpadPilot, instead of a $150 deck</span></div>
+      <div class="stat"><b>57</b><span>actions on one numpad: 19 keys × press, hold, double-tap</span></div>
+      <div class="stat"><b>0</b><span>drivers to install: nothing for anti-cheat to flag</span></div>
+      <div class="stat"><b>0</b><span>bytes collected about you, ever</span></div>
     </div>
   </div>
 </section>
 
 <section>
   <div class="wrap">
-    <h2>About $15 instead of $150</h2>
-    <p class="sub">A cheap numpad and NumpadPilot, next to the alternatives.</p>
-    <table class="compare">
-      <tr><th></th><th>Elgato Stream Deck MK.2</th><th>Phone deck apps</th><th>Numpad + NumpadPilot</th></tr>
-      <tr><td>Cost</td><td>About $150</td><td>Subscription, or a spare phone</td><td class="us">A $10 numpad + <span class="pro-price">$9.99</span> once</td></tr>
-      <tr><td>Keys</td><td>15</td><td>On a touchscreen</td><td class="us">17–19 real keys, ×3 with hold and double-tap</td></tr>
-      <tr><td>Linux</td><td>No official software</td><td>Depends</td><td class="us">Yes</td></tr>
-      <tr><td>Keys you can feel</td><td>Yes</td><td>No</td><td class="us">Yes</td></tr>
-    </table>
-    <p class="formnote">Stream Deck is a trademark of Corsair / Elgato. NumpadPilot isn't affiliated with them.</p>
-  </div>
-</section>
-
-<section id="pricing">
-  <div class="wrap">
-    <h2>Simple pricing, no subscription</h2>
-    <p class="sub">Pay once, keep it. Lower prices in countries where $10 means a lot more.</p>
-    <div class="grid g3">
-      <div class="card tier">
-        <h3>Open source</h3>
-        <div class="price">Free</div>
-        <p>The full engine on GitHub, set up through a settings file.</p>
-        <ul><li>Every action and macro</li><li>For developers and tinkerers</li><li>AGPL-3.0</li></ul>
-      </div>
-      <div class="card tier">
-        <h3>NumpadPilot Free</h3>
-        <div class="price">$0</div>
-        <p>The app, with the setup wizard and settings window.</p>
-        <ul><li>One numpad, one profile</li><li>9 keys</li><li>OBS, volume, apps, shortcuts</li></ul>
-      </div>
-      <div class="card tier pro">
-        <span class="badge">Launch price</span>
-        <h3>NumpadPilot Pro</h3>
-        <div class="price"><span class="pro-price">$9.99</span> <small>one-time</small></div>
-        <p>Everything, on every key.</p>
-        <ul><li>All keys, layers and unlimited profiles</li><li>Several numpads at once</li><li>Profiles that follow the app in front</li><li>On-screen display of what each key does</li><li>Updates included</li></ul>
-        <p style="margin-top:16px"><a class="btn primary" href="#waitlist" data-track="pricing-reserve">Reserve at <span class="pro-price">$9.99</span></a></p>
-      </div>
+    <div class="section-head reveal">
+      <span class="label">How it works</span>
+      <h2 class="headline" style="margin-top:8px">Ready in two minutes</h2>
+      <p>No scripts, no config files, no second keyboard getting in the way.</p>
+    </div>
+    <div class="grid g3" data-stagger>
+      <div class="card"><div class="step-num">1</div><h3 class="title-l">Plug in any numpad</h3><p>A $10 wired one, a wireless one, the one in your drawer. NumpadPilot tells it apart from your main keyboard, even if that keyboard has its own number pad.</p></div>
+      <div class="card"><div class="step-num">2</div><h3 class="title-l">Press a key on it</h3><p>NumpadPilot finds your numpad by itself. From then on its keys only run actions, and your main keyboard types as usual.</p></div>
+      <div class="card"><div class="step-num">3</div><h3 class="title-l">Pick what each key does</h3><p>Press, hold or double-tap: three actions per key. Hold the layer key and every key gets a second set.</p></div>
     </div>
   </div>
 </section>
 
-<section id="faq">
+<section>
   <div class="wrap">
-    <h2>Questions</h2>
-    <details><summary>Which numpads work?</summary><p>Any USB numpad, wired or with a wireless receiver. The ones we've tested are listed on GitHub, and you can add yours with a two-minute test.</p></details>
-    <details><summary>Will it get me banned in games?</summary><p>NumpadPilot installs no driver, so there's nothing in your system for anti-cheat to flag. On top of that, it lets go of your numpad completely while games with strict anti-cheat (Valorant, Fortnite, Call of Duty and others) are running, and takes it back when they close.</p></details>
-    <details><summary>Does it record what I type?</summary><p>No. It only acts on your numpad's keys, everything stays on your computer, and it collects nothing. The engine is open source, so anyone can check.</p></details>
-    <details><summary>Mac?</summary><p>Not yet: Windows and Linux first. Join the waitlist and tell us you're on a Mac.</p></details>
-    <details><summary>When can I get it?</summary><p>The engine already works today. The polished app opens to the waitlist first, starting with a closed beta.</p></details>
+    <div class="section-head reveal">
+      <span class="label">Features</span>
+      <h2 class="headline" style="margin-top:8px">Everything a streamer or editor reaches for</h2>
+      <p>The things you'd buy a $150 deck for, on keys you can feel.</p>
+    </div>
+    <div class="grid g3" data-stagger>
+      <a class="card hoverable" href="features.html#stream"><div class="feature-icon shape-cookie"><svg><use href="#i-videocam"/></svg></div><h3 class="title-l">OBS control</h3><p>Scenes, recording, streaming, the replay buffer, sources and mics, all on real keys.</p></a>
+      <a class="card hoverable" href="features.html#sound"><div class="feature-icon shape-flower"><svg><use href="#i-volume"/></svg></div><h3 class="title-l">Volume &amp; media</h3><p>System and per-app volume, play/pause, tracks and your audio output.</p></a>
+      <a class="card hoverable" href="features.html#keys"><div class="feature-icon shape-soft"><svg><use href="#i-bolt"/></svg></div><h3 class="title-l">Macros</h3><p>One key, many steps: switch the scene, wait three seconds, go live, say so.</p></a>
+      <a class="card hoverable" href="features.html#smart"><div class="feature-icon shape-pill"><svg><use href="#i-window"/></svg></div><h3 class="title-l">Per-app profiles</h3><p>Different keys in OBS, Premiere or Blender: the right set follows the app in front.</p></a>
+      <a class="card hoverable" href="features.html#smart"><div class="feature-icon shape-cookie"><svg><use href="#i-gamepad"/></svg></div><h3 class="title-l">Game-safe</h3><p>No driver, and it lets go by itself while Valorant, Fortnite and co. are running.</p></a>
+      <a class="card hoverable" href="features.html#open"><div class="feature-icon shape-flower"><svg><use href="#i-lock"/></svg></div><h3 class="title-l">Private by design</h3><p>No telemetry and no account. An open-source engine anyone can check.</p></a>
+    </div>
+    <p style="margin-top:22px" class="reveal"><a class="btn text" href="features.html">All features<svg><use href="#i-arrow"/></svg></a></p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap grid g2" style="align-items:center;gap:48px">
+    <div class="reveal">
+      <span class="label">The app</span>
+      <h2 class="headline" style="margin-top:8px">A settings window you'll enjoy opening</h2>
+      <p class="body-l muted">Click a key, pick an action from a searchable list, and you're done. Or press Learn and tap the key on your numpad. Built in Material 3, with your colour, in light or dark.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:20px">
+        <span class="chip" data-icon="touch">Learn: press the real key</span>
+        <span class="chip" data-icon="timer">Press · hold · double-tap</span>
+        <span class="chip" data-icon="layers">Layers</span>
+      </div>
+    </div>
+    <div class="frame reveal"><img src="img/editor.png" alt="The NumpadPilot settings window: a numpad on the left, the selected key's macro on the right" width="1180" height="800" loading="lazy"></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="label">Compare</span>
+      <h2 class="headline" style="margin-top:8px">About $15 instead of $150</h2>
+    </div>
+    <div class="table-wrap reveal">
+      <table class="compare">
+        <tr><th></th><th>Elgato Stream Deck MK.2</th><th>Phone deck apps</th><th class="us">Numpad + NumpadPilot</th></tr>
+        <tr><td>Cost</td><td>About $150</td><td>A subscription, or a spare phone</td><td class="us">A $10 numpad + <span class="pro-price"></span> once</td></tr>
+        <tr><td>Keys</td><td>15</td><td>On a touchscreen</td><td class="us">19 real keys, ×3 with hold and double-tap</td></tr>
+        <tr><td>Linux</td><td>No official software</td><td>Depends</td><td class="us"><span class="yes">✓</span> First-class</td></tr>
+        <tr><td>Keys you can feel</td><td><span class="yes">✓</span></td><td>No</td><td class="us"><span class="yes">✓</span></td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="band reveal">
+      <div><h2 class="headline">Pay once. Keep it.</h2><p>No subscription. Fair prices in every country.</p></div>
+      <a class="btn filled" href="pricing.html">See pricing<svg><use href="#i-arrow"/></svg></a>
+    </div>
   </div>
 </section>
 
 <section id="waitlist">
-  <div class="wrap">
-    <div class="signup">
-      <h2>Join the waitlist</h2>
-      <p class="sub" style="margin-bottom:8px">Be first in the beta and keep the launch price.</p>
-      <form id="signup">
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" required placeholder="you@example.com" autocomplete="email">
-        <label for="use">What would you use it for?</label>
-        <select id="use" name="use">
-          <option value="streaming">Streaming (OBS, Twitch, YouTube…)</option>
-          <option value="editing">Video or photo editing</option>
-          <option value="gaming">Gaming</option>
-          <option value="work">Work and productivity</option>
-          <option value="other">Something else</option>
-        </select>
-        <label>Would you pre-order NumpadPilot Pro at <span class="pro-price">$9.99</span>?</label>
-        <div class="radios">
-          <label><input type="radio" name="preorder" value="yes" required>Yes</label>
-          <label><input type="radio" name="preorder" value="maybe">Maybe</label>
-          <label><input type="radio" name="preorder" value="no">No, free only</label>
-        </div>
-        <input type="hidden" name="price_shown" id="price_shown">
-        <input type="hidden" name="variant" id="variant">
-        <p style="margin-top:22px"><button class="btn primary" type="submit">Join the waitlist</button></p>
-        <p class="thanks" id="thanks">You're on the list. We'll email you when the beta opens.</p>
-        <p class="formnote" id="formnote">Just your email, used only for NumpadPilot news. No spam, unsubscribe any time.</p>
-      </form>
-    </div>
-  </div>
+  <div class="wrap"><div data-waitlist></div></div>
 </section>
 
-<div class="wrap">
-  <footer>
-    <p>NumpadPilot's engine is open source: <a href="https://github.com/youssefahmed2017/numpad-pilot">github.com/youssefahmed2017/numpad-pilot</a>.</p>
-    <p>This page counts visits without cookies and keeps nothing about you. Stream Deck is a trademark of Corsair / Elgato.</p>
-  </footer>
-</div>
-
-<script>
-  // ---- settings: the two accounts this page reports to (empty = not connected yet) ----
-  const FORM_ENDPOINT = "https://formspree.io/f/mgaakpzq";  // where waitlist sign-ups go (Formspree: "NumpadPilot waitlist")
-  const GOATCOUNTER = "youssefahmedstartscodingat2017";  // visit counts: https://youssefahmedstartscodingat2017.goatcounter.com
-
-  // ---- the price test (plan, section 8): each visitor keeps seeing one of two prices ----
-  const PRICES = { a: "$4.99", b: "$9.99" };
-  function pickVariant() {
-    const forced = new URLSearchParams(location.search).get("price");
-    if (forced in PRICES) return forced;
-    try {
-      const saved = localStorage.getItem("numpadpilot-price");
-      if (saved in PRICES) return saved;
-      const fresh = Math.random() < 0.5 ? "a" : "b";
-      localStorage.setItem("numpadpilot-price", fresh);
-      return fresh;
-    } catch (e) {
-      return Math.random() < 0.5 ? "a" : "b";
-    }
-  }
-  const variant = pickVariant();
-  document.querySelectorAll(".pro-price").forEach(el => el.textContent = PRICES[variant]);
-  document.getElementById("variant").value = variant;
-  document.getElementById("price_shown").value = PRICES[variant];
-
-  // ---- visit counts: GoatCounter (no cookies), one page view per price ----
-  function count(path, title) {
-    if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path, title, event: true });
-  }
-  if (GOATCOUNTER) {
-    window.goatcounter = { no_onload: true };
-    const s = document.createElement("script");
-    s.async = true;
-    s.src = "https://gc.zgo.at/count.js";
-    s.dataset.goatcounter = `https://${GOATCOUNTER}.goatcounter.com/count`;
-    s.onload = () => {
-      window.goatcounter.count({ path: location.pathname + "?price=" + variant });
-    };
-    document.head.appendChild(s);
-  }
-  document.querySelectorAll("[data-track]").forEach(el =>
-    el.addEventListener("click", () => count("click-" + el.dataset.track + "-" + variant, el.dataset.track)));
-
-  // ---- the waitlist form ----
-  const form = document.getElementById("signup");
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const note = document.getElementById("formnote");
-    if (!FORM_ENDPOINT) {
-      note.textContent = "The waitlist isn't connected yet. Please check back very soon!";
-      return;
-    }
-    const button = form.querySelector("button");
-    const answers = new FormData(form);  // read before disabling: disabled fields aren't sent
-    button.disabled = true;
-    try {
-      const response = await fetch(FORM_ENDPOINT, {
-        method: "POST", body: answers, headers: { Accept: "application/json" },
-      });
-      if (!response.ok) throw new Error(response.status);
-      form.querySelectorAll("input, select, button").forEach(el => el.disabled = true);
-      document.getElementById("thanks").style.display = "block";
-      count("signup-" + variant + "-" + (answers.get("preorder") || "none"), "signup");
-    } catch (e) {
-      button.disabled = false;
-      note.textContent = "That didn't go through. Please try again in a moment.";
-    }
-  });
-</script>
+</main>
+<footer class="site"></footer>
 </body>
 </html>
