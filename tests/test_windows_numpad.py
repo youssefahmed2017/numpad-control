@@ -95,14 +95,21 @@ class WindowsNumpadTest(unittest.IsolatedAsyncioTestCase):
             (3, 0x4C, wn.KEY_UP),
             (3, 0x1C, wn.KEY_E0), (3, 0x1C, wn.KEY_E0 | wn.KEY_UP),  # numpad Enter
             (3, 0x0E, 0),                                  # the numpad's Backspace
-            (3, 0x1E, 0),                                  # not a numpad key: ignored
+            (3, 0x2A, wn.KEY_E0),                          # a "fake shift": noise, ignored
+            (3, 0x1E, 0),                                  # not a standard numpad key: reported by its scan code
             (3, 0x52, 0), (3, 0x52, wn.KEY_UP)]))
         numpad = wn.open_numpad(NUMPAD, grab=True)
         self.addCleanup(numpad.close)
-        got = await self.collect(numpad, 7)
+        got = await self.collect(numpad, 8)
         self.assertEqual(got, [("5", True), ("5", False), ("Enter", True), ("Enter", False),
-                               ("Backspace", True), ("0", True), ("0", False)])
+                               ("Backspace", True), ("SC_1E", True), ("0", True), ("0", False)])
         self.assertEqual(fake.sent, [], "grabbed: nothing from the numpad types")
+
+    async def test_extended_extra_key_has_an_e0_id(self):
+        self.use(FakeInterception([(3, 0x1D, wn.KEY_E0), (3, 0x1D, wn.KEY_E0 | wn.KEY_UP)]))
+        numpad = wn.open_numpad(NUMPAD, grab=True)
+        self.addCleanup(numpad.close)
+        self.assertEqual(await self.collect(numpad, 2), [("SC_E0_1D", True), ("SC_E0_1D", False)])
 
     async def test_not_grabbed_still_types(self):
         fake = self.use(FakeInterception([(3, 0x4F, 0), (3, 0x4F, wn.KEY_UP)]))

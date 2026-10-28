@@ -40,7 +40,7 @@ action, Save. What the installers do, and their options:
 - A **background service** (systemd user service) reads the numpad directly with
   evdev and grabs it, so its keys only trigger actions and never type digits.
   The `000` key (which sends three 0s in a burst) is detected as its own key.
-- The **settings window** (in the app), or you in a text editor, edits
+- The **settings window**, or you in a text editor, edits
   `~/.config/numpad-control/config.json`. The service reloads it automatically after
   Save.
 - The service fetches the desktop's display variables on every key press, so
@@ -116,6 +116,28 @@ repeatedly until you let go. The switch is on by default for actions that are sa
 to repeat (volume and app volume, workspaces, next/previous track, Press keys, Type
 text) and off for the rest; Sleep / Shut down / Restart never rapid-fire. A slow
 action (e.g. a macro) finishes before the next round starts, so runs never pile up.
+
+## Any other key
+The standard numpad keys have fixed names: `0`-`9`, `.`, `+`, `-`, `*`, `/`, `Enter`,
+`Backspace`, `NumLock`, plus `000` (three `0`s in a burst). A numpad with more keys (a `(`, a
+Tab, a macro key, a `00`) works too. Any other key the numpad sends is reported by its code:
+`KEY_TAB` on Linux (evdev), `SC_0F` (scan code; `SC_E0_1D` with the E0 prefix) on Windows.
+The NumpadPilot app adds such a key to the pad when you turn on **Learn** and press it. With
+only the settings file:
+
+1. Find the key's id: on Linux the service log says `extra key KEY_TAB` when you press it
+   (`journalctl --user -u numpad-control -f`); on Windows, `python -m numpadctl.platform.windows_rawinput --all`
+   shows scan codes.
+2. List it in `config.json` and bind it like any key:
+
+        "extra_keys": [{"id": "KEY_TAB", "label": "Tab"}],
+        "profiles": [{ ..., "bindings": {"KEY_TAB": {"tap": {"action": "media_next", "params": {}}}}}]
+
+On Windows an added key is grabbed (it stops typing) like the standard keys; one that isn't
+listed still types as usual. `00` is the two-zeros key (two `0`s within 60 ms): it is
+recognised once `{"id": "00"}` is in `extra_keys` (or while the app's Learn mode is on), so
+double-tapping `0` is unchanged. Detecting the numpad only finds which keyboard it is (vendor
+and product ID); the standard names are fixed, everything else is learned.
 
 ## Layer key and profiles
 - **Layer key** (Settings): hold it and every other key uses its "Layer" actions,
@@ -248,7 +270,7 @@ This is a solid guardrail, not a perfect jail. Don't run snippets from people yo
 don't trust.
 
 ## Commands
-    numpad-control                          # open the settings (the app, or else the settings file)
+    numpad-control                          # open the settings window
     .venv/bin/python -m numpadctl run       # the service (normally via systemd)
     .venv/bin/python -m numpadctl detect    # press a key to find your numpad's USB ID
     .venv/bin/python -m numpadctl list      # list input devices
@@ -263,8 +285,8 @@ Keys that already do something are never changed, and you can edit everything af
 (`numpadctl/presets.py`)
 
 ## When something doesn't work
-The app's settings window → **Tools** (without the app: `python -m numpadctl list` and the
-service log, see Commands):
+The settings window → **Tools** (or `python -m numpadctl list` and the service log, see
+Commands):
 - **Key tester** lists, live, every press and release the numpad sends, with the time
   between them, and what the service made of it (→ `000`, for instance). Use it when a
   key does nothing or the `000` key doesn't register.
@@ -308,13 +330,14 @@ system; your user name and home folder taken out) is also kept in
 ## Code layout
 - `numpadctl/daemon.py`: the background service: key timing (press / hold / double
   tap, repeat, rapid-fire, layer key, `000`), profiles, and the link to the window
+- `numpadctl/keys.py`: key ids and names for the standard keys and learned extra keys
 - `numpadctl/actions.py`: every action, plus macros and modes logic
 - `numpadctl_ui/`: the settings window and its dialogs (Qt for Python, Material 3 look;
   `tools/generate_m3_palettes.py` makes its colour palettes)
 - `numpadctl/gui.py`: opens the settings: the window (`numpadctl_ui`) if Qt for Python
   is installed, otherwise the settings file. `numpadctl/ui_common.py` holds what any
   settings window needs (the link to the service, the key layout, action names): the
-  interface the app builds on.
+  interface the window builds on.
 - `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
 - `numpadctl/platform/`: everything that differs between operating systems, so a

@@ -219,7 +219,7 @@ class SocketTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.message(), {"event": "status", "connected": False, "devices": [], "paused_for": None})
         self.d.key_event("5", True)
         self.d.key_event("5", False)
-        self.assertEqual(await self.message(), {"event": "key", "key": "5"})
+        self.assertEqual(await self.message(), {"event": "key", "key": "5", "label": "5", "unknown": False})
         self.assertEqual(self.fired, ["media_play_pause"])
 
     async def test_learn_mode_blocks_actions_until_turned_off(self):

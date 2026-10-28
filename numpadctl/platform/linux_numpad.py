@@ -12,6 +12,8 @@ import time
 import evdev
 from evdev import ecodes
 
+from .. import keys
+
 log = logging.getLogger("numpadctl")
 
 # Key name -> evdev key codes that produce it.
@@ -102,10 +104,10 @@ class Numpad:
                     if ev.type != ecodes.EV_KEY or ev.value not in (0, 1):  # ignore autorepeat
                         continue
                     key = CODE_TO_KEY.get(ev.code)
-                    if key is None:
+                    if key is None:  # not a standard numpad key: report it by its code (Learn mode can add it)
+                        key = keys.evdev_id(ecodes.KEY.get(ev.code) or ecodes.BTN.get(ev.code) or f"KEY_{ev.code}")
                         if ev.value == 1:
-                            log.info("unmapped key %s", ecodes.KEY.get(ev.code, ev.code))
-                        continue
+                            log.info("extra key %s", key)
                     await queue.put((key, ev.value == 1))
             except OSError as e:
                 await queue.put(e)
