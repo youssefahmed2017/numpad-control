@@ -6,7 +6,7 @@
   const GITHUB = "https://github.com/youssefahmed2017/numpad-pilot";
 
   const PAGES = [
-    ["index.html", "Home"], ["features.html", "Features"], ["pricing.html", "Pricing"],
+    ["index.html", "Home"], ["features.html", "Features"], ["pricing.html", "Why free"],
     ["download.html", "Get started"], ["faq.html", "FAQ"],
   ];
   const here = (location.pathname.split("/").pop() || "index.html");
@@ -54,21 +54,6 @@
     <rect x="39" y="15" width="10" height="10" rx="3.5"/><rect x="15" y="27" width="10" height="10" rx="3.5"/><rect x="27" y="27" width="10" height="10" rx="3.5"/>
     <rect x="39" y="27" width="10" height="22" rx="3.5"/><rect x="15" y="39" width="22" height="10" rx="3.5"/></g></svg>`;
 
-  // ---- the price test (plan, section 8): each visitor keeps seeing one price ----
-  const PRICES = { a: "$4.99", b: "$9.99" };
-  function pickVariant() {
-    const forced = new URLSearchParams(location.search).get("price");
-    if (forced in PRICES) return forced;
-    try {
-      const saved = localStorage.getItem("numpadpilot-price");
-      if (saved in PRICES) return saved;
-      const fresh = Math.random() < 0.5 ? "a" : "b";
-      localStorage.setItem("numpadpilot-price", fresh);
-      return fresh;
-    } catch (e) { return Math.random() < 0.5 ? "a" : "b"; }
-  }
-  const variant = pickVariant();
-
   // ---- header, drawer, footer ----
   function buildChrome() {
     document.body.insertAdjacentHTML("afterbegin", sprite);
@@ -105,7 +90,7 @@
         <div class="cols">
           <div><a class="brand" href="index.html">${LOGO}NumpadPilot</a>
             <p class="muted" style="max-width:360px">Turn any cheap USB numpad into a control deck. Windows and Linux, no driver, no telemetry.</p></div>
-          <div><h4>Product</h4><a href="features.html">Features</a><a href="pricing.html">Pricing</a><a href="download.html">Get started</a></div>
+          <div><h4>Product</h4><a href="features.html">Features</a><a href="pricing.html">Why free</a><a href="download.html">Get started</a></div>
           <div><h4>Help</h4><a href="faq.html">FAQ</a><a href="${GITHUB}/blob/main/docs/compatibility.md">Tested numpads</a><a href="${GITHUB}/issues">Report a problem</a></div>
           <div><h4>Open source</h4><a href="${GITHUB}">GitHub</a><a href="privacy.html">Privacy</a><a href="${GITHUB}/blob/main/LICENSE">AGPL-3.0</a></div>
         </div>
@@ -271,21 +256,20 @@
   function waitlistHTML(id) {
     return `
       <form class="signup reveal" id="${id}" novalidate>
-        <span class="badge">Closed beta · launch price</span>
+        <span class="badge">Free beta</span>
         <h2 class="headline" style="margin-top:14px">Join the waitlist</h2>
-        <p class="muted" style="margin:0">Be first in the beta and keep the launch price. One email when it opens, nothing else.</p>
+        <p class="muted" style="margin:0">The app is free. Leave your email and get one message when the beta opens, nothing else.</p>
         <div class="field"><input id="${id}-email" name="email" type="email" required placeholder=" " autocomplete="email"><label for="${id}-email">Your email</label></div>
         <div class="field"><select id="${id}-use" name="use">
           <option value="streaming">Streaming (OBS, Twitch, YouTube…)</option><option value="editing">Video or photo editing</option>
           <option value="gaming">Gaming</option><option value="work">Work and productivity</option><option value="other">Something else</option>
         </select><label for="${id}-use">What would you use it for?</label></div>
-        <p class="question">Would you pre-order NumpadPilot Pro at <span class="pro-price"></span>?</p>
+        <p class="question">Which computer is it for? <span class="muted">(optional)</span></p>
         <div class="segmented" role="radiogroup">
-          <label><input type="radio" name="preorder" value="yes">Yes</label>
-          <label><input type="radio" name="preorder" value="maybe">Maybe</label>
-          <label><input type="radio" name="preorder" value="no">Free only</label>
+          <label><input type="radio" name="os" value="windows">Windows</label>
+          <label><input type="radio" name="os" value="linux">Linux</label>
+          <label><input type="radio" name="os" value="mac">Mac</label>
         </div>
-        <input type="hidden" name="variant" value="${variant}"><input type="hidden" name="price_shown" value="${PRICES[variant]}">
         <input type="hidden" name="page" value="${here}">
         <p style="margin:26px 0 0"><button class="btn filled" type="submit">${icon("mail")}Join the waitlist</button></p>
         <div class="form-done">${icon("check")}<span>You're on the list. We'll email you when the beta opens.</span></div>
@@ -299,7 +283,6 @@
       const note = form.querySelector(".form-note");
       const email = form.querySelector('input[type="email"]');
       if (!email.value || !email.checkValidity()) { email.focus(); note.textContent = "Please enter a valid email address."; return; }
-      if (!form.querySelector('input[name="preorder"]:checked')) { note.textContent = "Please pick Yes, Maybe or Free only."; return; }
       const button = form.querySelector('button[type="submit"]');
       const answers = new FormData(form);  // read before disabling: disabled fields aren't sent
       button.disabled = true;
@@ -309,7 +292,7 @@
         form.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
         form.querySelector(".form-done").classList.add("show");
         note.textContent = "Thanks! Tell a streamer friend 🙂";
-        count("signup-" + variant + "-" + answers.get("preorder"));
+        count("signup-" + (answers.get("os") || "unknown"));
       } catch (e) {
         button.disabled = false;
         note.textContent = "That didn't go through. Please try again in a moment.";
@@ -328,18 +311,17 @@
     s.async = true;
     s.src = "https://gc.zgo.at/count.js";
     s.dataset.goatcounter = `https://${GOATCOUNTER}.goatcounter.com/count`;
-    s.onload = () => window.goatcounter.count({ path: location.pathname + "?price=" + variant });
+    s.onload = () => window.goatcounter.count({ path: location.pathname });
     document.head.appendChild(s);
     document.addEventListener("click", (e) => {
       const tracked = e.target.closest("[data-track]");
-      if (tracked) count("click-" + tracked.dataset.track + "-" + variant);
+      if (tracked) count("click-" + tracked.dataset.track);
     });
   }
 
   document.addEventListener("DOMContentLoaded", () => {
     buildChrome();
     wireWaitlist();
-    document.querySelectorAll(".pro-price").forEach(el => { el.textContent = PRICES[variant]; });
     document.querySelectorAll("[data-icon]").forEach(el => { el.insertAdjacentHTML("afterbegin", icon(el.dataset.icon)); });
     wireChrome();
     wireRipples();
