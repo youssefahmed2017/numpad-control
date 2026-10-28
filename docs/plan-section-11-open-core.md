@@ -11,7 +11,7 @@ services. The engine and the backend are open; the user interface is closed.
 
 ## 11.1 The two editions
 
-| | Open edition (free, GitHub) | Numpad Control app (paid, closed) |
+| | Open edition (free, GitHub) | NumpadPilot app (paid, closed) |
 |---|---|---|
 | Who it's for | Developers, Linux enthusiasts, people who audit what reads their keyboard | Streamers, editors and everyone else who wants it to just work |
 | How you get it | Clone the repository and run it from source | Signed installer (website, Steam, Microsoft Store), automatic updates |

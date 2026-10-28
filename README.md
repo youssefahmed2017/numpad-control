@@ -1,12 +1,12 @@
-# Numpad Control
+# NumpadPilot
 
 [![Tests](https://github.com/youssefahmed2017/numpad-pilot/actions/workflows/tests.yml/badge.svg)](https://github.com/youssefahmed2017/numpad-pilot/actions/workflows/tests.yml)
 
 Turns a cheap USB numpad into a control pad (like a Stream Deck) on Linux and Windows.
-This is the open-source engine of **[NumpadPilot](https://youssefahmed2017.github.io/numpad-pilot/)**.
+Website: **[youssefahmed2017.github.io/numpad-pilot](https://youssefahmed2017.github.io/numpad-pilot/)**.
 Each key runs an action: open apps and websites, control OBS, media and volume,
 manage windows and desktops, type text, run multi-step macros, and more.
-Everything is set up in the Numpad Control app's settings window (the same on Linux and
+Everything is set up in the NumpadPilot app's settings window (the same on Linux and
 Windows; no code needed), or for free by editing one settings file: this repository is the
 open-source engine, and the app is a separate, closed-source download
 ([why](docs/plan-section-11-open-core.md)).
@@ -25,7 +25,7 @@ Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland),
 
     irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.ps1 | iex
 
-Then open **Numpad Control** from your app menu / Start menu, click a key, pick an
+Then open **NumpadPilot** from your app menu / Start menu, click a key, pick an
 action, Save. What the installers do, and their options:
 [Install in detail](#install-in-detail).
 
@@ -198,7 +198,7 @@ Running `./install.sh` again from the clone updates everything. Options:
 `--dir PATH` (install somewhere else), `--no-deps` (skip system packages),
 `--yes` (no questions), `--dry-run` (only show what it would change).
 
-Then open **Numpad Control** from your launcher, click a key, pick an action, Save.
+Then open **NumpadPilot** from your launcher, click a key, pick an action, Save.
 On Hyprland, add `~/.local/bin/numpad-control --hidden` to your autostart to have the
 settings window start hidden at login.
 
@@ -207,9 +207,9 @@ Paste this into PowerShell (as your normal user):
 
     irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.ps1 | iex
 
-It installs Python if needed (winget), downloads Numpad Control (git, or a zip if git
-isn't installed), creates the Python environment, adds **Numpad Control** and
-**Numpad Control Settings** to the Start menu, and starts it at login with a tray
+It installs Python if needed (winget), downloads NumpadPilot (git, or a zip if git
+isn't installed), creates the Python environment, adds **NumpadPilot** and
+**NumpadPilot Settings** to the Start menu, and starts it at login with a tray
 icon. No driver, no administrator rights and no restart are needed. Running it again
 updates everything.
 Options (set them before pasting): `$env:NUMPAD_DRYRUN = "1"` only shows what it
@@ -276,7 +276,7 @@ service log, see Commands):
   contains passwords.
 
 ## Updates
-Numpad Control updates itself: once a day the service asks GitHub for the latest
+NumpadPilot updates itself: once a day the service asks GitHub for the latest
 release, and if it's newer, installs it the way it was installed (git: fast-forward to the
 release; zip: swap the folders, keeping `.venv`), updates the Python packages and restarts,
 with a notification. Only releases are installed, never unfinished work. A copy with local
@@ -289,14 +289,14 @@ matching tag (`git tag v0.2.0 && git push --tags`).
 ## Games with anti-cheat
 On Windows, while a game with anti-cheat runs (Valorant, Fortnite, Call of Duty,
 Battlefield, Apex Legends and others, or any game using Easy Anti-Cheat, BattlEye or EA
-Javelin), Numpad Control lets go of the numpad completely, so nothing is hooked, and
+Javelin), NumpadPilot lets go of the numpad completely, so nothing is hooked, and
 takes it back when the game closes. The tray shows "Paused while … runs". Settings:
 `"pause_for_games"` (`"auto"`: Windows only, `true`, `false`) and `"protected_games"`
 for more program names. Tested games and numpad models: [docs/compatibility.md](docs/compatibility.md);
 test a numpad with `python -m numpadctl check`.
 
 ## Privacy and crash reports
-Numpad Control collects nothing: no telemetry, no usage statistics, no account. If a part
+NumpadPilot collects nothing: no telemetry, no usage statistics, no account. If a part
 of it crashes, a plain system dialog asks whether to report that crash; **Yes** opens a
 pre-filled GitHub issue in your browser, so you read everything before sending it, and
 **No** sends nothing. The report (the error and where it happened, the version, the
@@ -367,7 +367,7 @@ release with generated notes (`release.yml`).
   `install.ps1` (see Install → Windows).
 
 ## License
-Numpad Control is free software under the [GNU Affero General Public License v3.0](LICENSE)
+NumpadPilot is free software under the [GNU Affero General Public License v3.0](LICENSE)
 (AGPL-3.0): the engine, the future cloud backend in [`backend/`](backend/) and everything
 else in this repository. For a program on your own computer it works like the GPL; it
 also means anyone who runs a modified copy as a service for others must publish their

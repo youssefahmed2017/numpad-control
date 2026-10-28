@@ -1,5 +1,5 @@
 [Unit]
-Description=Numpad Control: re-detect the numpad if it was missed at boot
+Description=NumpadPilot: re-detect the numpad if it was missed at boot
 After=systemd-udevd.service
 
 [Service]

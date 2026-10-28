@@ -1,4 +1,4 @@
-"""Numpad Control on Windows: the service in the background, with a tray icon.
+"""NumpadPilot on Windows: the service in the background, with a tray icon.
 
 Start it with numpad-control.pyw (double-click it, or "Start at login" in the
 tray menu), which runs without a console window. Logs go to
@@ -19,8 +19,9 @@ from . import paths
 
 log = logging.getLogger("numpadctl")
 
-APP_NAME = "Numpad Control"
-AUTOSTART_NAME = "Numpad Control"
+APP_NAME = "NumpadPilot"
+AUTOSTART_NAME = "NumpadPilot"
+OLD_AUTOSTART_NAMES = ("Numpad Control",)  # before the rename: moved to AUTOSTART_NAME, never left behind
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 LAUNCHER = Path(__file__).resolve().parents[2] / "numpad-control.pyw"
 STATUS_REFRESH_SECONDS = 2
@@ -47,10 +48,15 @@ def autostart_enabled(winreg=None):
     winreg = winreg or _winreg()
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
-            winreg.QueryValueEx(key, AUTOSTART_NAME)
-            return True
+            for name in (AUTOSTART_NAME, *OLD_AUTOSTART_NAMES):
+                try:
+                    winreg.QueryValueEx(key, name)
+                    return True
+                except FileNotFoundError:
+                    continue
     except OSError:
-        return False
+        pass
+    return False
 
 
 def set_autostart(on, winreg=None):
@@ -58,9 +64,9 @@ def set_autostart(on, winreg=None):
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE) as key:
         if on:
             winreg.SetValueEx(key, AUTOSTART_NAME, 0, winreg.REG_SZ, autostart_command())
-        else:
+        for name in OLD_AUTOSTART_NAMES if on else (AUTOSTART_NAME, *OLD_AUTOSTART_NAMES):
             try:
-                winreg.DeleteValue(key, AUTOSTART_NAME)
+                winreg.DeleteValue(key, name)
             except FileNotFoundError:
                 pass
 
@@ -202,7 +208,7 @@ def config_path():
 
 
 def _already_running():
-    """A named mutex: only one Numpad Control per user session."""
+    """A named mutex: only one NumpadPilot per user session."""
     import ctypes
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel32.CreateMutexW.restype = ctypes.c_void_p
@@ -224,8 +230,10 @@ def main():
         from .. import crash
         crash.install("tray")
         if _already_running():
-            _message_box("Numpad Control is already running - look for its icon in the system tray.")
+            _message_box("NumpadPilot is already running - look for its icon in the system tray.")
             return
+        if autostart_enabled():
+            set_autostart(True)  # also moves a start-at-login entry from before the rename
         from .. import config, daemon
         from .windows_system import spawn
         if not config.CONFIG_PATH.exists():  # so "Open settings file" has something to open
@@ -240,4 +248,4 @@ def main():
         log.exception("couldn't start")
         from .. import crash
         crash.report("tray")
-        _message_box(f"Numpad Control couldn't start:\n\n{e}\n\nDetails are in {log_path()}")
+        _message_box(f"NumpadPilot couldn't start:\n\n{e}\n\nDetails are in {log_path()}")

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ · NumpadPilot</title>
+<meta name="description" content="Questions about NumpadPilot: which numpads work, games and anti-cheat, privacy, Windows, Linux and Mac.">
+<meta name="theme-color" content="#fff7fa">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="preload" href="assets/fonts/roboto-flex-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/palettes.js"></script>
+<script src="assets/theme.js"></script>
+<script src="assets/site.js" defer></script>
+</head>
+<body>
+<header class="appbar"></header>
+<main>
+
+<section class="page-head">
+  <div class="blob one" aria-hidden="true"></div>
+  <div class="wrap">
+    <span class="label">FAQ</span>
+    <h1 class="display-m" style="margin-top:10px">Questions, answered</h1>
+    <p>Something missing? <a href="https://github.com/youssefahmed2017/numpad-pilot/issues">Ask on GitHub</a>.</p>
+  </div>
+</section>
+
+<section class="faq" style="padding-top:28px">
+  <div class="wrap" style="max-width:860px">
+    <h2 class="title-l reveal" style="margin:0 0 14px">Your numpad</h2>
+    <div data-stagger>
+      <details><summary>Which numpads work?</summary><p>Any USB numpad, wired or with a wireless receiver. The ones people have tested are listed on GitHub, and you can add yours with a two-minute guided test.</p></details>
+      <details><summary>My keyboard already has a number pad. Can I use that?</summary><p>NumpadPilot is made for a separate numpad, so your main keyboard (number pad included) keeps typing normally. An old spare keyboard works as the "numpad" too.</p></details>
+      <details><summary>What about the odd "000" key?</summary><p>It becomes a key of its own. Saving the OBS replay buffer is a favourite.</p></details>
+      <details><summary>What happens if I unplug it?</summary><p>Nothing breaks: you get a notification, and it's picked up again as soon as you plug it back in.</p></details>
+    </div>
+
+    <h2 class="title-l reveal" style="margin:36px 0 14px">Games</h2>
+    <div data-stagger>
+      <details><summary>Can it get me banned?</summary><p>NumpadPilot installs no driver and nothing in the system's core, so there's nothing for anti-cheat to flag. On top of that, while a game with strict anti-cheat runs (Valorant, League of Legends, Fortnite, Call of Duty, Apex Legends, Battlefield and any game using Easy Anti-Cheat or BattlEye), it lets go of your numpad completely and takes it back when the game closes.</p></details>
+      <details><summary>Does it work in games at all, then?</summary><p>In most games, yes. In the protected ones above, the numpad types normally while the game runs: that's the safe choice. You can add your own games to the list.</p></details>
+    </div>
+
+    <h2 class="title-l reveal" style="margin:36px 0 14px">Privacy</h2>
+    <div data-stagger>
+      <details><summary>It reads my keys. Does it record what I type?</summary><p>No. It only acts on your numpad's keys, everything stays on your computer, and it collects nothing: no telemetry, no statistics, no account. The engine is open source, so anyone can check.</p></details>
+      <details><summary>What if it crashes?</summary><p>A plain dialog asks whether to report it. If you say yes, your browser opens the report so you can read every word first; if you say no, nothing is sent.</p></details>
+    </div>
+
+    <h2 class="title-l reveal" style="margin:36px 0 14px">Computers</h2>
+    <div data-stagger>
+      <details><summary>Windows?</summary><p>Windows 10 and 11, 64-bit. No driver, no administrator rights. A few apps running as administrator don't let it hide the numpad's keys from them; its actions still work there.</p></details>
+      <details><summary>Linux?</summary><p>Yes, first-class: made on Linux, tested on KDE Plasma and Hyprland. Most actions work on any desktop.</p></details>
+      <details><summary>Mac?</summary><p>Not yet: Windows and Linux first. Join the waitlist and pick "Something else" to tell us you're on a Mac.</p></details>
+    </div>
+
+    <h2 class="title-l reveal" style="margin:36px 0 14px">The project</h2>
+    <div data-stagger>
+      <details><summary>Who makes it?</summary><p>An independent developer, out in the open on GitHub. No investors, no ads.</p></details>
+      <details><summary>Why is part of it closed?</summary><p>The engine (the part that reads your numpad) is open source, so you can trust it. The polished app is what pays for the work; the free tier and the open engine stay free.</p></details>
+      <details><summary>When does the app come out?</summary><p>The beta opens to the waitlist first. Everyone on it keeps the launch price.</p></details>
+    </div>
+  </div>
+</section>
+
+<section id="waitlist">
+  <div class="wrap"><div data-waitlist></div></div>
+</section>
+
+</main>
+<footer class="site"></footer>
+</body>
+</html>

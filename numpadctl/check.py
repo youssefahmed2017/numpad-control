@@ -123,7 +123,7 @@ def service_running():
 
 def main(ask=input, say=print):
     if service_running():
-        say("The Numpad Control service is running and holds the numpad. Stop it first\n"
+        say("The NumpadPilot service is running and holds the numpad. Stop it first\n"
             "(Linux: systemctl --user stop numpad-control; Windows: Quit in the tray menu),\n"
             "then run this again.")
         return 1
@@ -143,7 +143,7 @@ def main(ask=input, say=print):
         numpad.close()
     model = ask("\nWhat is this numpad's brand and model (as on the box or the shop page)? ").strip() or "unknown"
     good, row, wrong = summary(spec, results, model)
-    say("\nResult: " + ("it works with Numpad Control." if good else "there were problems:"))
+    say("\nResult: " + ("it works with NumpadPilot." if good else "there were problems:"))
     for problem in wrong:
         say(f"  - {problem}")
     if results.get("hold") != "ok":

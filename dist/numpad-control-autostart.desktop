@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Numpad Control
+Name=NumpadPilot
 Comment=Waits in the system tray so the settings open instantly
 Exec=@HOME@/.local/bin/numpad-control --hidden
 Icon=input-keyboard

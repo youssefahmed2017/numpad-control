@@ -9,7 +9,7 @@
     {"name": "Default", "match": "", "layer_bindings": {}, "bindings": {
       "1": {"tap": {"action": "open_browser", "params": {"url": ""}}},
       "2": {"tap": {"action": "open_url", "params": {"url": "https://github.com/youssefahmed2017/numpad-control"}}},
-      "3": {"tap": {"action": "show_notification", "params": {"title": "Numpad Control", "body": "Key 3 works on Windows ({time})"}}},
+      "3": {"tap": {"action": "show_notification", "params": {"title": "NumpadPilot", "body": "Key 3 works on Windows ({time})"}}},
       "4": {"tap": {"action": "volume_down", "params": {}}},
       "6": {"tap": {"action": "volume_up", "params": {}}},
       "5": {"tap": {"action": "media_play_pause", "params": {}}, "hold": {"action": "media_next", "params": {}}},

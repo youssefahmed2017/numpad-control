@@ -1,6 +1,6 @@
 # Windows proof of concept
 
-A small test for the planned Windows version of Numpad Control. It checks one
+A small test for the planned Windows version of NumpadPilot. It checks one
 thing: **can Windows tell the external numpad apart from the main keyboard, and
 stop only the numpad from typing?** It uses the free
 [Interception](https://github.com/oblitum/Interception) driver (the same one
@@ -53,7 +53,7 @@ except during the 30-second block test, and only for the keyboard you choose.
    screenshot).
 
 ## Test 2: the real Windows input backend
-After the test above worked, this tries the code Numpad Control itself will use
+After the test above worked, this tries the code NumpadPilot itself will use
 (`numpadctl/platform/windows_numpad.py`). It only captures the numpad; the main
 keyboard isn't touched at all.
 
@@ -79,7 +79,7 @@ keyboard isn't touched at all.
    app turns that burst into one `000` key.)
 
 ## Test 3: the whole service
-This runs Numpad Control's background service on Windows with a ready-made test
+This runs NumpadPilot's background service on Windows with a ready-made test
 setup ([`windows-test-config.json`](windows-test-config.json)). There's no settings
 window on Windows yet; that comes later.
 
@@ -121,7 +121,7 @@ window on Windows yet; that comes later.
    any key that failed).
 
 ## Test 4: in the background, with a tray icon
-Instead of a PowerShell window, Numpad Control can run quietly in the background
+Instead of a PowerShell window, NumpadPilot can run quietly in the background
 with an icon in the system tray (bottom right, maybe under the **^** arrow).
 
 1. Update and install what's new (in PowerShell):
@@ -150,15 +150,15 @@ If it can't start (for example if `interception.dll` is missing), a message box
 says why. Send that text, or the log from **Show log**.
 
 ## Test 5: the installer, the settings window and the new actions
-1. **Quit** Numpad Control from its tray icon.
+1. **Quit** NumpadPilot from its tray icon.
 2. **Run the installer** in PowerShell (it updates the copy in `~\numpad-control`,
-   installs the new packages, adds Start-menu entries and restarts Numpad Control;
+   installs the new packages, adds Start-menu entries and restarts NumpadPilot;
    Interception is already installed, so no restart is needed):
 
        irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.ps1 | iex
 
 3. **Open the settings window**: left-click the tray icon, or Start menu →
-   **Numpad Control Settings**. It's the same window as on Linux.
+   **NumpadPilot Settings**. It's the same window as on Linux.
 4. **Set up and try** a few keys in it (pick the action, fill in the fields, click
    **Save**, then press the key):
    - *Media · App volume up* with app `spotify` (or whatever is playing; the **☰**
@@ -178,7 +178,7 @@ says why. Send that text, or the log from **Show log**.
    from the tray menu).
 
 ## Test 3: reading the numpad without a driver (the new default)
-Numpad Control now reads the numpad without Interception
+NumpadPilot now reads the numpad without Interception
 (`numpadctl/platform/windows_rawinput.py`). This needs no driver, no `interception.dll`
 and no administrator rights. Get the project as in Test 2, step 1 (or `git pull`), then:
 

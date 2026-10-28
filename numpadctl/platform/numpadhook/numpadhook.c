@@ -1,6 +1,6 @@
 /* numpadhook.dll: stops the numpad's keys from typing, without a driver.
  *
- * Numpad Control's service installs KeyboardProc as a WH_KEYBOARD hook, so Windows loads
+ * NumpadPilot's service installs KeyboardProc as a WH_KEYBOARD hook, so Windows loads
  * this DLL into apps. Just before an app receives a key that a number pad has, the hook
  * asks the service's window whether that key came from the numpad. The service already
  * knows: Windows told it (Raw Input) before the key reached the app. If the answer is

@@ -1,6 +1,6 @@
-# Numpad Control backend
+# NumpadPilot backend
 
-The cloud side of Numpad Control: the shared profile library and profile sync between
+The cloud side of NumpadPilot: the shared profile library and profile sync between
 computers. Like the rest of the repository it is open source under the
 [GNU Affero General Public License v3.0](../LICENSE) (AGPL): anyone who runs a modified
 copy as a service for others must publish their changes.

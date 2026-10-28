@@ -79,7 +79,7 @@ def usb_errors():
 def collect(cfg, status):
     """status: the service's last "status" message ({"running", "connected", "devices"})."""
     device = cfg.get("device", {})
-    out = [f"Numpad Control {version()} · {platform.platform()} · Python {sys.version.split()[0]}",
+    out = [f"NumpadPilot {version()} · {platform.platform()} · Python {sys.version.split()[0]}",
            f"Config: {config.CONFIG_PATH}", ""]
     out.append("Service: " + ("not running" if not status.get("running")
                               else "running, numpad connected" if status.get("connected")
