@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Get started · NumpadPilot</title>
-<meta name="description" content="Install NumpadPilot's open-source engine on Windows or Linux with one command, or join the waitlist for the app.">
+<meta name="description" content="Install NumpadPilot on Windows or Linux with one command: free and open source, settings window included.">
 <meta name="theme-color" content="#fff7fa">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="preload" href="assets/fonts/roboto-flex-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -21,31 +21,14 @@
   <div class="blob one" aria-hidden="true"></div>
   <div class="wrap">
     <span class="label">Get started</span>
-    <h1 class="display-m" style="margin-top:10px">Two ways in</h1>
-    <p>The app is in closed beta. The open-source engine works today, if you don't mind a settings file.</p>
-  </div>
-</section>
-
-<section style="padding-top:28px">
-  <div class="wrap grid g2" data-stagger>
-    <div class="card accent">
-      <div class="feature-icon shape-cookie"><svg><use href="#i-sparkle"/></svg></div>
-      <h2 class="title-l">The NumpadPilot app</h2>
-      <p>Setup wizard, settings window, every key on screen. Free, in closed beta first: join the waitlist to get it.</p>
-      <p style="margin-top:20px"><a class="btn filled" href="#waitlist" data-track="download-app">Join the waitlist</a></p>
-    </div>
-    <div class="card">
-      <div class="feature-icon shape-flower"><svg><use href="#i-code"/></svg></div>
-      <h2 class="title-l">The open-source engine</h2>
-      <p>Every action, free, on GitHub. You choose what each key does in a settings file. One command installs it.</p>
-      <p style="margin-top:20px"><a class="btn tonal" href="#install">Install it<svg><use href="#i-arrow"/></svg></a></p>
-    </div>
+    <h1 class="display-m" style="margin-top:10px">One command, then click a key</h1>
+    <p>Free and open source. The installer sets up everything, the settings window included.</p>
   </div>
 </section>
 
 <section id="install">
   <div class="wrap" style="max-width:880px">
-    <div class="section-head reveal"><span class="label">Install the engine</span><h2 class="headline" style="margin-top:8px">One command</h2>
+    <div class="section-head reveal"><span class="label">Install</span><h2 class="headline" style="margin-top:8px">One command</h2>
       <p>The installer gets everything it needs and starts NumpadPilot at login. After that it keeps itself up to date.</p></div>
     <div class="reveal">
       <div class="os-tabs" role="tablist">
@@ -70,8 +53,8 @@
   <div class="wrap" style="max-width:880px">
     <div class="section-head reveal"><span class="label">Then</span><h2 class="headline" style="margin-top:8px">Make your first key</h2></div>
     <div class="grid" data-stagger>
-      <div class="card"><div class="step-num">1</div><h3 class="title-l">Open the settings</h3><p>Windows: <b>NumpadPilot Settings</b> in the Start menu, or the tray icon's <b>Edit settings file</b>. Linux: <b>NumpadPilot</b> in your app menu. Without the app, this opens the settings file in your text editor.</p></div>
-      <div class="card"><div class="step-num">2</div><h3 class="title-l">Give a key an action</h3><p>Every action and its options are listed in the <a href="https://github.com/youssefahmed2017/numpad-pilot#readme">README</a>. Save the file: NumpadPilot picks it up by itself.</p></div>
+      <div class="card"><div class="step-num">1</div><h3 class="title-l">Open NumpadPilot</h3><p>Windows: <b>NumpadPilot Settings</b> in the Start menu, or <b>Settings…</b> in the tray icon's menu. Linux: <b>NumpadPilot</b> in your app menu.</p></div>
+      <div class="card"><div class="step-num">2</div><h3 class="title-l">Give a key an action</h3><p>Click a key in the window (or press <b>Learn</b> and tap it on your numpad), pick an action from the list and <b>Save</b>. Or start from a ready-made set: ⋯ next to Profile, <b>Add a starter preset</b>.</p></div>
       <div class="card"><div class="step-num">3</div><h3 class="title-l">Check your numpad</h3><p>Got an unusual numpad? This walks you through every key and tells you what works. In the <b>numpad-control</b> folder in your home folder:</p>
         <div class="code" style="margin-top:12px" data-copy=".venv/bin/python -m numpadctl check">.venv/bin/python -m numpadctl check        # Linux
 .venv\Scripts\python -m numpadctl check    # Windows</div></div>

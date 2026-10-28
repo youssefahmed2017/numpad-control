@@ -6,10 +6,9 @@ Turns a cheap USB numpad into a control pad (like a Stream Deck) on Linux and Wi
 Website: **[youssefahmed2017.github.io/numpad-pilot](https://youssefahmed2017.github.io/numpad-pilot/)**.
 Each key runs an action: open apps and websites, control OBS, media and volume,
 manage windows and desktops, type text, run multi-step macros, and more.
-Everything is set up in the NumpadPilot app's settings window (the same on Linux and
-Windows; no code needed), or for free by editing one settings file: this repository is the
-open-source engine, and the app is a separate, closed-source download
-([why](docs/plan-section-11-open-core.md)).
+Everything is set up in the settings window (the same on Linux and Windows; no code
+needed). NumpadPilot is free and open source: the service, the settings window and
+everything else are in this repository, under the GPL-3.0.
 
 Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland), and on
 **Windows** (newer: its installer and some of its actions are still being tested).
@@ -310,8 +309,10 @@ system; your user name and home folder taken out) is also kept in
 - `numpadctl/daemon.py`: the background service: key timing (press / hold / double
   tap, repeat, rapid-fire, layer key, `000`), profiles, and the link to the window
 - `numpadctl/actions.py`: every action, plus macros and modes logic
-- `numpadctl/gui.py`: opens the settings: the closed-source app (`numpadctl_ui`) if
-  it's installed, otherwise the settings file. `numpadctl/ui_common.py` holds what any
+- `numpadctl_ui/`: the settings window and its dialogs (Qt for Python, Material 3 look;
+  `tools/generate_m3_palettes.py` makes its colour palettes)
+- `numpadctl/gui.py`: opens the settings: the window (`numpadctl_ui`) if Qt for Python
+  is installed, otherwise the settings file. `numpadctl/ui_common.py` holds what any
   settings window needs (the link to the service, the key layout, action names): the
   interface the app builds on.
 - `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
@@ -367,13 +368,12 @@ release with generated notes (`release.yml`).
   `install.ps1` (see Install → Windows).
 
 ## License
-NumpadPilot is free software under the [GNU Affero General Public License v3.0](LICENSE)
-(AGPL-3.0): the engine, the future cloud backend in [`backend/`](backend/) and everything
-else in this repository. For a program on your own computer it works like the GPL; it
-also means anyone who runs a modified copy as a service for others must publish their
-changes. Versions released before October 27, 2026 were under the GPL-3.0 and stay so.
-A polished, closed-source app (settings window, setup wizard, installer) is planned on
-top of this open engine; see [the open-core plan](docs/plan-section-11-open-core.md).
+NumpadPilot is free software under the [GNU General Public License v3.0](LICENSE)
+(GPL-3.0): the service, the settings window (`numpadctl_ui/`), the future cloud backend in
+[`backend/`](backend/) and everything else in this repository. You can use, study, change
+and share it; if you share a changed version, it stays under the GPL-3.0 with its source.
+(For a short time, from October 27, 2026, the engine was under the AGPL-3.0; it's back to
+the GPL-3.0 now.)
 Parts it uses keep their own licenses: PySide6 (LGPL), evdev, obsws-python, pystray,
 pycaw (MIT), and on Windows, only if you choose it, the Interception driver (LGPL for
 non-commercial use; a paid license is needed to sell it with a product).

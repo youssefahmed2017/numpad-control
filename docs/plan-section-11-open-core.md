@@ -1,5 +1,9 @@
 # 11. Open-core model: what is open, what is closed
 
+> **Replaced on Oct 28, 2026:** NumpadPilot is now entirely free and open source under the
+> GPL-3.0, the settings app included (it lives in `numpadctl_ui/`). There is no paid
+> edition. This section is kept as a record of the earlier plan.
+
 *Added Oct 26, 2026. It settles the licensing question in section 10 ("closed
 commercial, or open-core") in favour of open-core, and replaces the single Free / Pro
 split of section 6 with two products: an open, raw edition and a closed, polished one.*

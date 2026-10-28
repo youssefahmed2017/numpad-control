@@ -1,4 +1,4 @@
-"""Opening the settings without the closed-source app: the settings file opens instead."""
+"""Opening the settings when the app can't run (no PySide6): the settings file opens instead."""
 
 import contextlib
 import io

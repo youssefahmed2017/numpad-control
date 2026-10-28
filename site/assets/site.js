@@ -92,7 +92,7 @@
             <p class="muted" style="max-width:360px">Turn any cheap USB numpad into a control deck. Windows and Linux, no driver, no telemetry.</p></div>
           <div><h4>Product</h4><a href="features.html">Features</a><a href="pricing.html">Why free</a><a href="download.html">Get started</a></div>
           <div><h4>Help</h4><a href="faq.html">FAQ</a><a href="${GITHUB}/blob/main/docs/compatibility.md">Tested numpads</a><a href="${GITHUB}/issues">Report a problem</a></div>
-          <div><h4>Open source</h4><a href="${GITHUB}">GitHub</a><a href="privacy.html">Privacy</a><a href="${GITHUB}/blob/main/LICENSE">AGPL-3.0</a></div>
+          <div><h4>Open source</h4><a href="${GITHUB}">GitHub</a><a href="privacy.html">Privacy</a><a href="${GITHUB}/blob/main/LICENSE">GPL-3.0</a></div>
         </div>
         <p class="fine">Stream Deck is a trademark of Corsair / Elgato; NumpadPilot isn't affiliated with them.
           This site counts visits without cookies and keeps nothing about you.</p>
@@ -256,9 +256,9 @@
   function waitlistHTML(id) {
     return `
       <form class="signup reveal" id="${id}" novalidate>
-        <span class="badge">Free beta</span>
+        <span class="badge">Free · open source · beta</span>
         <h2 class="headline" style="margin-top:14px">Join the waitlist</h2>
-        <p class="muted" style="margin:0">The app is free. Leave your email and get one message when the beta opens, nothing else.</p>
+        <p class="muted" style="margin:0">Get an email when the one-click installer and big updates are out. Nothing else, ever.</p>
         <div class="field"><input id="${id}-email" name="email" type="email" required placeholder=" " autocomplete="email"><label for="${id}-email">Your email</label></div>
         <div class="field"><select id="${id}-use" name="use">
           <option value="streaming">Streaming (OBS, Twitch, YouTube…)</option><option value="editing">Video or photo editing</option>
@@ -272,7 +272,7 @@
         </div>
         <input type="hidden" name="page" value="${here}">
         <p style="margin:26px 0 0"><button class="btn filled" type="submit">${icon("mail")}Join the waitlist</button></p>
-        <div class="form-done">${icon("check")}<span>You're on the list. We'll email you when the beta opens.</span></div>
+        <div class="form-done">${icon("check")}<span>You're on the list. We'll email you when there's news.</span></div>
         <p class="form-note">Only used for NumpadPilot news. No spam; unsubscribe any time. <a href="privacy.html">Privacy</a></p>
       </form>`;
   }
