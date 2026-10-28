@@ -112,6 +112,10 @@ bold "3/7  Python environment"
 # --system-site-packages: GTK's Python bindings come from the system packages.
 [ -x "$DIR/.venv/bin/python" ] || run python3 -m venv --system-site-packages "$DIR/.venv"
 run "$DIR/.venv/bin/pip" install --quiet --upgrade -r "$DIR/requirements.txt"
+if [ "$DRY_RUN" = 0 ]; then
+    "$DIR/.venv/bin/python" -c 'import PySide6.QtWidgets' \
+        || { echo "Qt for Python (PySide6) didn't install - see the messages above." >&2; exit 1; }
+fi
 
 # ---------------------------------------------------------------- 4. numpad
 bold "4/7  Your numpad"

@@ -327,7 +327,7 @@ table.compare .us { background: var(--md-primaryContainer); color: var(--md-onPr
 
 /* code blocks (download page) */
 .code { position: relative; background: var(--md-inverseSurface); color: var(--md-inverseOnSurface); border-radius: var(--shape-l); padding: 18px 56px 18px 20px;
-  font: 14px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; overflow-x: auto; white-space: pre; }
+  font: 14px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .code .copy { position: absolute; right: 8px; top: 8px; color: var(--md-inverseOnSurface); }
 .os-tabs { display: inline-flex; background: var(--md-surfaceContainerHigh); border-radius: 999px; padding: 4px; margin-bottom: 18px; }
 .os-tabs button { border: 0; background: transparent; color: var(--md-onSurfaceVariant); font: inherit; font-weight: 600; padding: 10px 22px; border-radius: 999px; cursor: pointer;

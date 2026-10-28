@@ -1,10 +1,10 @@
 # The service's API (for the NumpadPilot app and other clients)
 
-The open engine's background service and any settings app (the closed-source Numpad
-Control app, or one you write) talk only through two things: the **settings file** and a
-**local connection**. Nothing else is shared, which is what lets the app be closed source
-on top of the AGPL engine (plan, section 11). Changes here are made only by adding fields
-or messages, never by changing or removing existing ones.
+The background service and any settings app (NumpadPilot's own app in `numpadctl_ui/`,
+or one you write) talk only through two things: the **settings file** and a **local
+connection**. Nothing else is shared, so another app (a web page, a phone remote, a
+different toolkit) can drive the service the same way. Changes here are made only by
+adding fields or messages, never by changing or removing existing ones.
 
 `numpadctl/ui_common.py` (open) wraps all of this for Python apps: `ServiceLink` for the
 connection (it reconnects by itself, and reports a lost service as a status with

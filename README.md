@@ -6,10 +6,9 @@ Turns a cheap USB numpad into a control pad (like a Stream Deck) on Linux and Wi
 Website: **[youssefahmed2017.github.io/numpad-pilot](https://youssefahmed2017.github.io/numpad-pilot/)**.
 Each key runs an action: open apps and websites, control OBS, media and volume,
 manage windows and desktops, type text, run multi-step macros, and more.
-Everything is set up in the NumpadPilot app's settings window (the same on Linux and
-Windows; no code needed), or for free by editing one settings file: this repository is the
-open-source engine, and the app is a separate, closed-source download
-([why](docs/plan-section-11-open-core.md)).
+Everything is set up in the settings window (the same on Linux and Windows; no code
+needed). NumpadPilot is free and open source: the service, the settings window and
+everything else are in this repository, under the GPL-3.0.
 
 Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland), and on
 **Windows** (newer: its installer and some of its actions are still being tested).
@@ -41,7 +40,7 @@ action, Save. What the installers do, and their options:
 - A **background service** (systemd user service) reads the numpad directly with
   evdev and grabs it, so its keys only trigger actions and never type digits.
   The `000` key (which sends three 0s in a burst) is detected as its own key.
-- The **settings window** (in the app), or you in a text editor, edits
+- The **settings window**, or you in a text editor, edits
   `~/.config/numpad-control/config.json`. The service reloads it automatically after
   Save.
 - The service fetches the desktop's display variables on every key press, so
@@ -271,7 +270,7 @@ This is a solid guardrail, not a perfect jail. Don't run snippets from people yo
 don't trust.
 
 ## Commands
-    numpad-control                          # open the settings (the app, or else the settings file)
+    numpad-control                          # open the settings window
     .venv/bin/python -m numpadctl run       # the service (normally via systemd)
     .venv/bin/python -m numpadctl detect    # press a key to find your numpad's USB ID
     .venv/bin/python -m numpadctl list      # list input devices
@@ -286,8 +285,8 @@ Keys that already do something are never changed, and you can edit everything af
 (`numpadctl/presets.py`)
 
 ## When something doesn't work
-The app's settings window → **Tools** (without the app: `python -m numpadctl list` and the
-service log, see Commands):
+The settings window → **Tools** (or `python -m numpadctl list` and the service log, see
+Commands):
 - **Key tester** lists, live, every press and release the numpad sends, with the time
   between them, and what the service made of it (→ `000`, for instance). Use it when a
   key does nothing or the `000` key doesn't register.
@@ -333,10 +332,12 @@ system; your user name and home folder taken out) is also kept in
   tap, repeat, rapid-fire, layer key, `000`), profiles, and the link to the window
 - `numpadctl/keys.py`: key ids and names for the standard keys and learned extra keys
 - `numpadctl/actions.py`: every action, plus macros and modes logic
-- `numpadctl/gui.py`: opens the settings: the closed-source app (`numpadctl_ui`) if
-  it's installed, otherwise the settings file. `numpadctl/ui_common.py` holds what any
+- `numpadctl_ui/`: the settings window and its dialogs (Qt for Python, Material 3 look;
+  `tools/generate_m3_palettes.py` makes its colour palettes)
+- `numpadctl/gui.py`: opens the settings: the window (`numpadctl_ui`) if Qt for Python
+  is installed, otherwise the settings file. `numpadctl/ui_common.py` holds what any
   settings window needs (the link to the service, the key layout, action names): the
-  interface the app builds on.
+  interface the window builds on.
 - `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
 - `numpadctl/platform/`: everything that differs between operating systems, so a
@@ -390,13 +391,12 @@ release with generated notes (`release.yml`).
   `install.ps1` (see Install → Windows).
 
 ## License
-NumpadPilot is free software under the [GNU Affero General Public License v3.0](LICENSE)
-(AGPL-3.0): the engine, the future cloud backend in [`backend/`](backend/) and everything
-else in this repository. For a program on your own computer it works like the GPL; it
-also means anyone who runs a modified copy as a service for others must publish their
-changes. Versions released before October 27, 2026 were under the GPL-3.0 and stay so.
-A polished, closed-source app (settings window, setup wizard, installer) is planned on
-top of this open engine; see [the open-core plan](docs/plan-section-11-open-core.md).
+NumpadPilot is free software under the [GNU General Public License v3.0](LICENSE)
+(GPL-3.0): the service, the settings window (`numpadctl_ui/`), the future cloud backend in
+[`backend/`](backend/) and everything else in this repository. You can use, study, change
+and share it; if you share a changed version, it stays under the GPL-3.0 with its source.
+(For a short time, from October 27, 2026, the engine was under the AGPL-3.0; it's back to
+the GPL-3.0 now.)
 Parts it uses keep their own licenses: PySide6 (LGPL), evdev, obsws-python, pystray,
 pycaw (MIT), and on Windows, only if you choose it, the Interception driver (LGPL for
 non-commercial use; a paid license is needed to sell it with a product).

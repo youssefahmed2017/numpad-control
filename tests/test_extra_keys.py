@@ -1,4 +1,4 @@
-"""Keys beyond the standard numpad: names, the "00" burst and the unknown flag (the window is in the app)."""
+"""Keys beyond the standard numpad: names, the "00" burst and the unknown flag (the window side: test_ui_extra_keys.py)."""
 
 import asyncio
 import unittest
