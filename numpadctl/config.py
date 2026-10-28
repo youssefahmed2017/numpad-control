@@ -23,11 +23,12 @@ CONFIG_PATH = CONFIG_DIR / "config.json"
 # Each OS's input backend in platform/ maps its key codes to these names.
 
 SLOTS = ("tap", "hold", "double")
-TAP_ONLY_KEYS = {"000"}  # a burst of three 0s can't be held or double-tapped
+TAP_ONLY_KEYS = {"000", "00"}  # a burst of 0s can't be held or double-tapped
 
 DEFAULT_CONFIG = {
     "device": {"vendor": "c0f4", "product": "05f5"},
     "grab": True,       # stop the numpad from also typing digits
+    "extra_keys": [],   # keys added in Learn mode: [{"id": "KEY_TAB", "label": "Tab"}] (see keys.py)
     "feedback": True,   # on-screen confirmations
     "accent": "Orchid",    # the app's settings window colour (Orchid, Blue, Green, …)
     "contrast": "standard",  # settings window: "standard", "medium" or "high" (Material 3 contrast levels)

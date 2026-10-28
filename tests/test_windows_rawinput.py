@@ -34,6 +34,34 @@ class KeyRouterTest(unittest.TestCase):
         self.assertEqual(self.emitted, [("5", True), ("-", True), ("+", True), ("/", True), ("*", True),
                                         ("NumLock", True)])
 
+    def test_a_key_added_in_learn_mode_is_the_numpads_too(self):
+        r = self.router()
+        r.extra_ids = {"SC_0F"}                      # a Tab key on the numpad
+        r.raw(NUMPAD, 0x0F, False, False, 1.0)
+        self.assertEqual(self.emitted, [("SC_0F", True)])
+        self.assertTrue(r.should_block(0x0F, False, 1.0), "grabbed like any numpad key")
+        r.raw(MAIN, 0x0F, False, False, 1.1)         # the main keyboard's Tab is still the main keyboard's
+        self.assertFalse(r.should_block(0x0F, False, 1.1))
+        self.assertEqual(self.emitted, [("SC_0F", True)])
+
+    def test_unknown_keys_are_ignored_unless_learning(self):
+        r = self.router()
+        r.raw(NUMPAD, 0x0F, False, False, 1.0)
+        self.assertEqual(self.emitted, [])
+        self.assertFalse(r.should_block(0x0F, False, 1.0), "types as usual")
+        r.learning = True
+        r.raw(NUMPAD, 0x0F, False, False, 2.0)
+        r.raw(NUMPAD, 0x1D, True, False, 2.1)        # an E0 key
+        self.assertEqual(self.emitted, [("SC_0F", True), ("SC_E0_1D", True)])
+        self.assertTrue(r.should_block(0x0F, False, 2.0))
+
+    def test_learning_ignores_the_fake_shift_noise_and_the_standard_keys_stay_standard(self):
+        r = self.router()
+        r.learning = True
+        r.raw(NUMPAD, 0x2A, True, False, 1.0)        # "fake shift" some keyboards send
+        r.raw(NUMPAD, SCAN["5"], False, False, 1.1)
+        self.assertEqual(self.emitted, [("5", True)])
+
     def test_the_main_keyboards_number_pad_still_types(self):
         r = self.router()
         r.raw(MAIN, SCAN["5"], False, False, 1.0)

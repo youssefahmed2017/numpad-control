@@ -24,11 +24,14 @@ import threading
 import time
 from pathlib import Path
 
+from .. import keys
+
 log = logging.getLogger("numpadctl")
 
 MAX_KEYBOARD = 10
 FILTER_KEY_NONE, FILTER_KEY_ALL = 0x0000, 0xFFFF
 KEY_UP, KEY_E0 = 0x01, 0x02
+IGNORED = {(0x2A, True), (0x36, True)}  # "fake shift" codes some keyboards send around extended keys
 STROKE_SIZE = 20           # sizeof(InterceptionMouseStroke): every stroke has this size
 WAIT_MS = 200              # how often the reader thread checks whether it should stop
 PRESENCE_CHECK_SECONDS = 2 # Interception doesn't report unplugging, so look regularly
@@ -227,10 +230,11 @@ class Numpad:
             if not self.grab:
                 lib.interception_send(context, device, stroke, 1)  # also let it type as usual
             code, state, _ = struct.unpack_from("<HHI", bytes(stroke))
-            key = KEY_CODES.get((code, bool(state & KEY_E0)))
-            down = not state & KEY_UP
-            if key is None:
+            extended = bool(state & KEY_E0)
+            if (code, extended) in IGNORED:
                 continue
+            key = KEY_CODES.get((code, extended)) or keys.scancode_id(code, extended)  # unknown keys by their code
+            down = not state & KEY_UP
             if repeats.passes(key, down, time.monotonic()):
                 emit((key, down))
 

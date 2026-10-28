@@ -30,7 +30,8 @@ import time
 from ctypes import wintypes
 from pathlib import Path
 
-from .windows_numpad import KEY_CODES, PRESENCE_CHECK_SECONDS, PRESENCE_MISSES, RepeatFilter, parse_ids
+from .. import keys
+from .windows_numpad import IGNORED, KEY_CODES, PRESENCE_CHECK_SECONDS, PRESENCE_MISSES, RepeatFilter, parse_ids
 
 log = logging.getLogger("numpadctl")
 
@@ -206,9 +207,17 @@ class KeyRouter:
         self.repeats = RepeatFilter()
         self.source = {}      # (scan code, released?) -> (from the numpad?, when)
         self.unknown = set()  # codes the numpad sent that aren't numpad keys (logged once each)
+        self.extra_ids = set()  # keys added in Learn mode ("SC_0F"...): these are the numpad's too
+        self.learning = False   # Learn mode: report any key the numpad sends, so it can be added
 
     def raw(self, device, scan, e0, up, now):
-        if scan not in NUMPAD_SCANS:
+        key = KEY_CODES.get((scan, e0))
+        extra = False
+        if key is None and (scan, e0) not in IGNORED:
+            ident = keys.scancode_id(scan, e0)
+            if ident in self.extra_ids or (self.learning and scan not in NUMPAD_SCANS):
+                key, extra = ident, True
+        if scan not in NUMPAD_SCANS and not extra:
             if device and not up and (scan, e0) not in self.unknown and self.is_numpad(device):
                 self.unknown.add((scan, e0))
                 log.warning("the numpad sent a key that isn't a numpad key (scan code %#x%s); it types as usual",
@@ -217,7 +226,6 @@ class KeyRouter:
         # device 0: a key sent by a program (SendInput), e.g. one of our own actions: never the numpad
         from_numpad = bool(device) and self.is_numpad(device)
         self.source[(scan, up)] = (from_numpad, now)
-        key = KEY_CODES.get((scan, e0))
         if from_numpad and key and self.repeats.passes(key, not up, now):
             self.emit((key, not up))
 
@@ -433,6 +441,7 @@ class Numpad:
         self.wanted, self.devices, self.grab = wanted, devices, grab  # devices: {handle: name}
         self._known = {}  # device handle -> is it the numpad? (from its name, looked up once)
         self._listener = None
+        self._extra = (set(), False)
 
     @property
     def names(self):
@@ -447,6 +456,13 @@ class Numpad:
             self._known[device] = parse_ids(_device_name(device)) == self.wanted
         return self._known[device]
 
+    def set_extra_keys(self, ids, learning):
+        """The keys added in Learn mode, and whether Learn mode is on (the service tells us when either changes)."""
+        self._extra = (set(ids), bool(learning))
+        router = getattr(self._listener, "router", None)
+        if router is not None:
+            router.extra_ids, router.learning = self._extra
+
     def _present(self):
         """Look the numpad up again (a replugged numpad comes back with new handles)."""
         devices = {h: name for h, name in _keyboards().items() if parse_ids(name) == self.wanted}
@@ -459,6 +475,7 @@ class Numpad:
         """The _Listener for events(): emit((key, down)), or emit(error) when the numpad goes."""
         state = {"next_check": time.monotonic() + PRESENCE_CHECK_SECONDS, "misses": 0}
         router = KeyRouter(self._is_numpad, self.grab, emit)
+        router.extra_ids, router.learning = self._extra
 
         def on_tick(now):
             if now >= state["next_check"]:

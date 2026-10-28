@@ -118,6 +118,28 @@ to repeat (volume and app volume, workspaces, next/previous track, Press keys, T
 text) and off for the rest; Sleep / Shut down / Restart never rapid-fire. A slow
 action (e.g. a macro) finishes before the next round starts, so runs never pile up.
 
+## Any other key
+The standard numpad keys have fixed names: `0`-`9`, `.`, `+`, `-`, `*`, `/`, `Enter`,
+`Backspace`, `NumLock`, plus `000` (three `0`s in a burst). A numpad with more keys (a `(`, a
+Tab, a macro key, a `00`) works too. Any other key the numpad sends is reported by its code:
+`KEY_TAB` on Linux (evdev), `SC_0F` (scan code; `SC_E0_1D` with the E0 prefix) on Windows.
+The NumpadPilot app adds such a key to the pad when you turn on **Learn** and press it. With
+only the settings file:
+
+1. Find the key's id: on Linux the service log says `extra key KEY_TAB` when you press it
+   (`journalctl --user -u numpad-control -f`); on Windows, `python -m numpadctl.platform.windows_rawinput --all`
+   shows scan codes.
+2. List it in `config.json` and bind it like any key:
+
+        "extra_keys": [{"id": "KEY_TAB", "label": "Tab"}],
+        "profiles": [{ ..., "bindings": {"KEY_TAB": {"tap": {"action": "media_next", "params": {}}}}}]
+
+On Windows an added key is grabbed (it stops typing) like the standard keys; one that isn't
+listed still types as usual. `00` is the two-zeros key (two `0`s within 60 ms): it is
+recognised once `{"id": "00"}` is in `extra_keys` (or while the app's Learn mode is on), so
+double-tapping `0` is unchanged. Detecting the numpad only finds which keyboard it is (vendor
+and product ID); the standard names are fixed, everything else is learned.
+
 ## Layer key and profiles
 - **Layer key** (Settings): hold it and every other key uses its "Layer" actions,
   doubling the number of actions.
@@ -309,6 +331,7 @@ system; your user name and home folder taken out) is also kept in
 ## Code layout
 - `numpadctl/daemon.py`: the background service: key timing (press / hold / double
   tap, repeat, rapid-fire, layer key, `000`), profiles, and the link to the window
+- `numpadctl/keys.py`: key ids and names for the standard keys and learned extra keys
 - `numpadctl/actions.py`: every action, plus macros and modes logic
 - `numpadctl/gui.py`: opens the settings: the closed-source app (`numpadctl_ui`) if
   it's installed, otherwise the settings file. `numpadctl/ui_common.py` holds what any
