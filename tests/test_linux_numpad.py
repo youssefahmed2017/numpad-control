@@ -43,11 +43,17 @@ class LinuxNumpadTest(unittest.IsolatedAsyncioTestCase):
     async def test_key_codes_become_key_names(self):
         dev = FakeDevice("Usb KeyBoard", [
             event(ecodes.KEY_KP5, 1), event(ecodes.KEY_KP5, 2),   # autorepeat is ignored
-            event(ecodes.KEY_KP5, 0), event(ecodes.KEY_A, 1),     # unmapped key is skipped
+            event(ecodes.KEY_KP5, 0),
             event(0, 0, kind=ecodes.EV_SYN),                      # not a key event
             event(ecodes.KEY_KPENTER, 1), event(ecodes.KEY_KPCOMMA, 1)])
         got = await asyncio.wait_for(self.collect(linux_numpad.Numpad([dev]), 4), 2)
         self.assertEqual(got, [("5", True), ("5", False), ("Enter", True), (".", True)])
+
+    async def test_a_key_that_is_not_a_standard_numpad_key_is_reported_by_its_code(self):
+        dev = FakeDevice("Usb KeyBoard", [event(ecodes.KEY_KP5, 1), event(ecodes.KEY_TAB, 1), event(ecodes.KEY_TAB, 2),
+                                          event(ecodes.KEY_TAB, 0), event(ecodes.KEY_KPLEFTPAREN, 1)])
+        got = await asyncio.wait_for(self.collect(linux_numpad.Numpad([dev]), 4), 2)
+        self.assertEqual(got, [("5", True), ("KEY_TAB", True), ("KEY_TAB", False), ("KEY_KPLEFTPAREN", True)])
 
     async def test_several_devices_are_merged(self):
         a = FakeDevice("Usb KeyBoard", [event(ecodes.KEY_KP1, 1)])

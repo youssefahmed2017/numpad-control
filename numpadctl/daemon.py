@@ -11,7 +11,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import actions, config, games, updater
+from . import actions, config, games, keys, updater
 from .platform import ipc, numpad_input, processes
 
 log = logging.getLogger("numpadctl")
@@ -80,6 +80,7 @@ class Daemon:
             self.mtime = mtime
             self.cfg = config.load()
             log.info("config reloaded")
+            self.sync_extra_keys()
 
     # ------------------------------------------------------------ running actions
     def fire(self, key, slot, binding):
@@ -141,16 +142,34 @@ class Daemon:
             for _ in range(downs // 3):
                 self.key_event("000", True)
                 self.key_event("000", False)
-            for _ in range(downs % 3):
-                self.key_event("0", True)
-                self.key_event("0", False)
+            downs %= 3
+        elif not (downs == 2 and self.double_zero_wanted()):
+            for down in events:
+                self.key_event("0", down)
             return
-        for down in events:
-            self.key_event("0", down)
+        if downs == 2 and self.double_zero_wanted():  # a "00" key
+            self.key_event(keys.DOUBLE_ZERO, True)
+            self.key_event(keys.DOUBLE_ZERO, False)
+            return
+        for _ in range(downs):
+            self.key_event("0", True)
+            self.key_event("0", False)
+
+    def sync_extra_keys(self):
+        """Tell the input backend which keys were added in Learn mode, and whether Learn mode is on (Windows'
+        Raw Input backend only takes over the keys it is told about; the others read everything the numpad sends)."""
+        setter = getattr(self.numpad, "set_extra_keys", None)
+        if setter:
+            setter(keys.extra_ids(self.cfg), bool(self.capturing))
+
+    def double_zero_wanted(self):
+        """Two 0s in a burst are a "00" key only once you have added one (or are teaching the pad new keys)."""
+        return bool(self.capturing) or keys.DOUBLE_ZERO in keys.extra_ids(self.cfg)
 
     def key_event(self, key, down):
         if down:
-            self.broadcast({"event": "key", "key": key})
+            self.broadcast({"event": "key", "key": key, "label": keys.label_for(key),
+                            "unknown": not keys.known(key, self.cfg)})
         if self.detect_future and not self.detect_future.done():
             if down:
                 self.detect_future.set_result(self.current_device_spec())
@@ -286,6 +305,7 @@ class Daemon:
                         self.capturing.add(writer)
                     else:
                         self.capturing.discard(writer)
+                    self.sync_extra_keys()
                 elif command == "raw":
                     (self.raw_clients.add if message.get("on") else self.raw_clients.discard)(writer)
                 elif command == "detect":
@@ -297,6 +317,7 @@ class Daemon:
         finally:
             self.clients.discard(writer)
             self.capturing.discard(writer)
+            self.sync_extra_keys()
             self.raw_clients.discard(writer)
             writer.close()
 
@@ -452,6 +473,7 @@ class Daemon:
             missing_since = None
             self.numpad_found()
             self.numpad = numpad
+            self.sync_extra_keys()
             self.broadcast(self.status())
 
             opened = time.monotonic()
