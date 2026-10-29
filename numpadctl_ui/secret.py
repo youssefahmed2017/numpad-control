@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 
+import shiboken6
 from PySide6.QtCore import QEasingCurve, Qt, QTimer, QVariantAnimation
 from PySide6.QtGui import QColor, QFont, QPainter
 from PySide6.QtWidgets import (QApplication, QDialog, QLabel, QMessageBox, QPlainTextEdit, QProgressBar,
@@ -148,8 +149,11 @@ class FakeCrash(QLabel):
 
 class SecretPanel(QDialog):
     def __init__(self, window):
-        super().__init__(window)
+        super().__init__(None)  # its own window, not stuck on top of the main one
+        self.setWindowFlag(Qt.Window)
+        self.setModal(False)
         self.window = window
+        self.tries = 0
         self.app = QApplication.instance()
         self.keyrain = self.echo = False
         self.timers, self.overlays = [], []
@@ -195,7 +199,7 @@ class SecretPanel(QDialog):
         self.log.setMaximumBlockCount(200)
         self.log.setFixedHeight(130)
         layout.addWidget(self.log)
-        hint = QLabel('type "out" to log out')
+        hint = QLabel('type "out" to log out (in this window or the main one)')
         hint.setObjectName("hint")
         layout.addWidget(hint)
         self.stack.addWidget(main)
@@ -470,6 +474,7 @@ class SecretPanel(QDialog):
     def crash(self):
         crash = FakeCrash(self.surface())
         self.overlays.append(crash)
+        crash.destroyed.connect(lambda _=None: self.overlays.remove(crash) if crash in self.overlays else None)
 
     def spy(self):
         cfg = self.window.cfg
@@ -479,15 +484,20 @@ class SecretPanel(QDialog):
         self.say("verdict: a person of taste.")
 
     # ---------------------------------------------------------------- leaving
-    def keyPressEvent(self, event):
-        if self.leaving:
-            return
-        letter = egg.letter_of(event)
-        if letter and self.out.press(letter):
+    def on_letter(self, letter):
+        """A letter typed in this window or the main one (the main window's key hook passes it on)."""
+        if not self.leaving and self.out.press(letter):
             self.leave()
 
     def reject(self):
-        self.say('the only way out is to type "out".')  # Esc and the close button don't leave
+        """Esc and the close button: the way out is "out", but the third try leaves anyway (never a trap)."""
+        if self.leaving:
+            return
+        self.tries += 1
+        if self.tries >= 3:
+            self.leave()
+        else:
+            self.say(f'type "out" to leave ({3 - self.tries} more tries of Esc or close also work).')
 
     def leave(self):
         self.leaving = True
@@ -501,22 +511,26 @@ class SecretPanel(QDialog):
     def reset(self):
         """Put everything back the way it was."""
         for button, _handler in self.toggles:
-            if button.isChecked():
+            if shiboken6.isValid(button) and button.isChecked():
                 button.setChecked(False)  # runs the handler's "off"
         for timer in self.timers:
             timer.stop()
         self.timers.clear()
         for overlay in self.overlays:
-            overlay.deleteLater()
+            if shiboken6.isValid(overlay):  # the blue screen removes itself when it is done
+                overlay.deleteLater()
         self.overlays.clear()
         self.surface().layout().setContentsMargins(12, 12, 12, 8)
         self.keyrain = self.echo = False
 
     def finish(self):
-        self.reset()
-        QDialog.accept(self)
+        try:
+            self.reset()
+        finally:  # whatever went wrong while tidying up, the console always closes
+            QDialog.accept(self)
 
     def done(self, result):
         self.window.secret = None
         self.window.sync_capture()
         super().done(result)
+        self.deleteLater()

@@ -9,6 +9,7 @@ from unittest import mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+import shiboken6  # noqa: E402
 from PySide6.QtWidgets import QApplication, QLineEdit, QMessageBox  # noqa: E402
 
 from numpadctl import config, modes, ui_common  # noqa: E402
@@ -305,7 +306,7 @@ class QtWindowTest(unittest.TestCase):
         accent_before = dict(theme.current)
         with mock.patch.object(secret, "LEAVE_MS", 30):
             panel = secret.SecretPanel(self.w)
-            self.addCleanup(panel.deleteLater)
+            self.addCleanup(lambda: shiboken6.isValid(panel) and panel.deleteLater())
             self.assertIs(self.w.secret, panel)
             self.assertEqual(self.w.link.sent[-1]["on"], True, "keys are reported, not run, while it is open")
             tabs = panel.findChild(QTabWidget)
@@ -318,24 +319,59 @@ class QtWindowTest(unittest.TestCase):
             buttons["Key rain"].setChecked(True)
             panel.on_pad_key("5")  # throws a burst of confetti
             self.assertTrue(panel.overlays)
-            panel.reject()  # Esc doesn't leave
+            panel.reject()  # Esc alone doesn't leave
             self.assertIs(self.w.secret, panel)
-            from PySide6.QtCore import Qt
-            from PySide6.QtTest import QTest
-            for key in (Qt.Key_O, Qt.Key_U, Qt.Key_T):
-                QTest.keyClick(panel, key)  # typing "out"
+            self.w.show()
+            self.w.activateWindow()
+            APP.processEvents()
+            from PySide6.QtCore import QEvent, Qt
+            from PySide6.QtGui import QKeyEvent
+            for number, (key, scan) in enumerate(((Qt.Key_O, 32), (Qt.Key_U, 30), (Qt.Key_T, 28))):  # typing "out" in the main window
+                event = QKeyEvent(QEvent.KeyPress, key, Qt.NoModifier, scan, 0, 0, chr(key).lower())
+                self.w.eventFilter(self.w, event)
             self.assertTrue(panel.leaving)
+            from PySide6.QtTest import QTest
             QTest.qWait(300)
         self.assertIsNone(self.w.secret)
         self.assertFalse(panel.overlays)
-        self.assertFalse(buttons["Disco"].isChecked())
         self.assertEqual(self.w.link.sent[-1]["on"], False)
         self.assertEqual(theme.current.get("primary"), accent_before.get("primary"), "the look is restored")
+
+    def test_the_console_is_never_a_trap(self):
+        from numpadctl_ui import secret
+        with mock.patch.object(secret, "LEAVE_MS", 30):
+            panel = secret.SecretPanel(self.w)
+            self.addCleanup(lambda: shiboken6.isValid(panel) and panel.deleteLater())
+            self.assertFalse(panel.isModal(), "other windows can sit above it")
+            panel.reject()
+            panel.reject()
+            self.assertFalse(panel.leaving)
+            panel.reject()  # the third Esc or close leaves anyway
+            self.assertTrue(panel.leaving)
+            from PySide6.QtTest import QTest
+            QTest.qWait(300)
+        self.assertIsNone(self.w.secret)
+
+    def test_leaving_works_after_the_blue_screen_removed_itself(self):
+        """Issue #10: the cleanup hit the already deleted blue screen, raised, and the console never closed."""
+        from PySide6.QtTest import QTest
+        from numpadctl_ui import secret
+        with mock.patch.object(secret, "LEAVE_MS", 30):
+            panel = secret.SecretPanel(self.w)
+            self.addCleanup(lambda: shiboken6.isValid(panel) and panel.deleteLater())
+            panel.crash()
+            blue = panel.overlays[0]
+            blue.mousePressEvent(None)  # click: it deletes itself
+            QTest.qWait(50)
+            panel.overlays.append(blue)  # even if it was still on the list
+            panel.leave()
+            QTest.qWait(300)
+        self.assertIsNone(self.w.secret)
 
     def test_secret_wipe_backs_up_and_can_be_discarded(self):
         from numpadctl_ui import secret
         panel = secret.SecretPanel(self.w)
-        self.addCleanup(panel.deleteLater)
+        self.addCleanup(lambda: shiboken6.isValid(panel) and panel.deleteLater())
         with mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Yes):
             panel.wipe()
         self.assertTrue((self.config_path.parent / "config.before-panic.json").exists())

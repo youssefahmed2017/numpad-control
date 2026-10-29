@@ -561,18 +561,22 @@ class MainWindow(QMainWindow):
 
     def open_secret(self):
         if self.secret is None:
-            secret.SecretPanel(self).exec()
+            secret.SecretPanel(self).show()  # not modal: other windows can sit above it
 
     def eventFilter(self, obj, event):
-        """Letters typed on the keyboard count towards the secret combo (while this window is in front)."""
-        if event.type() == QEvent.KeyPress and self.secret is None and self.isActiveWindow() and not event.isAutoRepeat():
+        """Letters typed on the keyboard count towards the secret combo, and towards "out" once the console is open
+        (while one of our windows is in front)."""
+        if (event.type() == QEvent.KeyPress and not event.isAutoRepeat()
+                and (self.isActiveWindow() or (self.secret is not None and self.secret.isActiveWindow()))):
             # Qt hands the same key press to the window and then to each widget it passes through: count it once.
             once = (event.timestamp(), event.nativeScanCode(), event.key())
             if once == self.last_key_press:
                 return super().eventFilter(obj, event)
             self.last_key_press = once
             letter = egg.letter_of(event)
-            if letter and self.combo.press("key", letter):
+            if letter and self.secret is not None:
+                self.secret.on_letter(letter)
+            elif letter and self.combo.press("key", letter):
                 QTimer.singleShot(0, self.open_secret)
             elif letter and self.combo.progress > 3:
                 self.toast(f"secret: {self.combo.progress - 3}/5")
