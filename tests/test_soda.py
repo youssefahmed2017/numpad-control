@@ -10,8 +10,9 @@ SODA = Path(__file__).resolve().parent.parent / "tools" / "soda"
 ENV = {**os.environ, "SODA_FAST": "1", "NO_COLOR": "1"}
 
 
-def soda(*args, **extra):
-    done = subprocess.run(["bash", str(SODA), *args], capture_output=True, text=True, env={**ENV, **extra}, timeout=20)
+def soda(*args, stdin="", **extra):
+    done = subprocess.run(["bash", str(SODA), *args], capture_output=True, text=True, input=stdin, env={**ENV, **extra},
+                          timeout=20)
     return done.returncode, done.stdout, done.stderr
 
 
@@ -75,6 +76,30 @@ class SodaTest(unittest.TestCase):
         _, out, _ = soda("credits")
         self.assertIn("fragment 4/7: Soda", out)
 
+    SCENE = "-TellMeTheSecretOrIWillDoSomethingYouMightNotLike"
+
+    def test_the_secret_scene_gives_in_after_three_answers(self):
+        code, out, _ = soda(self.SCENE, stdin="NO TELL ME\nNO TELL ME OR I WILL BE SAD\nI will uninstall you forever\n")
+        self.assertEqual(code, 0)
+        self.assertIn("THIS IS ***MY*** PRIVACY", out)
+        self.assertIn("NAH NAH I'M NOT", out)
+        self.assertIn("dlkjdflj", out, "the first, fake secret")
+        self.assertIn("TAKE IT:  123AdminSuperSoda@444cannotsee", out)
+        self.assertEqual(out.count(">>>"), 3)
+
+    def test_the_secret_scene_holds_back_until_the_last_answer(self):
+        _, out, _ = soda(self.SCENE, stdin="NO TELL ME\nNO TELL ME OR I WILL BE SAD\n")  # then silence
+        self.assertNotIn("123Admin", out)
+        self.assertIn("silence", out)
+        _, out, _ = soda(self.SCENE, stdin="quit\n")
+        self.assertNotIn("123Admin", out)
+        self.assertIn("be that way", out)
+
+    def test_the_secret_is_not_written_out_in_the_script(self):
+        code = SODA.read_text()
+        self.assertNotIn("123AdminSuperSoda@444cannotsee", code)
+        self.assertNotIn("SuperSoda", code)
+
     def test_unknown_commands_are_refused(self):
         code, _, err = soda("nonsense")
         self.assertEqual(code, 2)
@@ -85,7 +110,7 @@ class SodaTest(unittest.TestCase):
         code = SODA.read_text()
         executable = "\n".join(line.split("#")[0] for line in code.splitlines())
         for word in (r"\brm\b", r"\bmv\b", r"\bcp\b", r"\bdd\b", r"\bcurl\b", r"\bwget\b", r"\beval\b", r"\bpacman\b",
-                     r"\bapt\b", r"\bpip\b", r"\bsystemctl\b", r"\bchmod\b", r"\bkill", r">\s*/", r">>"):
+                     r"\bapt\b", r"\bpip\b", r"\bsystemctl\b", r"\bchmod\b", r"\bkill", r">\s*/", r">>\s*[/~$\w.]"):
             self.assertIsNone(re.search(word, executable), f"soda must not use {word}")
 
 

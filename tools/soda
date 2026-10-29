@@ -180,8 +180,45 @@ credits() {
     done
 }
 
+# Soda's one secret, kept out of plain sight (base64: a speed bump for readers, not a lock).
+SECRET_B64='MTIzQWRtaW5TdXBlclNvZGFANDQ0Y2Fubm90c2Vl'
+
+ask() {  # ask: show the prompt, read your answer into $REPLY; end the scene if you quit or say nothing
+    printf '%s>>> %s' "$Y" "$Z"
+    if ! read -r REPLY; then
+        printf '\n'
+        say "${D}(silence. soda likes silence. soda is leaving.)${Z}"
+        exit 0
+    fi
+    case ${REPLY,,} in
+        q|quit|exit) say "fine. be that way."; exit 0 ;;
+    esac
+}
+
+line() { say "$1"; nap "${2:-0.7}"; }
+
+tellme() {
+    line "${B}${R}WHOA WHOA STOP THERE${Z}"
+    line "THIS IS ***MY*** PRIVACY AND YOU CAN'T THREATEN ME"
+    line "I WON'T TELL YOU THE SECRET"
+    line "WHAT'S YOUR RESPONSE?" 0.3
+    ask
+    line "NAH NAH I'M NOT "
+    line "YA NEED TO CALM DOWN" 0.3
+    ask
+    line "OH Ok so u gonna be sad?"
+    line "Yeah that's bad "
+    line "But I can't"
+    line "Ok fine here it is: ${Y}dlkjdflj${Z}"
+    line "see I can't type I literally can't do it even if you want" 0.3
+    ask
+    line "${B}OK OK FINE TAKE IT:${Z}  ${G}$(printf '%s' "$SECRET_B64" | base64 -d)${Z}" 0.3
+    say "${D}(now go and use it. the locked tab is waiting.)${Z}"
+}
+
 case ${1:-} in
     ''|-h|--help|help) usage ;;
+    -TellMeTheSecretOrIWillDoSomethingYouMightNotLike) tellme ;;
     drink) drink ;;
     whoareyou) whoareyou ;;
     credits) credits ;;
