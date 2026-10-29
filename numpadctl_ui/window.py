@@ -122,6 +122,7 @@ class MainWindow(QMainWindow):
         self.egg_keys = egg.Matcher()
         self.combo = egg.Combo()  # numpad then keyboard: opens the secret panel
         self.secret = None  # the open SecretPanel
+        self.last_key_press = None
         self.profile_index, self.layer, self.selected = 0, False, None
         self.dirty = False
         self.on_detected = None
@@ -565,9 +566,16 @@ class MainWindow(QMainWindow):
     def eventFilter(self, obj, event):
         """Letters typed on the keyboard count towards the secret combo (while this window is in front)."""
         if event.type() == QEvent.KeyPress and self.secret is None and self.isActiveWindow() and not event.isAutoRepeat():
-            key = event.key()
-            if Qt.Key_A <= key <= Qt.Key_Z and self.combo.press("key", chr(key).lower()):
+            # Qt hands the same key press to the window and then to each widget it passes through: count it once.
+            once = (event.timestamp(), event.nativeScanCode(), event.key())
+            if once == self.last_key_press:
+                return super().eventFilter(obj, event)
+            self.last_key_press = once
+            letter = egg.letter_of(event)
+            if letter and self.combo.press("key", letter):
                 QTimer.singleShot(0, self.open_secret)
+            elif letter and self.combo.progress > 3:
+                self.toast(f"secret: {self.combo.progress - 3}/5")
         return super().eventFilter(obj, event)
 
     def open_welcome(self):
@@ -615,6 +623,8 @@ class MainWindow(QMainWindow):
                 self.secret.on_pad_key(message["key"])
             elif self.combo.press("pad", message["key"]):
                 QTimer.singleShot(0, self.open_secret)
+            elif self.combo.progress == 3:
+                self.toast("secret: now the keyboard")
             if self.egg_keys.press(message["key"]):
                 egg.Confetti(self.centralWidget(), text="KONAMI")
             button = self.key_buttons.get(message["key"])

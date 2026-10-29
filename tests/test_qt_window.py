@@ -285,24 +285,17 @@ class QtWindowTest(unittest.TestCase):
         self.assertEqual(len(layers), 1)
         layers[0].repaint()  # draws a frame without errors
 
-    def test_secret_combo_needs_pad_then_keyboard_within_the_gap(self):
+    def test_secret_combo_needs_pad_then_keyboard_in_order_at_any_speed(self):
         from numpadctl_ui import egg
-        now = [0.0]
-        combo = egg.Combo(clock=lambda: now[0])
+        combo = egg.Combo()
         steps = list(egg.COMBO)
-        for source, key in steps[:-1]:
-            now[0] += 0.3
-            self.assertFalse(combo.press(source, key))
-        now[0] += 0.3
+        self.assertFalse(any(combo.press(*step) for step in steps[:-1]))
         self.assertTrue(combo.press(*steps[-1]))
-        for source, key in steps[:4]:
-            combo.press(source, key)
-        now[0] += 2.0  # waited longer than 1.6 s
-        for source, key in steps[4:]:
-            self.assertFalse(combo.press(source, key))
-        for source, key in steps:  # the numpad "m" is not the keyboard "m"
-            if (source, key) == ("key", "m"):
-                self.assertFalse(combo.press("pad", "m"))
+        self.assertFalse(any(combo.press(*step) for step in steps[:4]))
+        self.assertFalse(combo.press("key", "x"), "a wrong step starts over")
+        self.assertFalse(any(combo.press(*step) for step in steps[4:]))
+        self.assertFalse(combo.press("pad", "m"), "the numpad's m is not the keyboard's m")
+        self.assertTrue(any([combo.press(*step) for step in steps]), "and it can be started again")
 
     def test_secret_panel_has_25_options_and_out_puts_everything_back(self):
         from PySide6.QtWidgets import QPushButton, QTabWidget
@@ -352,6 +345,37 @@ class QtWindowTest(unittest.TestCase):
                          "open_browser", "nothing was written over the saved keys")
         self.w.discard_changes()
         self.assertIn("1", self.w.keymap())
+
+    def test_secret_letters_work_on_any_keyboard_layout(self):
+        from PySide6.QtCore import QEvent, Qt
+        from PySide6.QtGui import QKeyEvent
+        from numpadctl_ui import egg
+
+        def press(key, scan, text):
+            return QKeyEvent(QEvent.KeyPress, key, Qt.NoModifier, scan, 0, 0, text)
+        self.assertEqual(egg.letter_of(press(Qt.Key_U, 30, "u"), "linux"), "u")
+        # an Arabic layout: the key's letter is not latin, its place on the keyboard is (U = evdev 22, +8 on Linux)
+        self.assertEqual(egg.letter_of(press(0x0647, 30, "ه"), "linux"), "u")
+        self.assertEqual(egg.letter_of(press(0x0647, 22, "ه"), "win32"), "u")
+        self.assertEqual(egg.letter_of(press(Qt.Key_Space, 65, " "), "linux"), "")
+
+    def test_a_key_press_seen_several_times_counts_once(self):
+        """Qt filters one key press for the window and again for each widget it passes through."""
+        from PySide6.QtCore import QEvent, Qt
+        from PySide6.QtGui import QKeyEvent
+        from numpadctl_ui import egg
+        self.w.show()
+        self.w.activateWindow()
+        APP.processEvents()
+        for source, key in egg.COMBO[:3]:
+            self.w.combo.press(source, key)
+        with mock.patch.object(window_module.MainWindow, "open_secret") as opened:
+            for letter, scan in (("u", 30), ("l", 46), ("c", 54), ("s", 39), ("m", 58)):
+                event = QKeyEvent(QEvent.KeyPress, ord(letter.upper()), Qt.NoModifier, scan, 0, 0, letter)
+                for receiver in (self.w.windowHandle(), self.w, self.w.centralWidget()):  # the same press, three times
+                    self.w.eventFilter(receiver, event)
+            APP.processEvents()
+        opened.assert_called_once()
 
 
 if __name__ == "__main__":

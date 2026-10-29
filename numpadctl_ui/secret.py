@@ -461,8 +461,8 @@ class SecretPanel(QDialog):
     def keyPressEvent(self, event):
         if self.leaving:
             return
-        text = event.text().lower()
-        if self.out.press(text) if text else False:
+        letter = egg.letter_of(event)
+        if letter and self.out.press(letter):
             self.leave()
 
     def reject(self):

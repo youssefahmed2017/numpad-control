@@ -1,9 +1,9 @@
 """Easter eggs: the Konami code on the numpad (8 8 2 2 4 6 4 6) throws confetti and a giant KONAMI;
-1 1 Enter on the numpad, then u l c s m on the keyboard, opens the secret panel (secret.py)."""
+1 1 Enter on the numpad, then u l c s m on the keyboard (any speed), opens the secret panel (secret.py)."""
 
 import math
 import random
-import time
+import sys
 from pathlib import Path
 
 from PySide6.QtCore import QElapsedTimer, QEasingCurve, QRect, Qt, QTimer
@@ -17,7 +17,21 @@ LOGO = Path(__file__).resolve().parent.parent / "assets" / "icon-256.png"
 DURATION = 3200  # ms
 PIECES = 150
 COMBO = [("pad", "1"), ("pad", "1"), ("pad", "Enter"), ("key", "u"), ("key", "l"), ("key", "c"), ("key", "s"), ("key", "m")]
-COMBO_GAP = 1.6  # seconds allowed between two steps
+
+
+# Physical letter keys by scan code (the Linux evdev / Windows set 1 numbers), so the secrets work on any layout.
+_ROWS = {16: "qwertyuiop", 30: "asdfghjkl", 44: "zxcvbnm"}
+LETTER_BY_SCAN = {first + i: letter for first, row in _ROWS.items() for i, letter in enumerate(row)}
+
+
+def letter_of(event, platform=None):
+    """The latin letter a key press stands for ("" if none): the typed one, else the key's place on the keyboard
+    (so an Arabic, Russian... layout still works). Qt's scan codes on Linux are evdev's plus 8."""
+    key = event.key()
+    if Qt.Key_A <= key <= Qt.Key_Z:
+        return chr(key).lower()
+    scan = event.nativeScanCode() - (8 if (platform or sys.platform).startswith("linux") else 0)
+    return LETTER_BY_SCAN.get(scan, "")
 
 
 class Matcher:
@@ -36,22 +50,19 @@ class Matcher:
 
 
 class Combo:
-    """A sequence across the numpad ("pad") and the keyboard ("key"); each step must follow the last within `gap` seconds."""
+    """A sequence across the numpad ("pad") and the keyboard ("key"): the steps in order, as slowly as you like.
+    A wrong step starts over (a wrong step that is the first step counts as the start)."""
 
-    def __init__(self, steps=COMBO, gap=COMBO_GAP, clock=time.monotonic):
-        self.steps, self.gap, self.clock = list(steps), gap, clock
-        self.progress, self.last = 0, 0.0
+    def __init__(self, steps=COMBO):
+        self.steps = list(steps)
+        self.progress = 0
 
     def press(self, source, key):
-        now = self.clock()
-        if self.progress and now - self.last > self.gap:
-            self.progress = 0
         step = (source, key)
         if step == self.steps[self.progress]:
             self.progress += 1
         else:
             self.progress = 1 if step == self.steps[0] else 0
-        self.last = now
         if self.progress == len(self.steps):
             self.progress = 0
             return True
