@@ -137,12 +137,12 @@ do_uninstall() {  # do_uninstall [keep]: "keep" never asks about deleting your s
     run rm -f "$HOME/.config/systemd/user/numpad-control.service" "$HOME/.local/bin/numpad-control" \
         "$HOME/.local/share/applications/numpad-control.desktop" "$HOME/.config/autostart/numpad-control.desktop"
     run systemctl --user daemon-reload
-    if [ -e /etc/udev/rules.d/70-numpad-control.rules ]; then
+    if [ "${1:-}" != keep ] && [ -e /etc/udev/rules.d/70-numpad-control.rules ]; then  # an update keeps the system parts, so it needs no sudo
         note "removing the numpad permission rule (needs sudo)"
         run sudo rm -f /etc/udev/rules.d/70-numpad-control.rules
         run sudo udevadm control --reload
     fi
-    if [ -e /etc/systemd/system/numpad-control-usb.service ]; then
+    if [ "${1:-}" != keep ] && [ -e /etc/systemd/system/numpad-control-usb.service ]; then
         note "removing the automatic re-detect fix (needs sudo)"
         run sudo systemctl disable --now numpad-control-usb.service || true
         run sudo rm -f /etc/systemd/system/numpad-control-usb.service /usr/local/bin/numpad-control-usb-kick \
@@ -254,13 +254,17 @@ fi
 
 # ---------------------------------------------------------------- 5. permission
 bold "5/7  Permission to read the numpad"
-render 70-numpad-control.rules | if [ "$DRY_RUN" = 1 ]; then
-    printf '  [dry-run] write /etc/udev/rules.d/70-numpad-control.rules:\n'; sed 's/^/    /'
+if [ "$DRY_RUN" != 1 ] && [ "$(render 70-numpad-control.rules)" = "$(cat /etc/udev/rules.d/70-numpad-control.rules 2> /dev/null)" ]; then
+    note "already in place"  # no sudo needed
 else
-    sudo tee /etc/udev/rules.d/70-numpad-control.rules > /dev/null
+    render 70-numpad-control.rules | if [ "$DRY_RUN" = 1 ]; then
+        printf '  [dry-run] write /etc/udev/rules.d/70-numpad-control.rules:\n'; sed 's/^/    /'
+    else
+        sudo tee /etc/udev/rules.d/70-numpad-control.rules > /dev/null
+    fi
+    run sudo udevadm control --reload
+    run sudo udevadm trigger --subsystem-match=input
 fi
-run sudo udevadm control --reload
-run sudo udevadm trigger --subsystem-match=input
 
 # ---------------------------------------------------------------- 6. service
 bold "6/7  Background service"
