@@ -58,6 +58,8 @@ CREDITS = ["NUMPADPILOT", "a cheap numpad, a lot of ideas", "", "directed by you
 
 class MatrixRain(QWidget):
     """Falling green characters over the window, until it is turned off."""
+    GLYPHS = "01$#%&@*+=<>"
+    TRAIL = 14
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -65,20 +67,23 @@ class MatrixRain(QWidget):
         self.setAttribute(Qt.WA_NoSystemBackground)
         self.setGeometry(parent.rect())
         self.step = 16
-        self.heads = [random.randint(-40, 0) for _ in range(self.width() // self.step + 1)]
-        self.speeds = [random.uniform(0.35, 0.9) for _ in self.heads]
-        self.timer = QTimer(self, interval=50)
+        columns = self.width() // self.step + 1
+        self.rows = self.height() // self.step + self.TRAIL
+        self.heads = [random.uniform(-self.rows, 0) for _ in range(columns)]
+        self.speeds = [random.uniform(0.7, 1.7) for _ in range(columns)]  # rows per frame: ~20 to 50 rows a second
+        self.glyphs = [[random.choice(self.GLYPHS) for _ in range(self.rows + 1)] for _ in range(columns)]
+        self.timer = QTimer(self, interval=33)
         self.timer.timeout.connect(self.advance)
         self.timer.start()
         self.show()
         self.raise_()
 
     def advance(self):
-        rows = self.height() // self.step + 14
         for i, speed in enumerate(self.speeds):
             self.heads[i] += speed
-            if self.heads[i] > rows:
+            if self.heads[i] > self.rows:
                 self.heads[i] = random.randint(-20, 0)
+            self.glyphs[i][random.randrange(len(self.glyphs[i]))] = random.choice(self.GLYPHS)  # one glitch per frame
         self.update()
 
     def paintEvent(self, _):
@@ -86,15 +91,18 @@ class MatrixRain(QWidget):
         font = QFont(theme.monospace())
         font.setPixelSize(14)
         painter.setFont(font)
+        green = QColor(GREEN)
         for i, head in enumerate(self.heads):
-            for trail in range(14):
+            for trail in range(self.TRAIL):
                 row = int(head) - trail
-                if row < 0:
+                if row < 0 or row >= len(self.glyphs[i]):
                     continue
-                color = QColor(GREEN)
-                color.setAlphaF(max(0.0, 0.85 - trail * 0.06))
-                painter.setPen(color if trail else QColor("#ffffff"))
-                painter.drawText(i * self.step, row * self.step + 12, random.choice("01$#%&@*+=<>ｱｲｳｴｵ"))
+                if trail:
+                    green.setAlphaF(max(0.0, 0.85 - trail * 0.06))
+                    painter.setPen(green)
+                else:
+                    painter.setPen(QColor("#ffffff"))
+                painter.drawText(i * self.step, row * self.step + 12, self.glyphs[i][row])
         painter.end()
 
 
