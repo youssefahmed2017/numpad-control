@@ -26,6 +26,16 @@ OutputBaseFilename=NumpadPilot-Setup-{#AppVersion}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
+WizardSizePercent=115
+WizardImageFile=wizard\side-164.bmp,wizard\side-246.bmp,wizard\side-328.bmp
+WizardSmallImageFile=wizard\small-55.bmp,wizard\small-83.bmp,wizard\small-110.bmp
+
+[Messages]
+WelcomeLabel1=Welcome to NumpadPilot
+WelcomeLabel2=This sets up NumpadPilot, which turns a cheap USB numpad into a control deck for OBS, apps, media and macros.%n%nIt needs no administrator rights, and your settings stay when you update or remove it.%n%nClick Next to continue.
+FinishedHeadingLabel=You're all set
+FinishedLabel=NumpadPilot is installed. Plug in your numpad, open the settings and choose what each key does.
+FinishedLabelNoIcons=NumpadPilot is installed. Plug in your numpad, open the settings and choose what each key does.
 
 [Files]
 Source: "remove-old.ps1"; Flags: dontcopy
@@ -40,7 +50,8 @@ Name: "{autoprograms}\{#AppName} Settings"; Filename: "{app}\python\pythonw.exe"
 
 [Run]
 Filename: "{app}\python\python.exe"; Parameters: "-c ""from numpadctl.platform.windows_tray import set_autostart; set_autostart(True)"""; WorkingDir: "{app}"; Flags: runhidden; Tasks: autostart
-Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"""; WorkingDir: "{app}"; Description: "Start NumpadPilot now"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"""; WorkingDir: "{app}"; Flags: nowait skipifsilent
+Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"" gui"; WorkingDir: "{app}"; Description: "Open the NumpadPilot settings"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
 Filename: "{app}\python\python.exe"; Parameters: "-c ""from numpadctl.platform.windows_tray import set_autostart; set_autostart(False)"""; WorkingDir: "{app}"; Flags: runhidden; RunOnceId: "NoAutostart"
@@ -63,4 +74,26 @@ begin
         ExpandConstant('{tmp}\remove-old.ps1') + '" -NewDir "' + ExpandConstant('{app}') + '"',
       '', SW_HIDE, ewWaitUntilTerminated, Code);
   end;
+end;
+
+function OldCopyFound(): Boolean;
+begin
+  Result := FileExists(ExpandConstant('{%USERPROFILE}\numpad-control\numpad-control.pyw'));
+end;
+
+// The wizard in the app's colours (Inno's colours are blue-green-red: $FAF7FF is #fff7fa).
+procedure InitializeWizard();
+begin
+  WizardForm.Color := $FAF7FF;
+  WizardForm.InnerPage.Color := $FAF7FF;
+  WizardForm.MainPanel.Color := $FAF7FF;
+  WizardForm.Bevel.Visible := False;
+  WizardForm.Bevel1.Visible := False;
+  WizardForm.PageNameLabel.Font.Color := $7F4E7C;
+  WizardForm.PageNameLabel.Font.Size := 12;
+  WizardForm.WelcomeLabel1.Font.Color := $7F4E7C;
+  WizardForm.FinishedHeadingLabel.Font.Color := $7F4E7C;
+  if OldCopyFound() then
+    WizardForm.WelcomeLabel2.Caption := WizardForm.WelcomeLabel2.Caption + #13#10#13#10 +
+      'An older copy from the PowerShell installer was found. It will be stopped and removed; your settings stay.';
 end;
