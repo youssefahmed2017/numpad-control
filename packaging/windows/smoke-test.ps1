@@ -15,6 +15,8 @@ $oldMenu = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Numpad 
 New-Item -ItemType Directory -Force $oldMenu | Out-Null
 
 Start-Process $Setup -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/TASKS=", "/DIR=`"$dir`"" -Wait
+$cleanupLog = Join-Path $env:TEMP "numpadpilot-cleanup.log"
+if (Test-Path $cleanupLog) { Get-Content $cleanupLog } else { Write-Host "(no cleanup log: the cleanup script never ran)" }
 if (Test-Path $old) { throw "The old copy in $old wasn't removed." }
 if (Get-ItemProperty -Path $runKey -Name "Numpad Control" -ErrorAction SilentlyContinue) { throw "The old start-at-login entry is still there." }
 if (Test-Path $oldMenu) { throw "The old Start-menu folder is still there." }
