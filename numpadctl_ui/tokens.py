@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 
 _DATA = json.loads(Path(__file__).with_name("m3_palettes.json").read_text())
+ACCENTS = list(_DATA["palettes"])
 SEEDS = _DATA["seeds"]          # {"Blue": "#3584e4", ...}: the accent choices
 DEFAULT_ACCENT = "Orchid"
 

@@ -4,12 +4,12 @@ import copy
 
 from PySide6.QtCore import QEvent, QRectF, Qt, QTimer, QVariantAnimation
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
-from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFrame, QGridLayout, QHBoxLayout,
+from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QComboBox, QFrame, QGridLayout, QHBoxLayout,
                                QLineEdit, QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea, QSizePolicy,
                                QToolButton, QVBoxLayout, QWidget)
 
 from numpadctl import actions, config, keys, presets, ui_common
-from . import dialogs, effects, egg, theme, tokens, tools, welcome
+from . import dialogs, effects, egg, secret, theme, tokens, tools, welcome
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, ToolButton, _Morph
 from .picker import ActionPicker
 from .widgets import Dispatcher, add_param_widgets, card, label
@@ -120,6 +120,8 @@ class MainWindow(QMainWindow):
         self.cfg = config.load()
         self.tour = None  # the open WelcomeDialog
         self.egg_keys = egg.Matcher()
+        self.combo = egg.Combo()  # numpad then keyboard: opens the secret panel
+        self.secret = None  # the open SecretPanel
         self.profile_index, self.layer, self.selected = 0, False, None
         self.dirty = False
         self.on_detected = None
@@ -145,12 +147,19 @@ class MainWindow(QMainWindow):
         outer.addLayout(body, 1)
         self.setCentralWidget(central)
         effects.elevate(self.appbar, 1, dark=theme.current.get("surface", "#000000") < "#808080")
-        theme.listeners.append(lambda c: effects.elevate(self.appbar, 1, dark=c["surface"] < "#808080"))
+
+        def restyle(c):
+            try:
+                effects.elevate(self.appbar, 1, dark=c["surface"] < "#808080")
+            except RuntimeError:  # this window is gone
+                theme.listeners.remove(restyle)
+        theme.listeners.append(restyle)
 
         self.refresh_profiles()
         self.refresh_layer_switch()
         self.select("1")
         self.link = ui_common.ServiceLink(self.on_service_message, self.dispatch)
+        QApplication.instance().installEventFilter(self)
 
     # ---------------------------------------------------------------- layout
     def _build_header(self):
@@ -549,6 +558,18 @@ class MainWindow(QMainWindow):
     def open_diagnostics(self):
         tools.DiagnosticsDialog(self).exec()
 
+    def open_secret(self):
+        if self.secret is None:
+            secret.SecretPanel(self).exec()
+
+    def eventFilter(self, obj, event):
+        """Letters typed on the keyboard count towards the secret combo (while this window is in front)."""
+        if event.type() == QEvent.KeyPress and self.secret is None and self.isActiveWindow() and not event.isAutoRepeat():
+            key = event.key()
+            if Qt.Key_A <= key <= Qt.Key_Z and self.combo.press("key", chr(key).lower()):
+                QTimer.singleShot(0, self.open_secret)
+        return super().eventFilter(obj, event)
+
     def open_welcome(self):
         if self.tour is None:
             welcome.WelcomeDialog(self).exec()
@@ -590,8 +611,12 @@ class MainWindow(QMainWindow):
                 self.toast(f"Added the key “{keys.display(message['key'], self.cfg)}” to the pad")
             if self.tour:
                 self.tour.on_key(message["key"])
+            if self.secret:
+                self.secret.on_pad_key(message["key"])
+            elif self.combo.press("pad", message["key"]):
+                QTimer.singleShot(0, self.open_secret)
             if self.egg_keys.press(message["key"]):
-                egg.Confetti(self.centralWidget())
+                egg.Confetti(self.centralWidget(), text="KONAMI")
             button = self.key_buttons.get(message["key"])
             if button:
                 button.flash()
@@ -628,7 +653,7 @@ class MainWindow(QMainWindow):
     def sync_capture(self):
         """Keep the service in step: in Learn mode, or while this window is in front, keys report but don't run."""
         learn = self.learn.isChecked()
-        self.link.send({"cmd": "capture", "on": learn or self.following_keys() or bool(self.tour and self.tour.wants_capture()),
+        self.link.send({"cmd": "capture", "on": learn or self.following_keys() or bool(self.tour and self.tour.wants_capture()) or self.secret is not None,
                         "learn": learn})
 
     def changeEvent(self, event):

@@ -285,6 +285,74 @@ class QtWindowTest(unittest.TestCase):
         self.assertEqual(len(layers), 1)
         layers[0].repaint()  # draws a frame without errors
 
+    def test_secret_combo_needs_pad_then_keyboard_within_the_gap(self):
+        from numpadctl_ui import egg
+        now = [0.0]
+        combo = egg.Combo(clock=lambda: now[0])
+        steps = list(egg.COMBO)
+        for source, key in steps[:-1]:
+            now[0] += 0.3
+            self.assertFalse(combo.press(source, key))
+        now[0] += 0.3
+        self.assertTrue(combo.press(*steps[-1]))
+        for source, key in steps[:4]:
+            combo.press(source, key)
+        now[0] += 2.0  # waited longer than 1.6 s
+        for source, key in steps[4:]:
+            self.assertFalse(combo.press(source, key))
+        for source, key in steps:  # the numpad "m" is not the keyboard "m"
+            if (source, key) == ("key", "m"):
+                self.assertFalse(combo.press("pad", "m"))
+
+    def test_secret_panel_has_25_options_and_out_puts_everything_back(self):
+        from PySide6.QtWidgets import QPushButton, QTabWidget
+        from numpadctl_ui import secret, theme
+        self.w.cfg["appearance"] = "light"
+        theme.apply(APP, "light", "Orchid", "standard")
+        accent_before = dict(theme.current)
+        with mock.patch.object(secret, "LEAVE_MS", 30):
+            panel = secret.SecretPanel(self.w)
+            self.addCleanup(panel.deleteLater)
+            self.assertIs(self.w.secret, panel)
+            self.assertEqual(self.w.link.sent[-1]["on"], True, "keys are reported, not run, while it is open")
+            tabs = panel.findChild(QTabWidget)
+            self.assertEqual(tabs.count(), 5)
+            for index in range(5):
+                self.assertEqual(len(tabs.widget(index).findChildren(QPushButton)), 5)
+            buttons = {b.text().split("   -")[0]: b for b in panel.findChildren(QPushButton)}
+            buttons["Disco"].setChecked(True)
+            buttons["Matrix rain"].setChecked(True)
+            buttons["Key rain"].setChecked(True)
+            panel.on_pad_key("5")  # throws a burst of confetti
+            self.assertTrue(panel.overlays)
+            panel.reject()  # Esc doesn't leave
+            self.assertIs(self.w.secret, panel)
+            from PySide6.QtCore import Qt
+            from PySide6.QtTest import QTest
+            for key in (Qt.Key_O, Qt.Key_U, Qt.Key_T):
+                QTest.keyClick(panel, key)  # typing "out"
+            self.assertTrue(panel.leaving)
+            QTest.qWait(300)
+        self.assertIsNone(self.w.secret)
+        self.assertFalse(panel.overlays)
+        self.assertFalse(buttons["Disco"].isChecked())
+        self.assertEqual(self.w.link.sent[-1]["on"], False)
+        self.assertEqual(theme.current.get("primary"), accent_before.get("primary"), "the look is restored")
+
+    def test_secret_wipe_backs_up_and_can_be_discarded(self):
+        from numpadctl_ui import secret
+        panel = secret.SecretPanel(self.w)
+        self.addCleanup(panel.deleteLater)
+        with mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Yes):
+            panel.wipe()
+        self.assertTrue((self.config_path.parent / "config.before-panic.json").exists())
+        self.assertEqual(self.w.keymap(), {})
+        self.assertTrue(self.w.dirty)
+        self.assertEqual(json.loads(self.config_path.read_text())["profiles"][0]["bindings"]["1"]["tap"]["action"],
+                         "open_browser", "nothing was written over the saved keys")
+        self.w.discard_changes()
+        self.assertIn("1", self.w.keymap())
+
 
 if __name__ == "__main__":
     unittest.main()

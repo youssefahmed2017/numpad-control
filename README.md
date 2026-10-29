@@ -74,8 +74,10 @@ action, Save. What the installers do, and their options:
 - **Find it in your launcher.** The menu entry answers to "NumpadPilot", "Numpad Pilot" and "numpad". Its icon is installed in
   your icon theme (`~/.local/share/icons/hicolor`), so launchers that ignore file paths show it too. (The
   setup also adds the theme's `index.theme` there if missing: hyprlauncher skips icon folders without one.)
-- **A secret.** With the settings window in front, the Konami code on the numpad (`8 8 2 2 4 6 4 6`)
-  does something. It only fires while keys are being selected, so it never runs your real actions.
+- **Secrets.** With the settings window in front, the Konami code on the numpad (`8 8 2 2 4 6 4 6`)
+  puts a giant KONAMI on screen, and there is a second, better hidden one (it takes the numpad *and*
+  the keyboard). They only work while keys are being selected (window in front), so they never run
+  your real actions. Where the second one leads, the way out is typed, not clicked.
 
 ## How it works
 - A **background service** (systemd user service) reads the numpad directly with
