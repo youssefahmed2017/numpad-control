@@ -89,8 +89,6 @@ banner() {
             ch="${logo[r]:c:1}"
             if [ "$ch" = "#" ]; then
                 if [ "$COLOR" = 1 ]; then line+="${KEY}  ${RST}"; else line+="██"; fi
-            elif { [ "$r" = 0 ] || [ "$r" = 9 ]; } && { [ "$c" = 0 ] || [ "$c" = 12 ]; }; then
-                line+="  "   # the tile's rounded corners
             else
                 if [ "$COLOR" = 1 ]; then line+="${TILE}  ${RST}"; else line+="░░"; fi
             fi

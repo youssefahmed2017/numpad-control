@@ -302,7 +302,6 @@ function Show-Banner {
         for ($c = 0; $c -lt 13; $c++) {
             $cell = $logo[$r][$c]
             if ($cell -eq "#") { $line += if ($color) { "$key  $rst" } else { [string][char]0x2588 * 2 } }
-            elseif (($r -eq 0 -or $r -eq 9) -and ($c -eq 0 -or $c -eq 12)) { $line += "  " }   # the tile's rounded corners
             else { $line += if ($color) { "$tile  $rst" } else { [string][char]0x2591 * 2 } }
         }
         if ($r -ge 2 -and $r -le 6) {

@@ -33,7 +33,7 @@ WizardSmallImageFile=wizard\small-55.bmp,wizard\small-83.bmp,wizard\small-110.bm
 
 [Messages]
 WelcomeLabel1=Welcome to NumpadPilot
-WelcomeLabel2=This sets up NumpadPilot, which turns a cheap USB numpad into a control deck for OBS, apps, media and macros.%n%nIt needs no administrator rights, and your settings stay when you update or remove it.%n%nClick Next to continue.
+WelcomeLabel2=This sets up NumpadPilot, which turns a cheap USB numpad into a control deck for OBS, apps, media and macros.%n%nIt needs no administrator rights, and your settings stay when you update or remove it.
 FinishedHeadingLabel=You're all set
 FinishedLabel=NumpadPilot is installed. Plug in your numpad, open the settings and choose what each key does.
 FinishedLabelNoIcons=NumpadPilot is installed. Plug in your numpad, open the settings and choose what each key does.
@@ -88,6 +88,8 @@ begin
   WizardForm.Color := $FAF7FF;
   WizardForm.InnerPage.Color := $FAF7FF;
   WizardForm.MainPanel.Color := $FAF7FF;
+  WizardForm.WelcomePage.Color := $FAF7FF;
+  WizardForm.FinishedPage.Color := $FAF7FF;
   WizardForm.Bevel.Visible := False;
   WizardForm.Bevel1.Visible := False;
   WizardForm.PageNameLabel.Font.Color := $7F4E7C;
