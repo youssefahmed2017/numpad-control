@@ -352,8 +352,9 @@ you) or `"off"`; `python -m numpadctl update` checks right away.
 To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
 matching tag (`git tag v0.3.0 && git push --tags`).
 
-**Next:** a welcome tour on first launch (find the numpad, pick a starting point, press a key to see
-it register), also in Tools → Welcome tour.
+**0.2.4:** a welcome tour on first launch (find the numpad, pick a starting point, press a key to
+see it register), also in Tools → Welcome tour; the Linux launcher entry now matches "Numpad Pilot"
+and shows its logo (including in hyprlauncher); updating with `setup.sh` no longer asks for sudo.
 
 **0.2.3:** the settings window ships its own fonts (Google Sans for text, JetBrains Mono for
 code and Diagnostics, in [`assets/fonts/`](assets/fonts/)), so Windows no longer falls back to
