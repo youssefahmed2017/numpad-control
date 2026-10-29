@@ -12,7 +12,7 @@ ASSETS = HERE.parents[1] / "assets"
 LIGHT = dict(top=(255, 247, 250), bottom=(246, 226, 249), blob1=(253, 218, 253), blob2=(253, 222, 216),
              blob3=(241, 220, 240), key1=(255, 255, 255), key2=(124, 78, 127), key3=(253, 222, 216), flat=(255, 247, 250))
 DARK = dict(top=(34, 28, 40), bottom=(42, 31, 50), blob1=(74, 45, 82), blob2=(78, 52, 50),
-            blob3=(55, 40, 62), key1=(70, 58, 78), key2=(168, 120, 172), key3=(98, 70, 70), flat=(29, 26, 33))
+            blob3=(55, 40, 62), key1=(70, 58, 78), key2=(168, 120, 172), key3=(98, 70, 70), flat=(43, 43, 43))
 SS = 3  # draw big, then shrink: smooth edges
 
 

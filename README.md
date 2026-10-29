@@ -345,6 +345,10 @@ you) or `"off"`; `python -m numpadctl update` checks right away.
 To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
 matching tag (`git tag v0.3.0 && git push --tags`).
 
+**0.2.2:** a nicer Windows installer (artwork, light and dark), `setup.sh` / `setup.ps1` with an
+Install / Uninstall / Update menu, one Pause / resume recording key, press a key to select it
+and a searchable action picker, and an AUR recipe.
+
 **0.2.0:** renamed to NumpadPilot (GPL-3.0, settings window included); a Material You
 settings window (ripples, morphing buttons, colour themes); Learn any key (keys beyond
 the standard numpad); a Key tester and Diagnostics; starter presets; Windows fixes (the

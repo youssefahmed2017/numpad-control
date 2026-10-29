@@ -85,14 +85,14 @@ begin
 end;
 
 // The wizard in the app's colours, light or dark like Windows (Inno's colours are blue-green-red:
-// $FAF7FF is #fff7fa, $211A1D is #1d1a21).
+// $FAF7FF is #fff7fa, $1F1F1F is #1f1f1f).
 procedure InitializeWizard();
 var
   Surface, Title: Integer;
 begin
   if IsDarkInstallMode() then
   begin
-    Surface := $211A1D;
+    Surface := $1F1F1F;
     Title := $FFBEEC;
   end
   else
