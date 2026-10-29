@@ -5,8 +5,6 @@ Enable it in OBS: Tools -> WebSocket Server Settings -> Enable WebSocket server.
 
 import logging
 
-import obsws_python
-
 logging.getLogger("obsws_python").setLevel(logging.CRITICAL)
 
 
@@ -15,6 +13,10 @@ class OBSError(Exception):
 
 
 def _client(settings):
+    try:
+        import obsws_python  # only needed once an OBS action runs (a package install may leave it out)
+    except ImportError:
+        raise OBSError("the OBS actions need the Python package obsws-python (pip install obsws-python)")
     try:
         return obsws_python.ReqClient(
             host=settings.get("host", "localhost"),

@@ -1,0 +1,10 @@
+post_install() {
+  echo "NumpadPilot: turn the background service on with"
+  echo "    systemctl --user enable --now numpad-control"
+  echo "then open NumpadPilot from your app menu and use Settings -> Detect to pick your numpad."
+  echo "The built-in permission rule covers the numpad c0f4:05f5; for another model copy"
+  echo "/usr/lib/udev/rules.d/70-numpad-control.rules to /etc/udev/rules.d/ and change the two ids."
+}
+post_upgrade() {
+  echo "NumpadPilot: restart the service to use the new version:  systemctl --user restart numpad-control"
+}

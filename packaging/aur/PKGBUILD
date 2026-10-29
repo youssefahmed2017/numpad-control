@@ -1,0 +1,66 @@
+# Maintainer: Youssef Ahmed <245279337+youssefahmed2017@users.noreply.github.com>
+pkgname=numpad-pilot
+pkgver=0.2.1
+pkgrel=1
+pkgdesc='Turn a cheap USB numpad into a control deck: OBS, apps, media, macros'
+arch=('any')
+url='https://github.com/youssefahmed2017/numpad-pilot'
+license=('GPL-3.0-only')
+depends=('python' 'python-evdev' 'pyside6' 'systemd')
+optdepends=('python-obsws: the OBS actions'
+            'python-pillow: the Windows-style tray icon helpers'
+            'ydotool: the Type text and Press keys actions'
+            'libnotify: notifications')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+install=numpad-pilot.install
+sha256sums=('31e3994f104ab15afde0ae75d12288b84db1750ea22460a2ff3a8d9858b3ac87')
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+
+  # The code, run in place from /usr/lib (the service and the window both start it from there).
+  install -d "$pkgdir/usr/lib/$pkgname"
+  cp -r numpadctl numpadctl_ui "$pkgdir/usr/lib/$pkgname/"
+  install -Dm644 -t "$pkgdir/usr/lib/$pkgname/assets" assets/icon.svg assets/icon-*.png
+  find "$pkgdir/usr/lib/$pkgname" -name __pycache__ -prune -exec rm -rf {} +
+  python -m compileall -q -d "/usr/lib/$pkgname" "$pkgdir/usr/lib/$pkgname"
+  # Tells the app that the package manager does the updating, not the app itself.
+  touch "$pkgdir/usr/lib/$pkgname/.packaged"
+
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/$pkgname" <<EOF
+#!/bin/sh
+# NumpadPilot: opens the settings window (or: $pkgname run | detect | list | update | …).
+cd /usr/lib/$pkgname && exec python -m numpadctl "\$@"
+EOF
+
+  # The background service (the app starts it by this name, so it keeps the name numpad-control).
+  install -Dm644 /dev/stdin "$pkgdir/usr/lib/systemd/user/numpad-control.service" <<EOF
+[Unit]
+Description=NumpadPilot (turns a USB numpad into a control pad)
+
+[Service]
+ExecStart=/usr/bin/$pkgname run
+Restart=on-failure
+# Apps opened by a key (browser, etc.) must survive a service restart.
+KillMode=process
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+EOF
+
+  # Let the logged-in user read this numpad (not every keyboard). Another numpad: see the README.
+  install -Dm644 /dev/stdin "$pkgdir/usr/lib/udev/rules.d/70-numpad-control.rules" <<EOF
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{idVendor}=="c0f4", ATTRS{idProduct}=="05f5", TAG+="uaccess"
+EOF
+
+  install -Dm644 dist/numpad-control.desktop "$pkgdir/usr/share/applications/$pkgname.desktop"
+  sed -i -e "s|^Exec=.*|Exec=/usr/bin/$pkgname|" -e '/^Path=/d' -e "s|^Icon=.*|Icon=$pkgname|" \
+      "$pkgdir/usr/share/applications/$pkgname.desktop"
+  for size in 16 24 32 48 64 128 256 512; do
+    install -Dm644 assets/icon-$size.png "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/$pkgname.png"
+  done
+  install -Dm644 assets/icon.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/$pkgname.svg"
+  install -Dm644 README.md -t "$pkgdir/usr/share/doc/$pkgname/"
+  install -Dm644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
+}

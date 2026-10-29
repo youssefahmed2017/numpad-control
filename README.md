@@ -26,6 +26,16 @@ Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland),
 
     irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.ps1 | iex
 
+**Arch Linux** (AUR):
+
+    yay -S numpad-pilot
+    systemctl --user enable --now numpad-control
+
+(the package's permission rule covers the numpad `c0f4:05f5`; for another model copy
+`/usr/lib/udev/rules.d/70-numpad-control.rules` to `/etc/udev/rules.d/` and change the two
+ids. The OBS actions need `python-obsws` from the AUR. Updates come from your AUR helper,
+not from the app. The recipe is in [`packaging/aur/`](packaging/aur/).)
+
 Then open **NumpadPilot** from your app menu / Start menu, click a key, pick an
 action, Save. What the installers do, and their options:
 [Install in detail](#install-in-detail).

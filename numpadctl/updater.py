@@ -44,6 +44,13 @@ KEEP = {".venv", ".git"}  # never replaced by a zip update
 NO_WINDOW = 0x08000000 if IS_WINDOWS else 0
 
 
+PACKAGED_MARKER = ".packaged"  # put there by a distro package (AUR): its package manager does the updating
+
+
+def packaged(root=ROOT):
+    return (root / PACKAGED_MARKER).exists()
+
+
 class UpdateError(Exception):
     pass
 
@@ -169,6 +176,8 @@ def install(tag, root=ROOT):
     """Install release `tag` over this copy. Raises UpdateError with a reason the user can act on."""
     if not parse(tag):
         raise UpdateError(f"not a release tag: {tag}")
+    if packaged(root):
+        raise UpdateError("NumpadPilot was installed by your package manager: update it with that (for example yay -Syu)")
     log.info("updating to %s", tag)
     if (root / ".git").exists():
         _update_git(tag, root)

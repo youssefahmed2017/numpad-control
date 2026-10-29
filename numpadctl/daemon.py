@@ -404,12 +404,15 @@ class Daemon:
         told = None
         while True:
             mode = self.cfg.get("updates", "auto")
+            if mode == "auto" and updater.packaged():
+                mode = "notify"  # the package manager installs updates, not us
             if mode in ("auto", "notify") and updater.due():
                 tag = await asyncio.to_thread(updater.check)
                 if tag and mode == "notify" and tag != told:
                     told = tag
-                    actions.notify("NumpadPilot update", f"Version {tag[1:]} is out: run the installer "
-                                   "or `python -m numpadctl update` to get it.")
+                    actions.notify("NumpadPilot update", f"Version {tag[1:]} is out: " + (
+                                       "update it with your package manager." if updater.packaged() else
+                                       "run the installer or `python -m numpadctl update` to get it."))
                 elif tag and mode == "auto":
                     while self.presses or self.layer_held:  # not in the middle of using the numpad
                         await asyncio.sleep(5)

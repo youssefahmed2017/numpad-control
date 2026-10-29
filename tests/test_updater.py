@@ -168,10 +168,24 @@ class ServiceUpdatesTest(unittest.IsolatedAsyncioTestCase):
         d.restart.assert_not_called()
         self.assertEqual(notify.call_count, 1)
 
+    async def test_a_package_manager_install_only_says_so(self):
+        with mock.patch.object(daemon.updater, "packaged", return_value=True):
+            d, install, notify = await self.run_loop("auto")
+        install.assert_not_called()
+        d.restart.assert_not_called()
+        self.assertIn("package manager", notify.call_args.args[1])
+
     async def test_off_does_nothing(self):
         d, install, notify = await self.run_loop("off")
         install.assert_not_called()
         notify.assert_not_called()
+
+    def test_a_package_manager_install_is_never_touched(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / updater.PACKAGED_MARKER).write_text("")
+            self.assertTrue(updater.packaged(Path(d)))
+            with self.assertRaises(updater.UpdateError):
+                updater.install("v9.0.0", Path(d))
 
     async def test_a_failed_update_keeps_running(self):
         d, install, notify = await self.run_loop("auto", install_error=updater.UpdateError("local changes"))
