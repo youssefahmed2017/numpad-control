@@ -72,9 +72,9 @@ class Combo:
 class Confetti(QWidget):
     """A see-through layer over the window: confetti falls and a giant `text` (or the logo) pops up, then it removes itself."""
 
-    def __init__(self, parent, text=None, pieces=PIECES, duration=DURATION):
+    def __init__(self, parent, text=None, pieces=PIECES, duration=DURATION, sprite=None):
         super().__init__(parent)
-        self.text, self.duration = text, duration
+        self.text, self.duration, self.sprite = text, duration, sprite  # sprite: a pixmap instead of plain confetti
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WA_NoSystemBackground)
         self.setGeometry(parent.rect())
@@ -116,9 +116,14 @@ class Confetti(QWidget):
             painter.rotate(math.degrees(piece["spin"] + local * 9))
             color = QColor(piece["color"])
             color.setAlphaF(max(0.0, min(1.0, (1 - t) * 3)))
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(color)
-            painter.drawRoundedRect(-piece["size"] / 2, -piece["size"] / 4, piece["size"], piece["size"] / 2, 2, 2)
+            if self.sprite:
+                size = int(piece["size"] * 4)
+                painter.setOpacity(color.alphaF())
+                painter.drawPixmap(-size // 2, -size // 2, size, size, self.sprite)
+            else:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(color)
+                painter.drawRoundedRect(-piece["size"] / 2, -piece["size"] / 4, piece["size"], piece["size"] / 2, 2, 2)
             painter.restore()
         # The title pops in with a bounce, stays, then fades.
         pop = QEasingCurve(QEasingCurve.OutBack).valueForProgress(min(1.0, t / 0.25))

@@ -310,7 +310,7 @@ class QtWindowTest(unittest.TestCase):
             self.assertIs(self.w.secret, panel)
             self.assertEqual(self.w.link.sent[-1]["on"], True, "keys are reported, not run, while it is open")
             tabs = panel.findChild(QTabWidget)
-            self.assertEqual(tabs.count(), 5)
+            self.assertEqual(tabs.count(), 6, "five tabs and the locked one")
             for index in range(5):
                 self.assertEqual(len(tabs.widget(index).findChildren(QPushButton)), 5)
             buttons = {b.text().split("   -")[0]: b for b in panel.findChildren(QPushButton)}
@@ -367,6 +367,101 @@ class QtWindowTest(unittest.TestCase):
             panel.leave()
             QTest.qWait(300)
         self.assertIsNone(self.w.secret)
+
+    def make_panel(self):
+        from numpadctl_ui import secret
+        panel = secret.SecretPanel(self.w)
+        self.addCleanup(lambda: shiboken6.isValid(panel) and panel.deleteLater())
+        return panel
+
+    def test_superroot_password_is_the_seven_fragments_in_order(self):
+        import hashlib
+        from numpadctl_ui import secret
+        password = "".join(secret.FRAGMENTS)
+        self.assertEqual(password, "123AdminSuperSoda@444cannotsee")
+        self.assertEqual(hashlib.sha256(secret.SALT + password.encode()).hexdigest(), secret.PASSWORD_HASH)
+        with open(secret.__file__) as source:
+            code = source.read()
+        for piece in ("Admin", "Super", "Soda", "cannotsee"):
+            self.assertNotIn(piece, code.replace("Super" + "Root", "").replace("SUPER", ""), "the pieces are not written out in the code")
+        self.assertNotIn(password, code)
+
+    def test_superroot_wrong_passwords_escalate_then_kick_you_out(self):
+        from PySide6.QtTest import QTest
+        from numpadctl_ui import secret
+        with mock.patch.object(secret, "KICK_MS", 30):
+            panel = self.make_panel()
+            panel.tabs_widget.setCurrentIndex(panel.lock_index)
+            self.assertFalse(panel.unlocked)
+            for number in range(1, 4):
+                panel.password.setText("nope")
+                panel.check_password()
+                self.assertTrue(panel.lock_status.text().startswith("ACCESS DENIED"))
+                self.assertFalse(panel.leaving, f"wrong guess {number} only warns")
+            panel.password.setText("nope")
+            panel.check_password()  # the fourth wrong one
+            self.assertTrue(panel.leaving)
+            self.assertIn("Enough Evidence", panel.kick_label.text())
+            self.assertIn("GET OUT", panel.kick_label.text())
+            QTest.qWait(300)
+        self.assertIsNone(self.w.secret)
+
+    def test_superroot_right_password_opens_the_tab_with_five_options(self):
+        from PySide6.QtWidgets import QPushButton
+        from numpadctl_ui import secret
+        panel = self.make_panel()
+        panel.password.setText("123AdminSuperSoda@444cannotsee")
+        panel.check_password()
+        self.assertTrue(panel.unlocked)
+        self.assertEqual(panel.lock_stack.currentIndex(), 1)
+        self.assertEqual(len(panel.lock_stack.widget(1).findChildren(QPushButton)), 5)
+        self.assertIn("🔓", panel.tabs_widget.tabText(panel.lock_index))
+        self.assertEqual(panel.wrong, 0)
+
+    def test_the_fragments_turn_up_and_are_listed_on_the_lock_page(self):
+        from numpadctl_ui import secret
+        panel = self.make_panel()
+        self.assertNotIn("Admin", panel.fragment_label.text())
+        panel.found(2)
+        panel.say_line("FRAGMENT:1")
+        self.assertIn("Admin", panel.fragment_label.text())
+        self.assertIn("123", panel.fragment_label.text())
+        self.assertNotIn("Soda", panel.fragment_label.text())
+        for number in range(1, 8):
+            panel.found(number)
+        self.assertIn("all 7 fragments found", panel.log.toPlainText())
+        self.assertIn("cannotsee", panel.fragment_label.text())
+        panel.fortune_index = 0  # the fortunes come round in order, and one of them is fragment 4
+        panel.fragments.clear()
+        for _ in range(len(secret.FORTUNES)):
+            panel.fortune()
+        self.assertIn(4, panel.fragments)
+
+    def test_secret_words_work_except_in_the_password_box(self):
+        panel = self.make_panel()
+        for letter in "sudo":
+            panel.on_letter(letter)
+        self.assertIn("sudoers", panel.log.toPlainText())
+        panel.password.setFocus()
+        panel.show()
+        APP.processEvents()
+        if panel.password.hasFocus():  # (a window can refuse focus when run invisibly)
+            for letter in "out":
+                panel.on_letter(letter)
+            self.assertFalse(panel.leaving, "typing a password containing a word does not run the word")
+        for letter in "hint":
+            panel.on_letter(letter)
+        self.assertIn("hint 1/4", panel.log.toPlainText())
+
+    def test_gravity_brings_the_keys_back(self):
+        self.w.resize(1000, 700)
+        self.w.show()
+        APP.processEvents()
+        panel = self.make_panel()
+        panel.gravity()
+        self.assertIsNotNone(panel.job)
+        panel.stop_gravity()
+        self.assertTrue(all(b.isVisible() for b in self.w.key_buttons.values()))
 
     def test_secret_wipe_backs_up_and_can_be_discarded(self):
         from numpadctl_ui import secret
