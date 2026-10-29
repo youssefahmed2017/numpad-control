@@ -267,6 +267,24 @@ class QtWindowTest(unittest.TestCase):
             self.w.open_welcome()
         run.assert_called_once()
 
+    def test_easter_egg_needs_the_whole_sequence(self):
+        from numpadctl_ui import egg
+        matcher = egg.Matcher()
+        self.assertFalse(any(matcher.press(k) for k in egg.SEQUENCE[:-1]))
+        self.assertTrue(matcher.press("Enter"))
+        self.assertFalse(any(matcher.press(k) for k in egg.SEQUENCE[:-1]), "starts over after it fires")
+        matcher.press("5")  # a stray key breaks it
+        self.assertFalse(matcher.press("Enter"))
+
+    def test_easter_egg_plays_from_the_window(self):
+        from numpadctl_ui import egg
+        self.w.resize(800, 600)
+        for key in egg.SEQUENCE:
+            self.w.on_service_message({"event": "key", "key": key})
+        layers = self.w.centralWidget().findChildren(egg.Confetti)
+        self.assertEqual(len(layers), 1)
+        layers[0].repaint()  # draws a frame without errors
+
 
 if __name__ == "__main__":
     unittest.main()

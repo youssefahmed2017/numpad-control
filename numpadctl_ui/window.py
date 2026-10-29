@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFrame, QGrid
                                QToolButton, QVBoxLayout, QWidget)
 
 from numpadctl import actions, config, keys, presets, ui_common
-from . import dialogs, effects, theme, tokens, tools, welcome
+from . import dialogs, effects, egg, theme, tokens, tools, welcome
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, ToolButton, _Morph
 from .picker import ActionPicker
 from .widgets import Dispatcher, add_param_widgets, card, label
@@ -119,6 +119,7 @@ class MainWindow(QMainWindow):
         self.first_run = not config.CONFIG_PATH.exists()  # a new install gets the welcome
         self.cfg = config.load()
         self.tour = None  # the open WelcomeDialog
+        self.egg_keys = egg.Matcher()
         self.profile_index, self.layer, self.selected = 0, False, None
         self.dirty = False
         self.on_detected = None
@@ -589,6 +590,8 @@ class MainWindow(QMainWindow):
                 self.toast(f"Added the key “{keys.display(message['key'], self.cfg)}” to the pad")
             if self.tour:
                 self.tour.on_key(message["key"])
+            if self.egg_keys.press(message["key"]):
+                egg.Confetti(self.centralWidget())
             button = self.key_buttons.get(message["key"])
             if button:
                 button.flash()
