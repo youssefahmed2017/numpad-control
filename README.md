@@ -257,7 +257,8 @@ Update, [0] Quit**. (`--install`, `--uninstall` and `--update` skip the menu.) I
 7. adds the `numpad-control` command, the app-menu entry and KDE autostart
 8. optionally installs the boot/sleep re-detect fix (below)
 
-Running `./setup.sh` again from the clone and choosing Update updates everything (it keeps the
+Running `./setup.sh` again from the clone and choosing Update updates everything (the menu entry and icon
+are rewritten in place, never deleted, so a running launcher keeps showing the app) (it keeps the
 system permission rule when it is unchanged, so an update does not ask for sudo).
 Uninstall removes the service, launcher, menu entry and permission rules, and asks
 before deleting your settings. Options:

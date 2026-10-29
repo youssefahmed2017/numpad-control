@@ -134,9 +134,11 @@ menu() {
 do_uninstall() {  # do_uninstall [keep]: "keep" never asks about deleting your settings
     bold "Removing NumpadPilot"
     run systemctl --user disable --now numpad-control 2> /dev/null || true
-    run rm -f "$HOME/.config/systemd/user/numpad-control.service" "$HOME/.local/bin/numpad-control" \
-        "$HOME/.local/share/applications/numpad-control.desktop" "$HOME/.config/autostart/numpad-control.desktop" \
-        "$HOME"/.local/share/icons/hicolor/*/apps/numpad-control.png
+    run rm -f "$HOME/.config/systemd/user/numpad-control.service"
+    if [ "${1:-}" != keep ]; then  # an update rewrites these in place: deleting them makes launchers forget the app
+        run rm -f "$HOME/.local/bin/numpad-control" "$HOME/.local/share/applications/numpad-control.desktop" \
+            "$HOME/.config/autostart/numpad-control.desktop" "$HOME"/.local/share/icons/hicolor/*/apps/numpad-control.png
+    fi
     run systemctl --user daemon-reload
     if [ "${1:-}" != keep ] && [ -e /etc/udev/rules.d/70-numpad-control.rules ]; then  # an update keeps the system parts, so it needs no sudo
         note "removing the numpad permission rule (needs sudo)"
