@@ -177,7 +177,7 @@ def install(tag, root=ROOT):
     if not parse(tag):
         raise UpdateError(f"not a release tag: {tag}")
     if packaged(root):
-        raise UpdateError("NumpadPilot was installed by your package manager: update it with that (for example yay -Syu)")
+        raise UpdateError("NumpadPilot was installed by your package manager: update it with that (for example yay -Syu or winget upgrade)")
     log.info("updating to %s", tag)
     if (root / ".git").exists():
         _update_git(tag, root)

@@ -26,6 +26,17 @@ Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland),
 
     irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.ps1 | iex
 
+**Windows installer** (no PowerShell needed; once it is in winget):
+
+    winget install YoussefAhmed.NumpadPilot
+
+or download `NumpadPilot-Setup-<version>.exe` from the [Releases](https://github.com/youssefahmed2017/numpad-pilot/releases)
+page. It carries its own Python, needs no administrator rights, and is removed from
+Settings → Apps. The installer is not code-signed yet, so Windows SmartScreen may warn:
+choose *More info → Run anyway*. Updates come from `winget upgrade` or a newer installer.
+How it is built: [`packaging/windows/`](packaging/windows/), and the winget manifests in
+[`packaging/winget/`](packaging/winget/).
+
 **Arch Linux** (AUR):
 
     yay -S numpad-pilot

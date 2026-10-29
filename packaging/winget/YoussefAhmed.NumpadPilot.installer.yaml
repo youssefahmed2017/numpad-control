@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: YoussefAhmed.NumpadPilot
+PackageVersion: "@VERSION@"
+InstallerType: inno
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
+ProductCode: "{276E655D-0D17-4786-99FA-B4F2C232FEFB}_is1"
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/youssefahmed2017/numpad-pilot/releases/download/v@VERSION@/NumpadPilot-Setup-@VERSION@.exe
+    InstallerSha256: @SHA256@
+ManifestType: installer
+ManifestVersion: 1.6.0

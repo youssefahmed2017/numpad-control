@@ -411,7 +411,7 @@ class Daemon:
                 if tag and mode == "notify" and tag != told:
                     told = tag
                     actions.notify("NumpadPilot update", f"Version {tag[1:]} is out: " + (
-                                       "update it with your package manager." if updater.packaged() else
+                                       "update it with your package manager (winget upgrade, yay -Syu)." if updater.packaged() else
                                        "run the installer or `python -m numpadctl update` to get it."))
                 elif tag and mode == "auto":
                     while self.presses or self.layer_held:  # not in the middle of using the numpad

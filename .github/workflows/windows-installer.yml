@@ -1,0 +1,28 @@
+name: Windows installer
+
+# Builds NumpadPilot-Setup-<version>.exe (what winget installs), installs it silently, checks
+# the installed copy starts, and uninstalls it. Runs when the packaging changes, and by hand.
+on:
+  push:
+    branches: [main]
+    paths: ["packaging/windows/**", "requirements.txt", ".github/workflows/windows-installer.yml"]
+  pull_request:
+    paths: ["packaging/windows/**", "requirements.txt", ".github/workflows/windows-installer.yml"]
+  workflow_dispatch:
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: powershell -ExecutionPolicy Bypass -File packaging\windows\build-installer.ps1
+      - run: |
+          $setup = (Get-ChildItem build\windows -Filter "NumpadPilot-Setup-*.exe").FullName
+          powershell -ExecutionPolicy Bypass -File packaging\windows\smoke-test.ps1 $setup
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NumpadPilot-Setup
+          path: build/windows/NumpadPilot-Setup-*.exe
