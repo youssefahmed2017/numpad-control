@@ -68,6 +68,9 @@ action, Save. What the installers do, and their options:
 - **Search the actions.** Click an action and type: "mute" finds the microphone, the
   speakers and OBS, "live" finds the streaming actions. Each one has a one-line
   description, and the ones you used last are listed first under *Recently used*.
+- **First launch tour.** A new install opens a 3-step welcome: it finds your numpad, lets you
+  pick a starting point (streaming, media, everyday shortcuts or empty) and has you press a
+  key to see it register. Open it again from *Tools ▾ → Welcome tour*.
 
 ## How it works
 - A **background service** (systemd user service) reads the numpad directly with
@@ -344,6 +347,9 @@ you) or `"off"`; `python -m numpadctl update` checks right away.
 
 To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
 matching tag (`git tag v0.3.0 && git push --tags`).
+
+**Next:** a welcome tour on first launch (find the numpad, pick a starting point, press a key to see
+it register), also in Tools → Welcome tour.
 
 **0.2.3:** the settings window ships its own fonts (Google Sans for text, JetBrains Mono for
 code and Diagnostics, in [`assets/fonts/`](assets/fonts/)), so Windows no longer falls back to

@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFrame, QGrid
                                QToolButton, QVBoxLayout, QWidget)
 
 from numpadctl import actions, config, keys, presets, ui_common
-from . import dialogs, effects, theme, tokens, tools
+from . import dialogs, effects, theme, tokens, tools, welcome
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, ToolButton, _Morph
 from .picker import ActionPicker
 from .widgets import Dispatcher, add_param_widgets, card, label
@@ -116,7 +116,9 @@ class MainWindow(QMainWindow):
         self.resize(1120, 760)
         self.keep_running = keep_running  # closing only hides the window
         self.dispatch = Dispatcher()
+        self.first_run = not config.CONFIG_PATH.exists()  # a new install gets the welcome
         self.cfg = config.load()
+        self.tour = None  # the open WelcomeDialog
         self.profile_index, self.layer, self.selected = 0, False, None
         self.dirty = False
         self.on_detected = None
@@ -174,6 +176,7 @@ class MainWindow(QMainWindow):
         menu = Menu(extra)
         menu.addAction("Key tester…", self.open_tester)
         menu.addAction("Diagnostics…", self.open_diagnostics)
+        menu.addAction("Welcome tour…", self.open_welcome)
         menu.addSeparator()
         self.follow = menu.addAction("Select a key when I press it")
         self.follow.setCheckable(True)
@@ -545,6 +548,20 @@ class MainWindow(QMainWindow):
     def open_diagnostics(self):
         tools.DiagnosticsDialog(self).exec()
 
+    def open_welcome(self):
+        if self.tour is None:
+            welcome.WelcomeDialog(self).exec()
+
+    def save_welcomed(self):
+        if not self.dirty:  # remember the tour was seen (with nothing half-edited to write along)
+            config.save(self.cfg)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self.first_run and not self.cfg.get("welcomed"):
+            self.first_run = False
+            QTimer.singleShot(300, self.open_welcome)
+
     def open_tester(self):
         if self.tester is None:
             self.tester = tools.KeyTesterDialog(self)
@@ -558,6 +575,8 @@ class MainWindow(QMainWindow):
         if event == "status":
             self.last_status = message
             self.update_status(message)
+            if self.tour:
+                self.tour.refresh_status()
             if self.tester:  # the service (re)started: ask for the raw keys again
                 self.tester.start()
         elif event == "raw" and self.tester:
@@ -568,6 +587,8 @@ class MainWindow(QMainWindow):
             if self.learn.isChecked() and message.get("unknown") and not keys.known(message["key"], self.cfg):
                 self.add_extra_key(message["key"], message.get("label"))
                 self.toast(f"Added the key “{keys.display(message['key'], self.cfg)}” to the pad")
+            if self.tour:
+                self.tour.on_key(message["key"])
             button = self.key_buttons.get(message["key"])
             if button:
                 button.flash()
@@ -604,7 +625,8 @@ class MainWindow(QMainWindow):
     def sync_capture(self):
         """Keep the service in step: in Learn mode, or while this window is in front, keys report but don't run."""
         learn = self.learn.isChecked()
-        self.link.send({"cmd": "capture", "on": learn or self.following_keys(), "learn": learn})
+        self.link.send({"cmd": "capture", "on": learn or self.following_keys() or bool(self.tour and self.tour.wants_capture()),
+                        "learn": learn})
 
     def changeEvent(self, event):
         super().changeEvent(event)

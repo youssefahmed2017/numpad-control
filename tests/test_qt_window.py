@@ -235,6 +235,38 @@ class QtWindowTest(unittest.TestCase):
         self.assertFalse(self.w.learn.isChecked())
         self.assertIn("needs the background service", self.w.statusBar().currentMessage())
 
+    def test_welcome_flow(self):
+        from numpadctl_ui import welcome
+        dialog = welcome.WelcomeDialog(self.w)
+        self.addCleanup(dialog.deleteLater)
+        self.assertIs(self.w.tour, dialog)
+        self.w.last_status = {"running": True, "connected": True, "devices": ["USB Keyboard"]}
+        dialog.refresh_status()
+        self.assertIn("USB Keyboard connected", dialog.status.text())
+        dialog.advance()
+        self.assertEqual(dialog.pages.currentIndex(), 1)
+        dialog.advance()  # the default choice, media keys: filled in and saved
+        self.assertEqual(self.saved()["5"]["tap"]["action"], "volume_mute")
+        self.assertEqual(self.saved()["8"]["tap"]["action"], "if_mode", "what was there stays")
+        self.assertIn("Mute", dialog.try_text.text())
+        self.w.link.sent.clear()
+        dialog.go(2)
+        self.assertEqual(self.w.link.sent[-1]["on"], True, "keys are reported, not run, on the last page")
+        dialog.on_key("7")
+        self.assertIn("Try key 5", dialog.try_result.text())
+        dialog.on_key("5")
+        self.assertIn("It works", dialog.try_result.text())
+        dialog.advance()
+        self.assertIsNone(self.w.tour)
+        self.assertTrue(json.loads(self.config_path.read_text())["welcomed"])
+        self.assertEqual(self.w.link.sent[-1]["on"], False)
+
+    def test_welcome_shows_only_on_a_new_install(self):
+        self.assertFalse(self.w.first_run, "there was a config already")
+        with mock.patch.object(window_module.welcome.WelcomeDialog, "exec") as run:
+            self.w.open_welcome()
+        run.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -36,6 +36,7 @@ DEFAULT_CONFIG = {
     "updates": "auto",          # install new releases by themselves; "notify" only says so; "off"
     "pause_for_games": "auto",  # let go of the numpad while a game with anti-cheat runs (auto: on Windows)
     "protected_games": [],      # more program names for that, e.g. ["MyGame.exe"] (games.py has the list)
+    "welcomed": False,  # the first-run welcome has been seen
     "layer_key": None,  # hold this key for the second set of actions
     "modes": [],        # names of on/off modes (their state is in modes.py)
     "obs": {"host": "localhost", "port": 4455, "password": ""},
