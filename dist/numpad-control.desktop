@@ -4,6 +4,6 @@ Name=NumpadPilot
 Comment=Choose what each numpad key does
 Exec=@HOME@/.local/bin/numpad-control
 Path=@DIR@
-Icon=input-keyboard
+Icon=@DIR@/assets/icon-256.png
 Categories=Utility;
 StartupWMClass=dev.numpadctl.NumpadControl

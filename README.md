@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/banner.png" alt="NumpadPilot: your $10 numpad, now a control deck"></p>
+
 # NumpadPilot
 
 [![Tests](https://github.com/youssefahmed2017/numpad-pilot/actions/workflows/tests.yml/badge.svg)](https://github.com/youssefahmed2017/numpad-pilot/actions/workflows/tests.yml)
@@ -400,3 +402,9 @@ the GPL-3.0 now.)
 Parts it uses keep their own licenses: PySide6 (LGPL), evdev, obsws-python, pystray,
 pycaw (MIT), and on Windows, only if you choose it, the Interception driver (LGPL for
 non-commercial use; a paid license is needed to sell it with a product).
+
+## Logo and brand files
+The icon and banner are in [`assets/`](assets/): `icon.svg`, PNGs from 16 to 512 px
+(used by the settings window, the tray and the Linux launcher), `numpad-pilot.ico`
+(Windows), `banner.png` and `social-preview.png` (1280x640, for GitHub's link preview).
+The website uses the same icon as its favicon and `site/img/og.png` as its link preview.

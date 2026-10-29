@@ -3,9 +3,9 @@
 import getpass
 import os
 import sys
+from pathlib import Path
 
-from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QColor, QIcon, QKeySequence, QPainter, QPixmap, QShortcut
+from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
@@ -17,23 +17,16 @@ from .window import MainWindow
 PID_PATH = paths.runtime_dir() / "numpad-control-window.pid"  # for bar modules listing hidden apps
 
 
-def draw_icon(size=64):
-    """A small numpad: a dark rounded square with a 3x3 grid of keys (one blue)."""
-    pixmap = QPixmap(size, size)
-    pixmap.fill(Qt.transparent)
-    painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.Antialiasing)
-    painter.setPen(Qt.NoPen)
-    painter.setBrush(QColor(40, 44, 52))
-    painter.drawRoundedRect(QRectF(2, 2, size - 4, size - 4), size / 6, size / 6)
-    gap, cell = size / 16, (size - 4 * size / 16 - 6) / 3
-    for row in range(3):
-        for col in range(3):
-            painter.setBrush(QColor(53, 132, 228) if (row, col) == (1, 1) else QColor(220, 223, 228))
-            painter.drawRoundedRect(QRectF(3 + gap + col * (cell + gap), 3 + gap + row * (cell + gap), cell, cell),
-                                    cell / 4, cell / 4)
-    painter.end()
-    return QIcon(pixmap)
+ASSETS = Path(__file__).resolve().parent.parent / "assets"
+ICON_SIZES = (16, 24, 32, 48, 64, 128, 256, 512)
+
+
+def draw_icon():
+    """The NumpadPilot icon, from assets/ (one PNG per size so every spot gets a sharp one)."""
+    icon = QIcon()
+    for size in ICON_SIZES:
+        icon.addFile(str(ASSETS / f"icon-{size}.png"))
+    return icon
 
 
 def _server_name():

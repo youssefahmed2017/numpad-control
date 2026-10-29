@@ -74,19 +74,10 @@ def set_autostart(on, winreg=None):
 # ---------------------------------------------------------------- the icon
 
 def draw_icon(size=64):
-    """A small numpad: a dark rounded square with a 3x3 grid of keys."""
-    from PIL import Image, ImageDraw
-    image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle((2, 2, size - 3, size - 3), radius=size // 6, fill=(40, 44, 52, 255))
-    gap, cell = size // 16, (size - 4 * size // 16 - 6) // 3
-    for row in range(3):
-        for col in range(3):
-            x = 3 + gap + col * (cell + gap)
-            y = 3 + gap + row * (cell + gap)
-            color = (53, 132, 228, 255) if (row, col) == (1, 1) else (220, 223, 228, 255)
-            draw.rounded_rectangle((x, y, x + cell, y + cell), radius=max(1, cell // 4), fill=color)
-    return image
+    """The NumpadPilot icon (assets/icon-512.png), scaled to `size`."""
+    from PIL import Image
+    image = Image.open(Path(__file__).resolve().parents[2] / "assets" / "icon-512.png").convert("RGBA")
+    return image.resize((size, size), Image.LANCZOS)
 
 
 # ---------------------------------------------------------------- the app

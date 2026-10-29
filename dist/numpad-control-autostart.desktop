@@ -3,6 +3,6 @@ Type=Application
 Name=NumpadPilot
 Comment=Waits in the system tray so the settings open instantly
 Exec=@HOME@/.local/bin/numpad-control --hidden
-Icon=input-keyboard
+Icon=@DIR@/assets/icon-256.png
 OnlyShowIn=KDE;
 X-KDE-autostart-phase=2
