@@ -51,7 +51,7 @@ Type: filesandordirs; Name: "{app}"
 [Code]
 // A copy put here by the old PowerShell installer (install.ps1) would run next to this one, so find it,
 // stop it and remove it first. Settings stay (they live in %APPDATA%\numpad-control).
-procedure CurrentStepChanged(CurStep: TSetupStep);
+procedure CurStepChanged(CurStep: TSetupStep);
 var
   Code: Integer;
 begin
