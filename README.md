@@ -258,7 +258,7 @@ Update, [0] Quit**. (`--install`, `--uninstall` and `--update` skip the menu.) I
 8. optionally installs the boot/sleep re-detect fix (below)
 
 Running `./setup.sh` again from the clone and choosing Update updates everything (the menu entry and icon
-are rewritten in place, never deleted, so a running launcher keeps showing the app; the
+are replaced whole (never deleted or left half-written), and only when they changed, so a running launcher keeps showing the app; the
 system permission rule is kept when unchanged, so an update does not ask for sudo).
 Uninstall removes the service, launcher, menu entry and permission rules, and asks
 before deleting your settings. Options:

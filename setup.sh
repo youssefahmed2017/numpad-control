@@ -43,8 +43,12 @@ run() {
 write() {  # write DEST MODE  (content on stdin)
     if [ "$DRY_RUN" = 1 ]; then printf '  [dry-run] write %s\n' "$1"; cat > /dev/null; return; fi
     mkdir -p "$(dirname "$1")"
-    cat > "$1"
-    chmod "$2" "$1"
+    # Whole file or nothing: a launcher watching the folder must never see it half-written (hyprlauncher
+    # forgets the app then), and an unchanged file isn't touched at all.
+    local tmp="$1.new"
+    cat > "$tmp"
+    chmod "$2" "$tmp"
+    if cmp -s "$tmp" "$1"; then rm -f "$tmp"; else mv -f "$tmp" "$1"; fi
 }
 render() {  # fill a template from dist/
     sed -e "s|@DIR@|$DIR|g" -e "s|@HOME@|$HOME|g" \
@@ -275,6 +279,13 @@ render numpad-control.service | write "$HOME/.config/systemd/user/numpad-control
 run systemctl --user daemon-reload
 run systemctl --user enable numpad-control
 run systemctl --user restart numpad-control
+# The settings app lives in the tray with the old code; restart it too (only if it was running).
+if pgrep -f '^[^ ]*python -m numpadctl gui' > /dev/null && [ "$DRY_RUN" != 1 ]; then
+    pkill -f '^[^ ]*python -m numpadctl gui'
+    sleep 1
+    setsid "$HOME/.local/bin/numpad-control" --hidden > /dev/null 2>&1 < /dev/null &
+    note "restarted the settings app (hidden in the tray)"
+fi
 if systemctl --user cat ydotool.service > /dev/null 2>&1; then
     run systemctl --user enable --now ydotool   # for the Type text / Press keys actions
 fi
