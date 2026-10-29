@@ -28,6 +28,7 @@ SolidCompression=yes
 WizardStyle=modern
 
 [Files]
+Source: "remove-old.ps1"; Flags: dontcopy
 Source: "{#BuildDir}\app\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Tasks]
@@ -46,3 +47,20 @@ Filename: "{app}\python\python.exe"; Parameters: "-c ""from numpadctl.platform.w
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
+
+[Code]
+// A copy put here by the old PowerShell installer (install.ps1) would run next to this one, so find it,
+// stop it and remove it first. Settings stay (they live in %APPDATA%\numpad-control).
+procedure CurrentStepChanged(CurStep: TSetupStep);
+var
+  Code: Integer;
+begin
+  if CurStep = ssInstall then
+  begin
+    ExtractTemporaryFile('remove-old.ps1');
+    Exec('powershell.exe',
+      '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
+        ExpandConstant('{tmp}\remove-old.ps1') + '" -NewDir "' + ExpandConstant('{app}') + '"',
+      '', SW_HIDE, ewWaitUntilTerminated, Code);
+  end;
+end;

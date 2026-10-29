@@ -32,7 +32,8 @@ Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland),
 
 or download `NumpadPilot-Setup-<version>.exe` from the [Releases](https://github.com/youssefahmed2017/numpad-pilot/releases)
 page. It carries its own Python, needs no administrator rights, and is removed from
-Settings → Apps. The installer is not code-signed yet, so Windows SmartScreen may warn:
+Settings → Apps. If an older copy from the PowerShell installer is on the PC, the installer
+stops and removes it first (your settings stay). The installer is not code-signed yet, so Windows SmartScreen may warn:
 choose *More info → Run anyway*. Updates come from `winget upgrade` or a newer installer.
 How it is built: [`packaging/windows/`](packaging/windows/), and the winget manifests in
 [`packaging/winget/`](packaging/winget/).
