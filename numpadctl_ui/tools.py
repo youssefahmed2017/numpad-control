@@ -1,16 +1,16 @@
 """Diagnostics report and key tester."""
 
-from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QPlainTextEdit, QPushButton, QVBoxLayout
 
 from numpadctl import diagnostics, ui_common
 from .widgets import label
+from . import theme
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, ToolButton
 
 
 def _monospace(edit):
     edit.setReadOnly(True)
-    edit.setFont(QFontDatabase.systemFont(QFontDatabase.FixedFont))
+    edit.setFont(theme.monospace())
     return edit
 
 

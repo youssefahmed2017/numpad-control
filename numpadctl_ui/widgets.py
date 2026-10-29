@@ -2,11 +2,11 @@
 edits (no separate "collect the fields before saving" step)."""
 
 from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import (QComboBox, QCompleter, QFrame, QHBoxLayout, QLabel, QLineEdit, QMenu,
                                QPlainTextEdit, QPushButton, QToolButton, QVBoxLayout, QWidget)
 
 from numpadctl import actions, sandbox, ui_common
+from . import theme
 from .buttons import ComboBox, Menu, PushButton, ToolButton
 from .picker import ActionPicker
 
@@ -156,7 +156,7 @@ class CodeField(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(label(param.label, "small"))
         edit = QPlainTextEdit(str(value))
-        edit.setFont(QFontDatabase.systemFont(QFontDatabase.FixedFont))
+        edit.setFont(theme.monospace())
         edit.setMinimumHeight(180)
         edit.textChanged.connect(lambda: on_change(edit.toPlainText()))
         layout.addWidget(edit)

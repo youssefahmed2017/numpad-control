@@ -345,6 +345,10 @@ you) or `"off"`; `python -m numpadctl update` checks right away.
 To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
 matching tag (`git tag v0.3.0 && git push --tags`).
 
+**Next:** the settings window ships its own font (Roboto and Roboto Mono, in
+[`assets/fonts/`](assets/fonts/)), so Windows no longer falls back to pixelated system fonts
+(Courier and friends).
+
 **0.2.2:** a nicer Windows installer (artwork, light and dark), `setup.sh` / `setup.ps1` with an
 Install / Uninstall / Update menu, one Pause / resume recording key, press a key to select it
 and a searchable action picker, and an AUR recipe.
@@ -454,4 +458,5 @@ The old `install.sh` and `install.ps1` names still work: they just start these.
 The icon and banner are in [`assets/`](assets/): `icon.svg`, PNGs from 16 to 512 px
 (used by the settings window, the tray and the Linux launcher), `numpad-pilot.ico`
 (Windows), `banner.png` and `social-preview.png` (1280x640, for GitHub's link preview).
+The UI font (Roboto, Roboto Mono) is in `assets/fonts/`.
 The website uses the same icon as its favicon and `site/img/og.png` as its link preview.
