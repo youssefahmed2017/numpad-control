@@ -71,7 +71,8 @@ action, Save. What the installers do, and their options:
 - **First launch tour.** A new install opens a 3-step welcome: it finds your numpad, lets you
   pick a starting point (streaming, media, everyday shortcuts or empty) and has you press a
   key to see it register. Open it again from *Tools ▾ → Welcome tour*.
-- **Find it in your launcher.** The menu entry answers to "NumpadPilot", "Numpad Pilot" and "numpad".
+- **Find it in your launcher.** The menu entry answers to "NumpadPilot", "Numpad Pilot" and "numpad". Its icon is installed in
+  your icon theme (`~/.local/share/icons/hicolor`), so launchers that ignore file paths show it too.
 
 ## How it works
 - A **background service** (systemd user service) reads the numpad directly with
