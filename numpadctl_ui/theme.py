@@ -14,7 +14,7 @@ from . import tokens
 current = {}  # the colours in use, for widgets that paint themselves (the numpad keys)
 listeners = []  # called with the colours after every apply(), for looks set up once (shadows)
 SYSTEM_POLL_MS = 4000  # Linux desktops that don't tell Qt (Hyprland): how often to ask the portal
-FONT_FAMILIES = ("Roboto", "Google Sans", "Inter", "Segoe UI", "Noto Sans")  # the first one installed is used
+FONT_FAMILIES = ("Google Sans", "Roboto", "Inter", "Segoe UI", "Noto Sans")  # the first one installed is used
 FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
 
 
@@ -93,16 +93,16 @@ def _draw_images(c):
 
 
 def load_fonts():
-    """Register the bundled Roboto files, so the look doesn't depend on what the OS has
+    """Register the bundled Google Sans and JetBrains Mono files, so the look doesn't depend on what the OS has
     (on Windows the fallback was a pixelated bitmap font)."""
     for file in sorted(FONT_DIR.glob("*.ttf")):
         QFontDatabase.addApplicationFont(str(file))
 
 
 def monospace():
-    """The font for code and logs: bundled Roboto Mono, else the system fixed font."""
-    if "Roboto Mono" in QFontDatabase.families():
-        font = QFont("Roboto Mono")
+    """The font for code and logs: bundled JetBrains Mono, else the system fixed font."""
+    if "JetBrains Mono" in QFontDatabase.families():
+        font = QFont("JetBrains Mono")
         font.setStyleHint(QFont.Monospace)
         return font
     return QFontDatabase.systemFont(QFontDatabase.FixedFont)
