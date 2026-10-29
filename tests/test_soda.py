@@ -78,8 +78,11 @@ class SodaTest(unittest.TestCase):
 
     SCENE = "-TellMeTheSecretOrIWillDoSomethingYouMightNotLike"
 
-    def test_the_secret_scene_gives_in_after_three_answers(self):
-        code, out, _ = soda(self.SCENE, stdin="NO TELL ME\nNO TELL ME OR I WILL BE SAD\nI will uninstall you forever\n")
+    ANSWERS = ["NO TELL ME", "NO TELL ME OR I WILL BE SAD",
+               "I will uninstall you from my system forever if you don't give me the abcdef... shit you want"]
+
+    def test_the_secret_scene_gives_in_after_the_three_exact_answers(self):
+        code, out, _ = soda(self.SCENE, stdin="\n".join(self.ANSWERS) + "\n")
         self.assertEqual(code, 0)
         self.assertIn("THIS IS ***MY*** PRIVACY", out)
         self.assertIn("NAH NAH I'M NOT", out)
@@ -87,8 +90,22 @@ class SodaTest(unittest.TestCase):
         self.assertIn("TAKE IT:  123AdminSuperSoda@444cannotsee", out)
         self.assertEqual(out.count(">>>"), 3)
 
+    def test_each_answer_must_be_exactly_right(self):
+        for position in range(3):
+            answers = list(self.ANSWERS)
+            answers[position] = answers[position].lower() if position != 2 else answers[position] + "!"
+            code, out, _ = soda(self.SCENE, stdin="\n".join(answers) + "\n")
+            self.assertEqual(code, 1, f"answer {position + 1} wrong")
+            self.assertIn("NOT WHAT I WAS EXPECTING", out)
+            self.assertIn("start again", out)
+            self.assertNotIn("123Admin", out)
+            self.assertEqual(out.count(">>>"), position + 1, "it stops at the wrong answer")
+        code, out, _ = soda(self.SCENE, stdin="please?\n")
+        self.assertEqual(code, 1)
+        self.assertIn("THREE WORDS", out, "a wrong answer comes with a clue")
+
     def test_the_secret_scene_holds_back_until_the_last_answer(self):
-        _, out, _ = soda(self.SCENE, stdin="NO TELL ME\nNO TELL ME OR I WILL BE SAD\n")  # then silence
+        _, out, _ = soda(self.SCENE, stdin="\n".join(self.ANSWERS[:2]) + "\n")  # then silence
         self.assertNotIn("123Admin", out)
         self.assertIn("silence", out)
         _, out, _ = soda(self.SCENE, stdin="quit\n")

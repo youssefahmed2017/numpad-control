@@ -183,7 +183,7 @@ credits() {
 # Soda's one secret, kept out of plain sight (base64: a speed bump for readers, not a lock).
 SECRET_B64='MTIzQWRtaW5TdXBlclNvZGFANDQ0Y2Fubm90c2Vl'
 
-ask() {  # ask: show the prompt, read your answer into $REPLY; end the scene if you quit or say nothing
+ask() {  # ask EXPECTED CLUE: only the exact answer moves the scene on; anything else and soda walks out
     printf '%s>>> %s' "$Y" "$Z"
     if ! read -r REPLY; then
         printf '\n'
@@ -193,6 +193,12 @@ ask() {  # ask: show the prompt, read your answer into $REPLY; end the scene if 
     case ${REPLY,,} in
         q|quit|exit) say "fine. be that way."; exit 0 ;;
     esac
+    if [ "$REPLY" != "$1" ]; then
+        line "${R}THAT'S NOT WHAT I WAS EXPECTING.${Z}" 0.4
+        line "$2" 0.4
+        line "${D}(soda walks out. start again.)${Z}" 0.1
+        exit 1
+    fi
 }
 
 line() { say "$1"; nap "${2:-0.7}"; }
@@ -202,16 +208,17 @@ tellme() {
     line "THIS IS ***MY*** PRIVACY AND YOU CAN'T THREATEN ME"
     line "I WON'T TELL YOU THE SECRET"
     line "WHAT'S YOUR RESPONSE?" 0.3
-    ask
+    ask "NO TELL ME" "I WAS EXPECTING A DEMAND. SHORT. THREE WORDS. YOU DEMAND TO BE TOLD."
     line "NAH NAH I'M NOT "
     line "YA NEED TO CALM DOWN" 0.3
-    ask
+    ask "NO TELL ME OR I WILL BE SAD" "SAME DEMAND AGAIN. BUT NOW IT COMES WITH A THREAT: YOU, BEING SAD."
     line "OH Ok so u gonna be sad?"
     line "Yeah that's bad "
     line "But I can't"
     line "Ok fine here it is: ${Y}dlkjdflj${Z}"
     line "see I can't type I literally can't do it even if you want" 0.3
-    ask
+    ask "I will uninstall you from my system forever if you don't give me the abcdef... shit you want" \
+        "A BIGGER THREAT. YOU UNINSTALL ME. FROM YOUR SYSTEM. FOREVER. IF I DON'T GIVE YOU THE ABCDEF... STUFF YOU WANT."
     line "${B}OK OK FINE TAKE IT:${Z}  ${G}$(printf '%s' "$SECRET_B64" | base64 -d)${Z}" 0.3
     say "${D}(now go and use it. the locked tab is waiting.)${Z}"
 }
