@@ -72,7 +72,8 @@ action, Save. What the installers do, and their options:
   pick a starting point (streaming, media, everyday shortcuts or empty) and has you press a
   key to see it register. Open it again from *Tools ▾ → Welcome tour*.
 - **Find it in your launcher.** The menu entry answers to "NumpadPilot", "Numpad Pilot" and "numpad". Its icon is installed in
-  your icon theme (`~/.local/share/icons/hicolor`), so launchers that ignore file paths show it too.
+  your icon theme (`~/.local/share/icons/hicolor`), so launchers that ignore file paths show it too. (The
+  setup also adds the theme's `index.theme` there if missing: hyprlauncher skips icon folders without one.)
 
 ## How it works
 - A **background service** (systemd user service) reads the numpad directly with

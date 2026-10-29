@@ -285,6 +285,8 @@ render numpad-control.desktop | write "$HOME/.local/share/applications/numpad-co
 for size in 16 24 32 48 64 128 256 512; do
     run install -Dm644 "$DIR/assets/icon-$size.png" "$HOME/.local/share/icons/hicolor/${size}x${size}/apps/numpad-control.png"
 done
+# Without an index.theme launchers skip the whole folder (hyprlauncher does), and so every icon in it.
+[ -e "$HOME/.local/share/icons/hicolor/index.theme" ] || run cp /usr/share/icons/hicolor/index.theme "$HOME/.local/share/icons/hicolor/index.theme" 2> /dev/null || true
 run gtk-update-icon-cache -q -t "$HOME/.local/share/icons/hicolor" 2> /dev/null || true
 # KDE starts it hidden at login (with a tray icon); the entry is ignored elsewhere.
 render numpad-control-autostart.desktop | write "$HOME/.config/autostart/numpad-control.desktop" 644
