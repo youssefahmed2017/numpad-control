@@ -38,6 +38,15 @@ action, Save. What the installers do, and their options:
 | ![Settings: device, layer key, modes and OBS](docs/screenshots/settings.png) | ![The on-screen "Recording" popup after pressing the record key](docs/screenshots/popup.png) |
 | **Settings**: numpad, layer key, modes, OBS | **On-screen confirmation** when a key runs |
 
+## Finding your way around
+- **Press a key to select it.** While the settings window is in front, pressing a key on
+  the numpad selects it in the editor instead of running its action (so you can't fire
+  "Shut down" by accident while setting it up). Turn this off under *Tools ▾ → Select a
+  key when I press it*. The moment the window isn't in front, the keys work as usual.
+- **Search the actions.** Click an action and type: "mute" finds the microphone, the
+  speakers and OBS, "live" finds the streaming actions. Each one has a one-line
+  description, and the ones you used last are listed first under *Recently used*.
+
 ## How it works
 - A **background service** (systemd user service) reads the numpad directly with
   evdev and grabs it, so its keys only trigger actions and never type digits.

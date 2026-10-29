@@ -12,7 +12,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication, QLineEdit, QMessageBox  # noqa: E402
 
 from numpadctl import config, modes, ui_common  # noqa: E402
-from numpadctl_ui import dialogs, tools, widgets, window as window_module  # noqa: E402
+from numpadctl_ui import dialogs, picker as picker_module, tools, widgets, window as window_module  # noqa: E402
+from numpadctl_ui.picker import ActionPicker  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
@@ -49,6 +50,7 @@ class QtWindowTest(unittest.TestCase):
         self.config_path.write_text(json.dumps(CONFIG))
         patches = [mock.patch.object(config, "CONFIG_DIR", root), mock.patch.object(config, "CONFIG_PATH", self.config_path),
                    mock.patch.object(modes, "STATE_DIR", root), mock.patch.object(modes, "STATE_PATH", root / "modes.json"),
+                   mock.patch.object(picker_module, "RECENT_PATH", root / "recent.json"),
                    mock.patch.object(ui_common, "ServiceLink", FakeLink),
                    mock.patch.object(ui_common, "installed_apps", lambda: [("Kitty", "kitty.desktop"), ("Firefox", "firefox.desktop")])]
         for p in patches:
@@ -66,8 +68,8 @@ class QtWindowTest(unittest.TestCase):
     def pick(self, slot_index, action_id):
         """Choose an action in the slot's dropdown (0 = Press, 1 = Hold, 2 = Double tap)."""
         from numpadctl import actions
-        combo = [c for c in self.editor(widgets.SearchCombo) if c.count() == len(ui_common.ACTION_NAMES)][slot_index]
-        combo.setCurrentIndex(actions.ACTIONS.index(actions.BY_ID[action_id]))
+        picker = self.editor(ActionPicker)[slot_index]
+        picker.choose(actions.ACTIONS.index(actions.BY_ID[action_id]))
         APP.processEvents()  # the editor is rebuilt right after the signal
 
     def test_choose_action_edit_and_save(self):
@@ -117,12 +119,33 @@ class QtWindowTest(unittest.TestCase):
         rapid.setChecked(False)
         self.assertFalse(self.w.keymap()["4"]["hold"]["rapid"])
 
-    def test_search_finds_shut_down_by_any_part_of_its_name(self):
-        combo = widgets.SearchCombo(ui_common.ACTION_NAMES)
-        completer = combo.completer()
-        completer.setCompletionPrefix("shut")
-        matches = [completer.completionModel().index(i, 0).data() for i in range(completer.completionCount())]
-        self.assertEqual(matches, ["System · Shut down (press twice)"])
+    def test_search_finds_actions_by_any_word_of_their_name_group_or_sentence(self):
+        from numpadctl import actions
+        found = lambda q: [a.id for a in actions.ACTIONS if picker_module.matches(a, q)]
+        self.assertEqual(found("shut"), ["shutdown"])
+        self.assertIn("mic_mute", found("mute"))
+        self.assertIn("obs_toggle_mute", found("mute"))
+        self.assertEqual(found("obs live"), ["obs_start_streaming", "obs_toggle_streaming", "obs_start_both"])
+        self.assertEqual(found("zzz"), [])
+
+    def test_picker_popup_lists_groups_and_picks_with_enter(self):
+        from numpadctl import actions
+        picker = self.editor(ActionPicker)[0]
+        popup = picker_module._Popup(picker.items, picker.index)
+        titles = [popup.list.item(r).text() for r in range(popup.list.count()) if popup.list.item(r).data(picker_module.HEADER_ROLE)]
+        self.assertIn("OBS", titles)
+        popup.search.setText("volume up")
+        got = []
+        popup.chosen.connect(got.append)
+        popup._clicked(popup.list.currentItem())
+        self.assertEqual(actions.ACTIONS[got[0]].id, "volume_up")
+
+    def test_recently_used_actions_come_first(self):
+        picker = self.editor(ActionPicker)[0]
+        self.pick(0, "media_next")
+        popup = picker_module._Popup(picker.items, 0)
+        self.assertEqual(popup.list.item(0).text(), "Recently used")
+        self.assertEqual(popup.list.item(1).text(), "Next track")
 
     def test_bad_settings_block_save(self):
         self.w.select("9")

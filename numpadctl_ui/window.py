@@ -2,7 +2,7 @@
 
 import copy
 
-from PySide6.QtCore import QRectF, Qt, QTimer, QVariantAnimation
+from PySide6.QtCore import QEvent, QRectF, Qt, QTimer, QVariantAnimation
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFrame, QGridLayout, QHBoxLayout,
                                QLineEdit, QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea, QSizePolicy,
@@ -11,7 +11,8 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFrame, QGrid
 from numpadctl import actions, config, keys, presets, ui_common
 from . import dialogs, effects, theme, tokens, tools
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, ToolButton, _Morph
-from .widgets import Dispatcher, SearchCombo, add_param_widgets, card, label
+from .picker import ActionPicker
+from .widgets import Dispatcher, add_param_widgets, card, label
 
 FLASH_MS = 250
 KEY_FADE_MS = 160
@@ -173,6 +174,13 @@ class MainWindow(QMainWindow):
         menu = Menu(extra)
         menu.addAction("Key tester…", self.open_tester)
         menu.addAction("Diagnostics…", self.open_diagnostics)
+        menu.addSeparator()
+        self.follow = menu.addAction("Select a key when I press it")
+        self.follow.setCheckable(True)
+        self.follow.setChecked(True)
+        self.follow.setToolTip("While this window is in front, pressing a numpad key selects it here "
+                               "instead of running its action")
+        self.follow.toggled.connect(lambda _: self.sync_capture())
         extra.setMenu(menu)
         row.addWidget(extra)
         settings = PushButton("Settings")
@@ -403,10 +411,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(label(ui_common.slot_description(slot, has_extra), "dim", wrap=True))
 
         layout.addWidget(label("Action", "small"))
-        combo = SearchCombo(ui_common.ACTION_NAMES, actions.ACTIONS.index(action))
-        combo.setAccessibleName(f"{ui_common.SLOT_TITLES[slot]} action")
-        combo.picked.connect(lambda i: self.on_action_changed(slot, i))
-        layout.addWidget(combo)
+        picker = ActionPicker(actions.ACTIONS, actions.ACTIONS.index(action), ui_common.ACTION_NAMES)
+        picker.setAccessibleName(f"{ui_common.SLOT_TITLES[slot]} action")
+        picker.picked.connect(lambda i: self.on_action_changed(slot, i))
+        layout.addWidget(picker)
         hint = None
         if action.repeat and slot == "tap":
             hint = "Repeats while held"
@@ -563,7 +571,7 @@ class MainWindow(QMainWindow):
             button = self.key_buttons.get(message["key"])
             if button:
                 button.flash()
-            if self.learn.isChecked() and message["key"] in self.key_buttons:
+            if message["key"] in self.key_buttons and (self.learn.isChecked() or self.following_keys()):
                 self.select(message["key"])
         elif event == "detected" and self.on_detected:
             callback, self.on_detected = self.on_detected, None
@@ -585,17 +593,30 @@ class MainWindow(QMainWindow):
             else:
                 self.status.setText("Numpad not plugged in")
                 self.status.setObjectName("warn")
-            if self.learn.isChecked():  # reconnected: turn capture back on
-                self.link.send({"cmd": "capture", "on": True})
+            self.sync_capture()  # reconnected: turn capture back on if it should be
         self.status.style().unpolish(self.status)
         self.status.style().polish(self.status)
+
+    def following_keys(self):
+        """True while the window is in front and pressed keys select instead of act."""
+        return self.follow.isChecked() and self.isActiveWindow() and self.link.connected
+
+    def sync_capture(self):
+        """Keep the service in step: in Learn mode, or while this window is in front, keys report but don't run."""
+        learn = self.learn.isChecked()
+        self.link.send({"cmd": "capture", "on": learn or self.following_keys(), "learn": learn})
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() == QEvent.ActivationChange and hasattr(self, "follow"):
+            self.sync_capture()
 
     def on_learn_toggled(self, on):
         if on and not self.link.connected:
             self.toast("Learn mode needs the background service running.")
             self.learn.setChecked(False)
             return
-        self.link.send({"cmd": "capture", "on": on})
+        self.sync_capture()
         if on:
             self.toast("Learn mode: press a key on the numpad")
 

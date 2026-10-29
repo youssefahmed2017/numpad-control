@@ -12,7 +12,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication, QLineEdit  # noqa: E402
 
 from numpadctl import config, keys, modes, ui_common  # noqa: E402
-from numpadctl_ui import dialogs, window as window_module  # noqa: E402
+from numpadctl_ui import dialogs, picker as picker_module, window as window_module  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
@@ -36,6 +36,7 @@ class WindowTest(unittest.TestCase):
         self.path.write_text(json.dumps(cfg))
         for p in (mock.patch.object(config, "CONFIG_DIR", root), mock.patch.object(config, "CONFIG_PATH", self.path),
                   mock.patch.object(modes, "STATE_DIR", root), mock.patch.object(modes, "STATE_PATH", root / "m.json"),
+                  mock.patch.object(picker_module, "RECENT_PATH", root / "recent.json"),
                   mock.patch.object(ui_common, "ServiceLink", FakeLink),
                   mock.patch.object(ui_common, "installed_apps", lambda: [])):
             p.start()
@@ -65,10 +66,9 @@ class WindowTest(unittest.TestCase):
         self.w.learn.setChecked(True)
         self.press("KEY_F13")
         from numpadctl import actions
-        from numpadctl_ui import widgets
-        combo = [c for c in self.w.editor_scroll.widget().findChildren(widgets.SearchCombo)
-                 if c.count() == len(ui_common.ACTION_NAMES)][0]
-        combo.setCurrentIndex(actions.ACTIONS.index(actions.BY_ID["media_next"]))
+        from numpadctl_ui.picker import ActionPicker
+        picker = self.w.editor_scroll.widget().findChildren(ActionPicker)[0]
+        picker.choose(actions.ACTIONS.index(actions.BY_ID["media_next"]))
         APP.processEvents()
         name = [e for e in self.w.editor_scroll.widget().findChildren(QLineEdit) if e.accessibleName() == "Key name"][0]
         name.textEdited.emit("Next track")
@@ -93,3 +93,29 @@ class WindowTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FollowKeysTest(WindowTest):
+    def test_a_pressed_key_selects_itself_while_the_window_is_in_front(self):
+        self.w.isActiveWindow = lambda: True
+        self.press("7", unknown=False)
+        self.assertEqual(self.w.selected, "7")
+
+    def test_nothing_is_selected_when_the_window_is_behind_or_following_is_off(self):
+        self.w.isActiveWindow = lambda: False
+        self.press("7", unknown=False)
+        self.assertNotEqual(self.w.selected, "7")
+        self.w.isActiveWindow = lambda: True
+        self.w.follow.setChecked(False)
+        self.press("8", unknown=False)
+        self.assertNotEqual(self.w.selected, "8")
+
+    def test_the_service_only_holds_the_keys_while_following_and_never_learns(self):
+        self.w.isActiveWindow = lambda: True
+        self.w.sync_capture()
+        self.assertEqual(self.w.link.sent[-1], {"cmd": "capture", "on": True, "learn": False})
+        self.w.isActiveWindow = lambda: False
+        self.w.sync_capture()
+        self.assertEqual(self.w.link.sent[-1], {"cmd": "capture", "on": False, "learn": False})
+        self.w.learn.setChecked(True)
+        self.assertEqual(self.w.link.sent[-1], {"cmd": "capture", "on": True, "learn": True})

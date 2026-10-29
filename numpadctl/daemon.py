@@ -71,6 +71,7 @@ class Daemon:
         self.restart = restart or _restart_in_place  # after an update (the Windows tray brings its own)
         self.clients = set()
         self.capturing = set()
+        self.following = set()  # capturing clients that only want keys to select, not to learn new ones
         self.raw_clients = set()  # key tester windows: want every raw key event
         self.detect_future = None
 
@@ -160,11 +161,14 @@ class Daemon:
         Raw Input backend only takes over the keys it is told about; the others read everything the numpad sends)."""
         setter = getattr(self.numpad, "set_extra_keys", None)
         if setter:
-            setter(keys.extra_ids(self.cfg), bool(self.capturing))
+            setter(keys.extra_ids(self.cfg), self.learning())
+
+    def learning(self):
+        return bool(self.capturing - self.following)
 
     def double_zero_wanted(self):
         """Two 0s in a burst are a "00" key only once you have added one (or are teaching the pad new keys)."""
-        return bool(self.capturing) or keys.DOUBLE_ZERO in keys.extra_ids(self.cfg)
+        return self.learning() or keys.DOUBLE_ZERO in keys.extra_ids(self.cfg)
 
     def key_event(self, key, down):
         if down:
@@ -303,8 +307,10 @@ class Daemon:
                 if command == "capture":
                     if message.get("on"):
                         self.capturing.add(writer)
+                        (self.following.discard if message.get("learn", True) else self.following.add)(writer)
                     else:
                         self.capturing.discard(writer)
+                        self.following.discard(writer)
                     self.sync_extra_keys()
                 elif command == "raw":
                     (self.raw_clients.add if message.get("on") else self.raw_clients.discard)(writer)
@@ -317,6 +323,7 @@ class Daemon:
         finally:
             self.clients.discard(writer)
             self.capturing.discard(writer)
+            self.following.discard(writer)
             self.sync_extra_keys()
             self.raw_clients.discard(writer)
             writer.close()

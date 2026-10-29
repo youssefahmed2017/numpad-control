@@ -36,7 +36,7 @@ Both ways, every message is one JSON object on one line (UTF-8, ending in `\n`).
 | Message | Meaning |
 |---|---|
 | `{"cmd": "status"}` | Send the status again (it's also sent on connecting and whenever it changes). |
-| `{"cmd": "capture", "on": true}` | "Learn" mode: key presses are reported but run no actions, until `"on": false` or the client disconnects. |
+| `{"cmd": "capture", "on": true}` | "Learn" mode: key presses are reported but run no actions, until `"on": false` or the client disconnects. Add `"learn": false` to only report the keys (the settings window uses it to select a key as you press it): unknown keys aren't picked up and `00` isn't a key. |
 | `{"cmd": "raw", "on": true}` | Also send every raw press and release (for a key tester), until `"on": false`. |
 | `{"cmd": "detect"}` | Report the next numpad key pressed on any keyboard, to find which device is the numpad (15 seconds at most). |
 

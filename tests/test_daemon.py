@@ -163,6 +163,15 @@ class DaemonTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(b'"key": "5"', writer.write.call_args_list[-1].args[0])
 
 
+    async def test_following_clients_hold_the_keys_without_learning_new_ones(self):
+        writer = mock.Mock()
+        self.d.capturing.add(writer)
+        self.d.following.add(writer)
+        self.assertFalse(self.d.learning())
+        self.assertFalse(self.d.double_zero_wanted())
+        self.d.following.discard(writer)
+        self.assertTrue(self.d.learning())
+
     async def test_daemon_passes_the_slot_that_fired(self):
         slots = []
         self.d.run_action = lambda key, binding, slot: slots.append(slot)

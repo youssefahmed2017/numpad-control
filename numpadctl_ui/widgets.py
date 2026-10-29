@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (QComboBox, QCompleter, QFrame, QHBoxLayout, QLabe
 
 from numpadctl import actions, sandbox, ui_common
 from .buttons import ComboBox, Menu, PushButton, ToolButton
+from .picker import ActionPicker
 
 
 class Dispatcher(QObject):
@@ -230,7 +231,7 @@ class StepCard(QFrame):
         if owner.expanded == index:
             body = QVBoxLayout()
             body.setContentsMargins(26, 4, 0, 4)
-            combo = SearchCombo(ui_common.STEP_NAMES, actions.STEP_ACTIONS.index(action))
+            combo = ActionPicker(actions.STEP_ACTIONS, actions.STEP_ACTIONS.index(action), ui_common.STEP_NAMES)
             combo.picked.connect(self._action_changed)
             body.addWidget(label("Action", "small"))
             body.addWidget(combo)
