@@ -1,0 +1,192 @@
+#!/usr/bin/env bash
+# soda: a fake package manager. It installs nothing, removes nothing and changes nothing, not even with sudo.
+# It only prints (and naps). SODA_FAST=1 skips the naps, NO_COLOR=1 turns the colours off.
+#
+#   soda --help                         soda drink          soda whoareyou        soda credits
+#   soda -Install somepackage          sudo soda -ROOT
+#   soda -abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+#   soda -InstallRemoveInstallagainUpdateDestroyInstallagain somepackage
+set -u
+
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+    B=$'\033[1m' D=$'\033[2m' G=$'\033[38;5;83m' Y=$'\033[38;5;220m' R=$'\033[38;5;203m' C=$'\033[38;5;81m' Z=$'\033[0m'
+else
+    B= D= G= Y= R= C= Z=
+fi
+ALPHABET=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+
+nap() { [ -n "${SODA_FAST:-}" ] || sleep "$1"; }
+say() { printf '%s\n' "$*"; }
+step() { printf '  %s%s%s ' "$C" "$1" "$Z"; nap 0.3; printf '%sok%s\n' "$G" "$Z"; }
+
+bar() {  # bar "label": a progress bar that fills up
+    local label=$1 i width=24 from=0
+    { [ -t 1 ] && [ -z "${SODA_FAST:-}" ]; } || from=100  # not a terminal: just the finished bar, no animation
+    for i in $(seq "$from" 4 100); do
+        local filled=$((i * width / 100))
+        printf '\r  %s%-14s%s [%s%s%s%s] %3d%%' "$B" "$label" "$Z" "$G" "$(printf '%*s' "$filled" '' | tr ' ' '#')" "$D" \
+            "$(printf '%*s' $((width - filled)) '' | tr ' ' '.')$Z" "$i"
+        nap 0.02
+    done
+    printf '\n'
+}
+
+usage() {
+    cat << EOF
+${B}soda${Z}: the package manager that installs nothing.
+
+${B}usage${Z}
+  soda --help                            this
+  soda -Install <package>                "install" a package
+  soda -<Verb><Verb>... <package>        chain verbs, e.g. -InstallRemoveInstallagainUpdateDestroyInstallagain
+                                         (verbs: Install, Remove, Update, Destroy; add "again" to repeat one)
+  sudo soda -ROOT                        become root (not really)
+  soda drink                             have a soda
+  soda whoareyou                         meet soda
+  soda credits                           roll the credits
+
+Nothing here changes your system. Not a single byte. ${D}(it does fizz, though)${Z}
+EOF
+}
+
+version() { printf '%d.%d.%d' $((RANDOM % 9)) $((RANDOM % 20)) $((RANDOM % 100)); }
+
+verb() {  # verb Name package
+    local name=${1%again} pkg=$2 again=
+    [ "$1" != "$name" ] && again=" (again)"
+    case $name in
+        Install)
+            say "${B}Installing${Z} $pkg$again"
+            step "resolving fizz dependencies"
+            step "finding $pkg in the cloud (it was in a different cloud)"
+            bar "downloading"
+            step "verifying carbonation"
+            say "  ${G}installed${Z} $pkg $(version). ${D}(nothing was installed)${Z}" ;;
+        Remove)
+            say "${B}Removing${Z} $pkg$again"
+            step "looking for $pkg"
+            step "gently asking $pkg to leave"
+            say "  ${G}removed${Z} $pkg. ${D}(it was never there)${Z}" ;;
+        Update)
+            say "${B}Updating${Z} $pkg$again"
+            bar "downloading"
+            step "adding 0.01 more fizz"
+            say "  ${G}$pkg is now $(version)${Z}. ${D}(it was not)${Z}" ;;
+        Destroy)
+            say "${B}${R}Destroying${Z} $pkg$again"
+            step "arming the destructor"
+            step "counting down: 3.. 2.. 1.."
+            say "  ${Y}...just kidding.${Z} $pkg is fine. soda only pretends to be dangerous." ;;
+        *)
+            say "${R}soda: I don't know the verb '$1'.${Z} Known: Install, Remove, Update, Destroy." >&2
+            return 2 ;;
+    esac
+}
+
+chain() {  # chain "-InstallRemove..." package
+    local flags=${1#-} pkg=${2:-} words word
+    if [ -z "$pkg" ]; then
+        say "${R}soda: which package?${Z} e.g. soda $1 somepackage" >&2
+        return 2
+    fi
+    words=$(printf '%s' "$flags" | grep -oE '[A-Z][a-z]*')
+    [ -n "$words" ] || { say "${R}soda: '$1' has no verbs in it.${Z}" >&2; return 2; }
+    for word in $words; do
+        verb "$word" "$pkg" || return $?
+    done
+    say "${B}done.${Z} ${D}$(printf '%s' "$words" | wc -w) step(s), 0 changes.${Z}"
+}
+
+root() {
+    local uid=${SODA_FAKE_UID:-$(id -u)}  # (SODA_FAKE_UID is for the tests; soda does nothing as root either)
+    if [ "$uid" != 0 ]; then
+        say "${R}soda: -ROOT needs root.${Z} You are '$(id -un)'. Try: ${B}sudo soda -ROOT${Z}" >&2
+        return 1
+    fi
+    say "${B}ROOT${Z}"
+    step "checking the sudoers file (found you)"
+    step "escalating privileges (politely)"
+    step "gaining the trust of the kernel"
+    say
+    say "  ${B}${G}R O O T   A C Q U I R E D${Z}"
+    say "  ${D}you are root. you can do anything. soda will not let you.${Z}"
+    say
+    say "  ${Y}psst:${Z} root is not SuperRoot. that one has a password, in seven pieces."
+    say "  ${D}(try the admin console. type 'hint' there.)${Z}"
+}
+
+everything() {
+    say "${B}every flag at once.${Z}"
+    local c i
+    for c in $(printf '%s' "$ALPHABET" | fold -w1); do printf '%s-%s%s ' "$G" "$c" "$Z"; nap 0.02; done
+    printf '\n'
+    say
+    say "  ${Y}  .  *  .   *   .  *  FIZZ  *  .   *  .  *  .${Z}"
+    say "  ${B}ACHIEVEMENT UNLOCKED:${Z} Flag Collector (52 of 52)"
+    say "  ${D}soda is overwhelmed. it has done absolutely nothing.${Z}"
+}
+
+drink() {
+    local frames=(
+"    ____
+   |    |
+   | ## |
+   | ## |
+   |____|"
+"    ____
+   |    |   ${Y}psssht!${Z}
+   | ## |
+   | ## |
+   |____|"
+"    ____
+   |    |
+   |    |
+   | ## |
+   |____|"
+"    ____
+   |    |
+   |    |
+   |    |
+   |____|")
+    local f
+    say "${B}you open a soda...${Z}"
+    for f in "${frames[@]}"; do
+        say "$f"
+        say "$D   *glug*$Z"
+        nap 0.5
+    done
+    say "${G}ahh.${Z} that was a good one. ${D}(soda drink: always ready for another)${Z}"
+}
+
+whoareyou() {
+    cat << EOF
+${B}I am soda.${Z}
+
+  - a package manager that installs nothing
+  - written in bash, mostly for fun
+  - the fizz in NumpadPilot's admin console
+  - always three seconds from a dramatic exit
+
+${D}I know seven pieces of a secret. I will never tell you. (ask nicely, maybe.)${Z}
+EOF
+}
+
+credits() {
+    local line
+    for line in "" "${B}SODA${Z}" "a package manager with no packages" "" "directed by ${C}you${Z}" "written with a very patient robot" \
+        "tested on one (1) numpad" "" "no packages were harmed" "no bubbles were wasted" "" "${B}THE END${Z}" ""; do
+        say "      $line"
+        nap 0.35
+    done
+}
+
+case ${1:-} in
+    ''|-h|--help|help) usage ;;
+    drink) drink ;;
+    whoareyou) whoareyou ;;
+    credits) credits ;;
+    -ROOT) root ;;
+    "-$ALPHABET") everything ;;
+    -[A-Z]*) chain "$1" "${2:-}" ;;
+    *) say "${R}soda: I don't know '$1'.${Z} Try: soda --help" >&2; exit 2 ;;
+esac

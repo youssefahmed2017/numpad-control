@@ -78,6 +78,8 @@ action, Save. What the installers do, and their options:
   puts a giant KONAMI on screen, and there is a second, better hidden one (it takes the numpad *and*
   the keyboard). They only work while keys are being selected (window in front), so they never run
   your real actions. Where the second one leads, the way out is typed, not clicked (the third Esc or close click also leaves). Something in there is locked.
+- **soda.** `tools/soda` is a fake package manager written in bash for fun: it only prints, and
+  changes nothing on your system, not even with sudo. `tools/soda --help` lists what it does.
 
 ## How it works
 - A **background service** (systemd user service) reads the numpad directly with
