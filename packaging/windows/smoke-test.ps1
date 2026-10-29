@@ -9,6 +9,7 @@ $old = Join-Path $env:USERPROFILE "numpad-control"
 New-Item -ItemType Directory -Force (Join-Path $old "numpadctl") | Out-Null
 Set-Content (Join-Path $old "numpad-control.pyw") "# old copy"
 $runKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+New-Item -Path $runKey -Force | Out-Null
 Set-ItemProperty -Path $runKey -Name "Numpad Control" -Value "`"$old\.venv\Scripts\pythonw.exe`" `"$old\numpad-control.pyw`""
 $oldMenu = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Numpad Control"
 New-Item -ItemType Directory -Force $oldMenu | Out-Null
