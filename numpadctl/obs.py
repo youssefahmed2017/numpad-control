@@ -64,6 +64,19 @@ def pause_recording(s):
     return "Recording paused"
 
 
+def toggle_pause_recording(s):
+    """Pause a running recording, or resume it if it is paused (one key does both)."""
+    c = _client(s)
+    status = c.get_record_status()
+    if not status.output_active:
+        return "Not recording"
+    if status.output_paused:
+        c.resume_record()
+        return "Recording resumed"
+    c.pause_record()
+    return "Recording paused"
+
+
 def resume_recording(s):
     _client(s).resume_record()
     return "Recording resumed"

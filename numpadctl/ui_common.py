@@ -55,6 +55,7 @@ ACTION_HINTS = {
     "obs_start_recording": "Starts recording in OBS.",
     "obs_stop_recording": "Stops recording in OBS.",
     "obs_toggle_recording": "Starts recording, or stops it if it's running.",
+    "obs_toggle_pause_recording": "Pauses the recording; press again to resume, again to pause.",
     "obs_pause_recording": "Pauses the OBS recording.",
     "obs_resume_recording": "Continues a paused OBS recording.",
     "obs_start_streaming": "Goes live in OBS.",

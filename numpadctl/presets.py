@@ -27,7 +27,7 @@ PRESETS = [
         "7": _k("obs_toggle_streaming"), "8": _k("obs_toggle_recording"), "9": _k("obs_save_replay"),
         "4": _k("obs_toggle_replay_buffer"), "5": _k("mic_mute"), "6": _k("obs_toggle_virtual_cam"),
         "1": _k("volume_down"), "2": _k("volume_mute"), "3": _k("volume_up"),
-        "+": _k("obs_pause_recording"),
+        "+": _k("obs_toggle_pause_recording"),
     }),
     Preset("Media and volume", "Play, skip, volume and the microphone.", {
         "7": _k("media_previous"), "8": _k("media_play_pause"), "9": _k("media_next"),

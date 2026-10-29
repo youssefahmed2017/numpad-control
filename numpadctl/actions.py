@@ -456,6 +456,8 @@ ACTIONS = [
     Action("obs_start_recording", "Start recording", _obs(obs.start_recording), group="OBS", osd_icon="media-record-symbolic"),
     Action("obs_stop_recording", "Stop recording", _obs(obs.stop_recording), group="OBS", osd_icon="media-playback-stop-symbolic"),
     Action("obs_toggle_recording", "Toggle recording", _obs(obs.toggle_recording), group="OBS", osd_icon="media-record-symbolic"),
+    Action("obs_toggle_pause_recording", "Pause / resume recording", _obs(obs.toggle_pause_recording), group="OBS",
+           osd_icon="media-playback-pause-symbolic"),
     Action("obs_pause_recording", "Pause recording", _obs(obs.pause_recording), group="OBS", osd_icon="media-playback-pause-symbolic"),
     Action("obs_resume_recording", "Resume recording", _obs(obs.resume_recording), group="OBS", osd_icon="media-record-symbolic"),
     Action("obs_start_streaming", "Start streaming", _obs(obs.start_streaming), group="OBS", osd_icon="camera-video-symbolic"),

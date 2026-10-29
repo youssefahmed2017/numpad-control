@@ -81,6 +81,20 @@ class OBSTest(unittest.TestCase):
         self.assertTrue(self.fake.filters[("Webcam", "Blur")])
         self.assertEqual(actions.run(self.cfg, binding), "Blur off")
 
+    def test_pause_resume_is_one_key_that_flips_each_press(self):
+        state = {"active": True, "paused": False}
+        c = mock.Mock()
+        c.get_record_status.side_effect = lambda: SimpleNamespace(output_active=state["active"], output_paused=state["paused"])
+        c.pause_record.side_effect = lambda: state.update(paused=True)
+        c.resume_record.side_effect = lambda: state.update(paused=False)
+        binding = {"action": "obs_toggle_pause_recording", "params": {}}
+        with mock.patch.object(obs, "_client", return_value=c):
+            said = [actions.run(self.cfg, binding) for _ in range(4)]
+            state["active"] = False
+            said.append(actions.run(self.cfg, binding))
+        self.assertEqual(said, ["Recording paused", "Recording resumed", "Recording paused", "Recording resumed",
+                                "Not recording"])
+
 
 class PlaceholderTest(unittest.TestCase):
     def test_time_date_and_clipboard(self):
