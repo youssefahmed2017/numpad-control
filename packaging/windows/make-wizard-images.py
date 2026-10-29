@@ -68,8 +68,7 @@ def large(width, height):
 
 def small(size):
     s = size * SS
-    image = gradient((s, s)).convert("RGBA")
-    blob(image, (-s * 0.4, -s * 0.4, s * 0.7, s * 0.7), (253, 218, 253, 255))
+    image = Image.new("RGBA", (s, s), BG_TOP + (255,))  # the same colour as the wizard's header, so it blends in
     logo(image, (s / 2, s / 2), int(s * 0.74))
     return image.convert("RGB").resize((size, size), Image.LANCZOS)
 

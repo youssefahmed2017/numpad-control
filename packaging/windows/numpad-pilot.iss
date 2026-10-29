@@ -26,6 +26,7 @@ OutputBaseFilename=NumpadPilot-Setup-{#AppVersion}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
+DisableWelcomePage=no
 WizardSizePercent=115
 WizardImageFile=wizard\side-164.bmp,wizard\side-246.bmp,wizard\side-328.bmp
 WizardSmallImageFile=wizard\small-55.bmp,wizard\small-83.bmp,wizard\small-110.bmp
@@ -90,7 +91,6 @@ begin
   WizardForm.Bevel.Visible := False;
   WizardForm.Bevel1.Visible := False;
   WizardForm.PageNameLabel.Font.Color := $7F4E7C;
-  WizardForm.PageNameLabel.Font.Size := 12;
   WizardForm.WelcomeLabel1.Font.Color := $7F4E7C;
   WizardForm.FinishedHeadingLabel.Font.Color := $7F4E7C;
   if OldCopyFound() then
