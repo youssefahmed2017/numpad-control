@@ -4,9 +4,9 @@ Once a day the service asks GitHub for the latest release (a tag like v0.2.0, ma
 release.yml). If it's newer than this copy (numpadctl.__version__), it's installed the
 way this copy was installed:
 
-  - a git copy (install.sh, or install.ps1 with git): fetch the tag and fast-forward
+  - a git copy (setup.sh, or setup.ps1 with git): fetch the tag and fast-forward
     to it; a copy with local changes isn't touched (you're told instead);
-  - a zip copy (install.ps1 without git): download the release's zip and swap the
+  - a zip copy (setup.ps1 without git): download the release's zip and swap the
     folders in place, keeping .venv;
 
 then the Python packages are updated and the service restarts itself. Releases only,

@@ -20,11 +20,11 @@ Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland),
 ## Install
 **Linux** (in a terminal, as your normal user):
 
-    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/setup.sh | bash
 
 **Windows** (in PowerShell, as your normal user):
 
-    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.ps1 | iex
+    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/setup.ps1 | iex
 
 **Windows installer** (no PowerShell needed; once it is in winget):
 
@@ -224,7 +224,7 @@ Window steps use `hyprctl` on Hyprland and kdotool on KDE Plasma.
 - The settings window starts hidden at login (`numpad-control --hidden`), so it
   opens instantly from the launcher. Closing it only hides it; Ctrl+Q quits it.
   - **KDE Plasma:** started by `~/.config/autostart/numpad-control.desktop`
-    (installed by `install.sh`), and shown as a **system tray icon**: click it to
+    (installed by `setup.sh`), and shown as a **system tray icon**: click it to
     open the settings; right-click for Open settings / Quit.
   - **Hyprland:** add `numpad-control --hidden` to your Hyprland autostart. No tray
     icon is shown there; instead it writes `$XDG_RUNTIME_DIR/numpad-control-window.pid`
@@ -234,9 +234,10 @@ Window steps use `hyprctl` on Hyprland and kdotool on KDE Plasma.
 ### Linux
 One command (as your normal user; it asks for your password when it needs sudo):
 
-    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/setup.sh | bash
 
-It:
+It shows the NumpadPilot logo and a menu: **[1] Install, [2] Uninstall, [3] Reinstall /
+Update, [0] Quit**. (`--install`, `--uninstall` and `--update` skip the menu.) Install:
 1. installs the system packages (pacman, apt or dnf): Python, python-gobject, git, ydotool, playerctl, PipeWire tools, wl-clipboard, plus the
    extras for each desktop it finds (Hyprland: SwayOSD, grim, slurp, dunst, hyprlock;
    KDE Plasma: Spectacle, and kdotool from the AUR via yay/paru)
@@ -248,7 +249,9 @@ It:
 7. adds the `numpad-control` command, the app-menu entry and KDE autostart
 8. optionally installs the boot/sleep re-detect fix (below)
 
-Running `./install.sh` again from the clone updates everything. Options:
+Running `./setup.sh` again from the clone and choosing Update updates everything.
+Uninstall removes the service, launcher, menu entry and permission rules, and asks
+before deleting your settings. Options:
 `--dir PATH` (install somewhere else), `--no-deps` (skip system packages),
 `--yes` (no questions), `--dry-run` (only show what it would change).
 
@@ -259,20 +262,22 @@ settings window start hidden at login.
 ### Windows
 Paste this into PowerShell (as your normal user):
 
-    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.ps1 | iex
+    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/setup.ps1 | iex
 
 It installs Python if needed (winget), downloads NumpadPilot (git, or a zip if git
 isn't installed), creates the Python environment, adds **NumpadPilot** and
 **NumpadPilot Settings** to the Start menu, and starts it at login with a tray
-icon. No driver, no administrator rights and no restart are needed. Running it again
-updates everything.
-Options (set them before pasting): `$env:NUMPAD_DRYRUN = "1"` only shows what it
+icon. No driver, no administrator rights and no restart are needed. It shows the same
+menu (**[1] Install, [2] Uninstall, [3] Reinstall / Update, [0] Quit**); choose Update
+to update everything.
+Options (set them before pasting): `$env:NUMPAD_ACTION = "install"` (or `"uninstall"`,
+`"update"`) skips the menu; `$env:NUMPAD_DRYRUN = "1"` only shows what it
 would do; `$env:NUMPAD_NOAUTOSTART = "1"`; `$env:NUMPAD_UNINSTALL = "1"` removes the
 shortcuts and autostart (settings stay); `$env:NUMPAD_INTERCEPTION = "1"` reads the
 numpad through the [Interception](https://github.com/oblitum/Interception) driver
 instead, the old way (an administrator prompt and a restart; some games' anti-cheat
 blocks that driver). From a copy of the project:
-`powershell -ExecutionPolicy Bypass -File install.ps1 -DryRun`.
+`powershell -ExecutionPolicy Bypass -File setup.ps1 -DryRun`.
 
 ### Numpads that need replugging after boot or sleep
 Some cheap numpads aren't detected at boot (the kernel logs `device descriptor
@@ -426,7 +431,7 @@ release with generated notes (`release.yml`).
   copies it), and Lock screen. Not on Windows: going to / moving windows to a
   numbered desktop, floating and the scratchpad (Hyprland only), Do not disturb,
   Run Python, and on-screen popups (notifications instead). Install with
-  `install.ps1` (see Install → Windows).
+  `setup.ps1` (see Install → Windows).
 
 ## License
 NumpadPilot is free software under the [GNU General Public License v3.0](LICENSE)
@@ -438,6 +443,8 @@ the GPL-3.0 now.)
 Parts it uses keep their own licenses: PySide6 (LGPL), evdev, obsws-python, pystray,
 pycaw (MIT), and on Windows, only if you choose it, the Interception driver (LGPL for
 non-commercial use; a paid license is needed to sell it with a product).
+
+The old `install.sh` and `install.ps1` names still work: they just start these.
 
 ## Logo and brand files
 The icon and banner are in [`assets/`](assets/): `icon.svg`, PNGs from 16 to 512 px

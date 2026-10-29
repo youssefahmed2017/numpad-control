@@ -29,7 +29,7 @@ QUICK_FAILURE = 5         # a reader that fails within this many seconds counts 
 UPDATE_FIRST_CHECK = 60   # seconds after starting before looking for an update (not slowing the start)
 UPDATE_LOOP_SECONDS = 3600  # how often it wakes to see whether the daily check is due
 
-# Used by the settings window and install.sh.
+# Used by the settings window and setup.sh.
 detect_device = numpad_input.detect_device
 
 active_window_class = actions.active_window_class

@@ -1,5 +1,5 @@
 # Run by the installer before it copies anything: finds a NumpadPilot / "Numpad Control" that the old
-# PowerShell installer (install.ps1) put on this PC, stops it and removes it.
+# PowerShell installer (setup.ps1) put on this PC, stops it and removes it.
 # Settings (%APPDATA%\numpad-control) and the Interception driver are never touched.
 param([Parameter(Mandatory)][string]$NewDir)
 $ErrorActionPreference = "Continue"

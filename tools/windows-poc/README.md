@@ -155,7 +155,7 @@ says why. Send that text, or the log from **Show log**.
    installs the new packages, adds Start-menu entries and restarts NumpadPilot;
    Interception is already installed, so no restart is needed):
 
-       irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/install.ps1 | iex
+       irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/setup.ps1 | iex
 
 3. **Open the settings window**: left-click the tray icon, or Start menu →
    **NumpadPilot Settings**. It's the same window as on Linux.

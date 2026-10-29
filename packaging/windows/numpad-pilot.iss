@@ -49,7 +49,7 @@ Filename: "{app}\python\python.exe"; Parameters: "-c ""from numpadctl.platform.w
 Type: filesandordirs; Name: "{app}"
 
 [Code]
-// A copy put here by the old PowerShell installer (install.ps1) would run next to this one, so find it,
+// A copy put here by the old PowerShell installer (setup.ps1) would run next to this one, so find it,
 // stop it and remove it first. Settings stay (they live in %APPDATA%\numpad-control).
 procedure CurStepChanged(CurStep: TSetupStep);
 var

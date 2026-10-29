@@ -21,7 +21,7 @@ def main():
         daemon.run()
     elif command == "detect":
         from . import daemon
-        if "--json" in sys.argv:  # for install.sh
+        if "--json" in sys.argv:  # for setup.sh
             import json
             print(json.dumps(daemon.detect_device()))
         else:

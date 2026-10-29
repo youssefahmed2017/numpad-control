@@ -9,7 +9,7 @@ antivirus warnings. This page is the decision to make and the steps once it's ma
 | File | When |
 |---|---|
 | The paid app's compiled `.exe` and its installer (private repository) | Every release. This is what matters most. |
-| `install.ps1` (this repository) | Optional. It's run as `irm … \| iex`, which doesn't check signatures, but a signed copy can be run under PowerShell's `AllSigned` policy. |
+| `setup.ps1` (this repository) | Optional. It's run as `irm … \| iex`, which doesn't check signatures, but a signed copy can be run under PowerShell's `AllSigned` policy. |
 
 The open edition is run from source, so it has no `.exe` to sign.
 

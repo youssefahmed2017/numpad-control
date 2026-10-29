@@ -1,4 +1,4 @@
-# Signs Windows files (an .exe, an installer, install.ps1) with the code-signing certificate.
+# Signs Windows files (an .exe, an installer, setup.ps1) with the code-signing certificate.
 #
 #   powershell -ExecutionPolicy Bypass -File tools\sign-windows.ps1 [-Thumbprint ABC123...] FILE [FILE...]
 #
