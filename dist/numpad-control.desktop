@@ -2,6 +2,8 @@
 Type=Application
 Name=NumpadPilot
 Comment=Choose what each numpad key does
+GenericName=Numpad Pilot
+Keywords=Numpad Pilot;NumpadPilot;numpad;pilot;numpad control;macro pad;
 Exec=@HOME@/.local/bin/numpad-control
 Path=@DIR@
 Icon=@DIR@/assets/icon-256.png
