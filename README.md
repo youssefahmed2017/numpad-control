@@ -345,9 +345,9 @@ you) or `"off"`; `python -m numpadctl update` checks right away.
 To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
 matching tag (`git tag v0.3.0 && git push --tags`).
 
-**Next:** the settings window ships its own font (Google Sans for text, JetBrains Mono for code and Diagnostics, in
-[`assets/fonts/`](assets/fonts/)), so Windows no longer falls back to pixelated system fonts
-(Courier and friends).
+**0.2.3:** the settings window ships its own fonts (Google Sans for text, JetBrains Mono for
+code and Diagnostics, in [`assets/fonts/`](assets/fonts/)), so Windows no longer falls back to
+pixelated system fonts (Courier and friends).
 
 **0.2.2:** a nicer Windows installer (artwork, light and dark), `setup.sh` / `setup.ps1` with an
 Install / Uninstall / Update menu, one Pause / resume recording key, press a key to select it

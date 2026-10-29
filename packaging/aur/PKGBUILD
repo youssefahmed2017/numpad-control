@@ -1,6 +1,6 @@
 # Maintainer: Youssef Ahmed <245279337+youssefahmed2017@users.noreply.github.com>
 pkgname=numpad-pilot
-pkgver=0.2.2
+pkgver=0.2.3
 pkgrel=1
 pkgdesc='Turn a cheap USB numpad into a control deck: OBS, apps, media, macros'
 arch=('any')

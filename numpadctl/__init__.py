@@ -4,4 +4,4 @@ __version__ is this copy's release; a release is made by setting it here and pus
 matching tag (v + version), which publishes it and lets installed copies update to it.
 """
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
