@@ -427,15 +427,17 @@ class QtWindowTest(unittest.TestCase):
         self.assertIn("Admin", panel.fragment_label.text())
         self.assertIn("123", panel.fragment_label.text())
         self.assertNotIn("Soda", panel.fragment_label.text())
-        for number in range(1, 8):
+        self.assertIn("(shell)", panel.fragment_label.text(), "number 4 says where it is")
+        for number in (1, 2, 3, 5, 6, 7):
             panel.found(number)
-        self.assertIn("all 7 fragments found", panel.log.toPlainText())
+        self.assertIn("ask soda", panel.log.toPlainText())
         self.assertIn("cannotsee", panel.fragment_label.text())
-        panel.fortune_index = 0  # the fortunes come round in order, and one of them is fragment 4
+        panel.fortune_index = 0  # the fortunes come round in order; none hands out fragment 4, one points at the shell
         panel.fragments.clear()
         for _ in range(len(secret.FORTUNES)):
             panel.fortune()
-        self.assertIn(4, panel.fragments)
+        self.assertNotIn(secret.OUTSIDE, panel.fragments)
+        self.assertIn("soda --help", panel.log.toPlainText())
 
     def test_secret_words_work_except_in_the_password_box(self):
         panel = self.make_panel()
@@ -451,7 +453,7 @@ class QtWindowTest(unittest.TestCase):
             self.assertFalse(panel.leaving, "typing a password containing a word does not run the word")
         for letter in "hint":
             panel.on_letter(letter)
-        self.assertIn("hint 1/4", panel.log.toPlainText())
+        self.assertIn("hint 1/5", panel.log.toPlainText())
 
     def test_gravity_brings_the_keys_back(self):
         self.w.resize(1000, 700)

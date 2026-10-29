@@ -71,6 +71,10 @@ class SodaTest(unittest.TestCase):
             self.assertEqual(code, 0, command)
             self.assertIn(expected, out)
 
+    def test_the_credits_hold_fragment_four_of_the_superroot_password(self):
+        _, out, _ = soda("credits")
+        self.assertIn("fragment 4/7: Soda", out)
+
     def test_unknown_commands_are_refused(self):
         code, _, err = soda("nonsense")
         self.assertEqual(code, 2)

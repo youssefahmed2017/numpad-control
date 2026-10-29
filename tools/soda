@@ -174,7 +174,7 @@ EOF
 credits() {
     local line
     for line in "" "${B}SODA${Z}" "a package manager with no packages" "" "directed by ${C}you${Z}" "written with a very patient robot" \
-        "tested on one (1) numpad" "" "no packages were harmed" "no bubbles were wasted" "" "${B}THE END${Z}" ""; do
+        "tested on one (1) numpad" "" "fragment 4/7: ${B}Soda${Z}" "" "no packages were harmed" "no bubbles were wasted" "" "${B}THE END${Z}" ""; do
         say "      $line"
         nap 0.35
     done

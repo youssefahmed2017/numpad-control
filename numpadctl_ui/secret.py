@@ -30,15 +30,17 @@ GREEN = "#38ff7a"
 LOCK_TITLE = "SUPERDUPERGIGASECRET"
 SALT = b"numpad-superroot:"
 PASSWORD_HASH = "2990914a0f21da96520852562d2fcee9688fd69cd9439dd8a40cfd3e03dd3354"
+OUTSIDE = 4  # this fragment is not in the console: it is in the soda script (tools/soda)
 MAX_WRONG = 4  # the fourth wrong password gets you kicked out
 KICK_MS = 3000
 # the seven pieces of the password, in order (the clues hand them out one by one)
 _ENCODED = ['MTIz', 'QWRtaW4=', 'U3VwZXI=', 'U29kYQ==', 'QA==', 'NDQ0', 'Y2Fubm90c2Vl']  # (base64: not readable at a glance; anyone determined can still decode it)
 FRAGMENTS = [base64.b64decode(piece).decode() for piece in _ENCODED]
-HINTS = ["there are 7 fragments. each one hides behind an option that doesn't change anything for good.",
+HINTS = ["there are 7 fragments. most hide behind an option that doesn't change anything for good.",
          "read the console. read the blue screen. be patient with the rain.",
          "the fragments are numbered, and the numbers are the order. capitals matter.",
-         "try these, in any order: hack the planet, spy report, credits, fortune, blue screen, self-destruct, matrix rain."]
+         "try these, in any order: hack the planet, spy report, credits, fortune, blue screen, self-destruct, matrix rain.",
+         "six fragments are in here. the seventh lives outside, in your shell: something that fizzes."]
 EIGHT_BALL = [("It is certain.", "Enter"), ("Without a doubt.", "Enter"), ("Ask again later.", "5"), ("Cannot predict now.", "5"),
               ("Don't count on it.", "Backspace"), ("My sources say no.", "Backspace"), ("Signs point to yes.", "Enter")]
 
@@ -63,7 +65,7 @@ QProgressBar::chunk {{ background: {GREEN}; }}
 FORTUNES = [
     "You will press the wrong key at the worst moment.",
     "A numpad is just a tiny keyboard with big dreams.",
-    "FRAGMENT:4",
+    "The fourth piece is not in here. It fizzes in your shell. Try: soda --help",
     "Today's lucky key: 5. It is in the middle of everything.",
     "There is no key 10. We checked.",
     "Beware of the 000 key. It is three times as brave.",
@@ -352,7 +354,8 @@ class SecretPanel(QDialog):
             QTimer.singleShot(0, self.password.setFocus)
 
     def refresh_fragments(self):
-        pieces = [FRAGMENTS[i] if i + 1 in self.fragments else "?" for i in range(len(FRAGMENTS))]
+        pieces = [FRAGMENTS[i] if i + 1 in self.fragments else ("(shell)" if i == OUTSIDE - 1 else "?")
+                  for i in range(len(FRAGMENTS))]
         self.fragment_label.setText("fragments:  " + "  .  ".join(pieces))
 
     def found(self, number):
@@ -363,8 +366,8 @@ class SecretPanel(QDialog):
         self.fragments.add(number)
         self.refresh_fragments()
         self.say(f"fragment {number}/7 recovered: {FRAGMENTS[number - 1]}   ({flavour[number]})")
-        if first and len(self.fragments) == len(FRAGMENTS):
-            self.say("all 7 fragments found. put them together, in order, no spaces. then try the lock.")
+        if first and self.fragments >= set(range(1, len(FRAGMENTS) + 1)) - {OUTSIDE}:
+            self.say(f"all the fragments in here are found. number {OUTSIDE} is not in the console: ask soda, in your shell.")
 
     def say_line(self, line):
         if line.startswith("FRAGMENT:"):
