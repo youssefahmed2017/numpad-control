@@ -87,14 +87,21 @@ def _draw_images(c):
         painter.drawPath(path)
         painter.end()
         file = folder / f"{name}-{color.strip('#')}.png"
-        pixmap.save(str(file))
+        if not file.exists():  # the colour is in the name
+            pixmap.save(str(file))
         images[name] = file.as_posix()  # forward slashes, also on Windows
     return images
+
+
+_fonts_loaded = []
 
 
 def load_fonts():
     """Register the bundled Google Sans and JetBrains Mono files, so the look doesn't depend on what the OS has
     (on Windows the fallback was a pixelated bitmap font)."""
+    if _fonts_loaded:  # apply() runs often (Disco...): the font files are read once
+        return
+    _fonts_loaded.append(True)
     for file in sorted(FONT_DIR.glob("*.ttf")):
         QFontDatabase.addApplicationFont(str(file))
 
@@ -112,7 +119,7 @@ def _font(app):
     load_fonts()
     installed = set(QFontDatabase.families())
     family = next((f for f in FONT_FAMILIES if f in installed), None)
-    if family:
+    if family and app.font().family() != family:  # re-setting the same font relayouts every widget
         font = QFont(family)
         font.setStyleStrategy(QFont.PreferAntialias)
         app.setFont(font)
@@ -120,7 +127,8 @@ def _font(app):
 
 def apply(app, appearance="auto", accent=tokens.DEFAULT_ACCENT, contrast="standard"):
     c = style_colors(accent, is_dark(app, appearance), contrast)
-    app.setStyle("Fusion")
+    if app.style().objectName().lower() != "fusion":  # re-creating the style repolishes everything
+        app.setStyle("Fusion")
     _font(app)
     palette = QPalette()
     for role, key in ((QPalette.Window, "surface"), (QPalette.Base, "surfaceContainerLowest"),

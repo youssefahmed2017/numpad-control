@@ -77,6 +77,17 @@ class MatrixRain(QWidget):
         self.timer.start()
         self.show()
         self.raise_()
+        theme.listeners.append(self.after_restyle)
+
+    def after_restyle(self, _colors):
+        """A new theme repolishes every widget, this one too: keep it see-through, on top and repainted."""
+        try:
+            self.setAttribute(Qt.WA_NoSystemBackground)
+            self.setAutoFillBackground(False)
+            self.raise_()
+            self.update()
+        except RuntimeError:  # deleted
+            theme.listeners.remove(self.after_restyle)
 
     def advance(self):
         for i, speed in enumerate(self.speeds):
@@ -283,7 +294,7 @@ class SecretPanel(QDialog):
     # -- looks
     def disco(self, on):
         if on:
-            self.disco_timer = self.every(700, lambda: theme.apply(
+            self.disco_timer = self.every(1200, lambda: theme.apply(
                 self.app, self.window.cfg.get("appearance", "auto"), random.choice(tokens.ACCENTS),
                 self.window.cfg.get("contrast", "standard")))
         else:
@@ -334,6 +345,8 @@ class SecretPanel(QDialog):
             self.overlays.append(self.rain)
         else:
             self.rain.timer.stop()
+            if self.rain.after_restyle in theme.listeners:
+                theme.listeners.remove(self.rain.after_restyle)
             self.rain.deleteLater()
             self.overlays.remove(self.rain)
 
