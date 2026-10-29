@@ -25,11 +25,13 @@ OutputDir={#BuildDir}
 OutputBaseFilename=NumpadPilot-Setup-{#AppVersion}
 Compression=lzma2/max
 SolidCompression=yes
-WizardStyle=modern
+WizardStyle=modern dynamic
 DisableWelcomePage=no
 WizardSizePercent=115
 WizardImageFile=wizard\side-164.bmp,wizard\side-246.bmp,wizard\side-328.bmp
 WizardSmallImageFile=wizard\small-55.bmp,wizard\small-83.bmp,wizard\small-110.bmp
+WizardImageFileDynamicDark=wizard\side-dark-164.bmp,wizard\side-dark-246.bmp,wizard\side-dark-328.bmp
+WizardSmallImageFileDynamicDark=wizard\small-dark-55.bmp,wizard\small-dark-83.bmp,wizard\small-dark-110.bmp
 
 [Messages]
 WelcomeLabel1=Welcome to NumpadPilot
@@ -82,19 +84,32 @@ begin
   Result := FileExists(ExpandConstant('{%USERPROFILE}\numpad-control\numpad-control.pyw'));
 end;
 
-// The wizard in the app's colours (Inno's colours are blue-green-red: $FAF7FF is #fff7fa).
+// The wizard in the app's colours, light or dark like Windows (Inno's colours are blue-green-red:
+// $FAF7FF is #fff7fa, $211A1D is #1d1a21).
 procedure InitializeWizard();
+var
+  Surface, Title: Integer;
 begin
-  WizardForm.Color := $FAF7FF;
-  WizardForm.InnerPage.Color := $FAF7FF;
-  WizardForm.MainPanel.Color := $FAF7FF;
-  WizardForm.WelcomePage.Color := $FAF7FF;
-  WizardForm.FinishedPage.Color := $FAF7FF;
+  if IsDarkInstallMode() then
+  begin
+    Surface := $211A1D;
+    Title := $FFBEEC;
+  end
+  else
+  begin
+    Surface := $FAF7FF;
+    Title := $7F4E7C;
+  end;
+  WizardForm.Color := Surface;
+  WizardForm.InnerPage.Color := Surface;
+  WizardForm.MainPanel.Color := Surface;
+  WizardForm.WelcomePage.Color := Surface;
+  WizardForm.FinishedPage.Color := Surface;
   WizardForm.Bevel.Visible := False;
   WizardForm.Bevel1.Visible := False;
-  WizardForm.PageNameLabel.Font.Color := $7F4E7C;
-  WizardForm.WelcomeLabel1.Font.Color := $7F4E7C;
-  WizardForm.FinishedHeadingLabel.Font.Color := $7F4E7C;
+  WizardForm.PageNameLabel.Font.Color := Title;
+  WizardForm.WelcomeLabel1.Font.Color := Title;
+  WizardForm.FinishedHeadingLabel.Font.Color := Title;
   if OldCopyFound() then
     WizardForm.WelcomeLabel2.Caption := WizardForm.WelcomeLabel2.Caption + #13#10#13#10 +
       'An older copy from the PowerShell installer was found. It will be stopped and removed; your settings stay.';
