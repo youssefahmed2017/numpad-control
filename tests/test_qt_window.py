@@ -271,10 +271,10 @@ class QtWindowTest(unittest.TestCase):
         from numpadctl_ui import egg
         matcher = egg.Matcher()
         self.assertFalse(any(matcher.press(k) for k in egg.SEQUENCE[:-1]))
-        self.assertTrue(matcher.press("Enter"))
+        self.assertTrue(matcher.press(egg.SEQUENCE[-1]))
         self.assertFalse(any(matcher.press(k) for k in egg.SEQUENCE[:-1]), "starts over after it fires")
         matcher.press("5")  # a stray key breaks it
-        self.assertFalse(matcher.press("Enter"))
+        self.assertFalse(matcher.press(egg.SEQUENCE[-1]))
 
     def test_easter_egg_plays_from_the_window(self):
         from numpadctl_ui import egg

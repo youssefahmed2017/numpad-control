@@ -1,4 +1,4 @@
-"""A small easter egg: the Konami code on the numpad (8 8 2 2 4 6 4 6 0 Enter) throws confetti."""
+"""A small easter egg: the Konami code on the numpad (8 8 2 2 4 6 4 6) throws confetti."""
 
 import math
 import random
@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QWidget
 
 from . import theme
 
-SEQUENCE = ["8", "8", "2", "2", "4", "6", "4", "6", "0", "Enter"]  # up up down down left right left right B A
+SEQUENCE = ["8", "8", "2", "2", "4", "6", "4", "6"]  # up up down down left right left right
 LOGO = Path(__file__).resolve().parent.parent / "assets" / "icon-256.png"
 DURATION = 3200  # ms
 PIECES = 150
