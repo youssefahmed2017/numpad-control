@@ -48,6 +48,7 @@ Step "Installer"
 $iscc = @("$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $iscc) { $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source }
 if (-not $iscc) { throw "Inno Setup 6 wasn't found (winget install JRSoftware.InnoSetup)." }
+Write-Host "Inno Setup $((Get-Item $iscc).VersionInfo.ProductVersion)"
 & $iscc "/DAppVersion=$Version" "/DBuildDir=$Build" (Join-Path $PSScriptRoot "numpad-pilot.iss")
 Assert-Ok "Inno Setup"
 
