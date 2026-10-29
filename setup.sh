@@ -135,7 +135,8 @@ do_uninstall() {  # do_uninstall [keep]: "keep" never asks about deleting your s
     bold "Removing NumpadPilot"
     run systemctl --user disable --now numpad-control 2> /dev/null || true
     run rm -f "$HOME/.config/systemd/user/numpad-control.service" "$HOME/.local/bin/numpad-control" \
-        "$HOME/.local/share/applications/numpad-control.desktop" "$HOME/.config/autostart/numpad-control.desktop"
+        "$HOME/.local/share/applications/numpad-control.desktop" "$HOME/.config/autostart/numpad-control.desktop" \
+        "$HOME"/.local/share/icons/hicolor/*/apps/numpad-control.png
     run systemctl --user daemon-reload
     if [ "${1:-}" != keep ] && [ -e /etc/udev/rules.d/70-numpad-control.rules ]; then  # an update keeps the system parts, so it needs no sudo
         note "removing the numpad permission rule (needs sudo)"
@@ -280,6 +281,11 @@ fi
 bold "7/7  Launcher and login"
 render numpad-control | write "$HOME/.local/bin/numpad-control" 755
 render numpad-control.desktop | write "$HOME/.local/share/applications/numpad-control.desktop" 644
+# The icon by name, from the icon theme: launchers (hyprlauncher, rofi, ...) often ignore a file path.
+for size in 16 24 32 48 64 128 256 512; do
+    run install -Dm644 "$DIR/assets/icon-$size.png" "$HOME/.local/share/icons/hicolor/${size}x${size}/apps/numpad-control.png"
+done
+run gtk-update-icon-cache -q -t "$HOME/.local/share/icons/hicolor" 2> /dev/null || true
 # KDE starts it hidden at login (with a tray icon); the entry is ignored elsewhere.
 render numpad-control-autostart.desktop | write "$HOME/.config/autostart/numpad-control.desktop" 644
 case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) warn "add ~/.local/bin to your PATH to run 'numpad-control' from a terminal" ;; esac

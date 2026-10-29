@@ -5,6 +5,6 @@ Comment=Waits in the system tray so the settings open instantly
 GenericName=Numpad Pilot
 Keywords=Numpad Pilot;NumpadPilot;numpad;pilot;numpad control;macro pad;
 Exec=@HOME@/.local/bin/numpad-control --hidden
-Icon=@DIR@/assets/icon-256.png
+Icon=numpad-control
 OnlyShowIn=KDE;
 X-KDE-autostart-phase=2

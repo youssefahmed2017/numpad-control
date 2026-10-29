@@ -6,6 +6,6 @@ GenericName=Numpad Pilot
 Keywords=Numpad Pilot;NumpadPilot;numpad;pilot;numpad control;macro pad;
 Exec=@HOME@/.local/bin/numpad-control
 Path=@DIR@
-Icon=@DIR@/assets/icon-256.png
+Icon=numpad-control
 Categories=Utility;
 StartupWMClass=dev.numpadctl.NumpadControl
