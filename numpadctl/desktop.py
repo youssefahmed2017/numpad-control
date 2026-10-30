@@ -9,6 +9,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 from pathlib import Path
 
@@ -246,6 +247,35 @@ def lock_screen():
         _run(["loginctl", "lock-session"])  # KDE's (and most desktops') screen locker listens
 
 
+# Never force-killed, whatever is focused: the desktop itself and NumpadPilot.
+PROTECTED = {"hyprland", "plasmashell", "kwin_wayland", "kwin_x11", "krunner", "sddm", "waybar", "hyprpaper",
+             "dev.numpadctl.numpadcontrol", "explorer", "dwm", "winlogon", "csrss", "python", "pythonw"}
+
+
+def hide_windows():
+    """Get everything off the screen at once: an empty workspace (Hyprland), every window minimised (KDE)."""
+    if _supported("Hiding the windows") == HYPRLAND:
+        _hyprctl('hl.dsp.focus({ workspace = "empty" })')
+    else:
+        for window in _kdotool("search", "--class", ".").split():
+            _kdotool("windowminimize", window)
+
+
+def force_close_window():
+    """Kill the focused window's program at once (SIGKILL) and return its name. Unsaved work in it is lost."""
+    if _supported("Force-quitting a window") == HYPRLAND:
+        info = json.loads(_run(["hyprctl", "activewindow", "-j"], timeout=2).stdout or "{}")
+        name, pid = info.get("class", ""), info.get("pid", 0)
+    else:
+        name, pid = _kdotool("getactivewindow", "getwindowclassname"), int(_kdotool("getactivewindow", "getwindowpid") or 0)
+    if not pid or pid <= 1:
+        raise DesktopError("no window is focused")
+    if name.lower() in PROTECTED or pid in (os.getpid(), os.getppid()):
+        raise DesktopError(f"{name or 'that window'} is protected, it is not force-quit")
+    os.kill(pid, signal.SIGKILL)
+    return name or str(pid)
+
+
 def focus_app_window(app_id):
     """Bring this app's own (already shown) window to the front."""
     try:
@@ -264,6 +294,7 @@ if IS_WINDOWS:
     from .platform import windows_desktop as _windows
     for _name in ("active_window_class", "open_windows", "focus_window", "close_window", "toggle_fullscreen",
                   "toggle_floating", "toggle_scratchpad", "go_to_workspace", "move_window_to_workspace",
-                  "step_workspace", "show_osd", "toggle_dnd", "screenshot", "lock_screen", "focus_app_window"):
+                  "step_workspace", "show_osd", "toggle_dnd", "screenshot", "lock_screen", "focus_app_window",
+                  "hide_windows", "force_close_window"):
         globals()[_name] = getattr(_windows, _name)
 

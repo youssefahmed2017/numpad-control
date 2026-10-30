@@ -2,7 +2,7 @@
 edits (no separate "collect the fields before saving" step)."""
 
 from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtWidgets import (QComboBox, QCompleter, QFrame, QHBoxLayout, QLabel, QLineEdit, QMenu,
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QCompleter, QFrame, QHBoxLayout, QLabel, QLineEdit, QMenu,
                                QPlainTextEdit, QPushButton, QToolButton, QVBoxLayout, QWidget)
 
 from numpadctl import actions, sandbox, ui_common
@@ -166,6 +166,15 @@ class CodeField(QWidget):
         layout.addWidget(check, alignment=Qt.AlignLeft)
 
 
+class BoolField(QCheckBox):
+    """A checkbox setting."""
+
+    def __init__(self, param, value, on_change):
+        super().__init__(param.label)
+        self.setChecked(actions._truthy(value))
+        self.toggled.connect(on_change)
+
+
 def param_widget(param, params, window, on_change):
     """The widget for one setting of an action; edits params[param.name] in place."""
     value = params.get(param.name, param.default)
@@ -173,6 +182,8 @@ def param_widget(param, params, window, on_change):
     def changed(new):
         params[param.name] = new
         on_change()
+    if param.kind == "bool":
+        return BoolField(param, value, changed)
     if param.kind == "app":
         return AppField(param, value, changed)
     if param.kind == "code":

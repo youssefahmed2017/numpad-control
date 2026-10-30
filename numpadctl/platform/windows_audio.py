@@ -93,6 +93,15 @@ def toggle_microphone_mute():
     return "Microphone muted" if mute else "Microphone unmuted"
 
 
+def set_mute(microphone, muted):
+    """Mute (or unmute) the default microphone or speakers, whatever state it is in now."""
+    with _audio() as (utils, _):
+        device = utils.GetMicrophone() if microphone else utils.GetSpeakers()
+        if device is None:
+            raise AudioError("no microphone found" if microphone else "no speakers found")
+        utils.CreateDevice(device).EndpointVolume.SetMute(int(muted), None)
+
+
 # ---------------------------------------------------------------- outputs
 
 def _outputs(utils, constants):

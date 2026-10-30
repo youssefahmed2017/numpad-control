@@ -87,6 +87,8 @@ ACTION_HINTS = {
     "output_next": "Cycles through your sound outputs.",
     "dnd_toggle": "Silences notifications, or turns them back on.",
     "lock_screen": "Locks the computer.",
+    "privacy_panic": "One press: mutes the microphone and speakers, pauses the music, hides every window (and an OBS camera if you name it). Pick what it does below.",
+    "force_quit": "Press twice: kills the focused program at once, no saving. Can open a page afterwards. Never touches the desktop itself or NumpadPilot.",
     "suspend": "Puts the computer to sleep (press twice to confirm).",
     "shutdown": "Turns the computer off (press twice to confirm).",
     "reboot": "Restarts the computer (press twice to confirm).",

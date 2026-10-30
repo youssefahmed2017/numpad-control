@@ -160,6 +160,14 @@ def toggle_source(s, scene, source):
     return f"{source} {'hidden' if enabled else 'shown'}"
 
 
+def hide_source(s, scene, source):
+    """Hide a source in a scene (and say nothing if it already is hidden)."""
+    c = _client(s)
+    item = c.get_scene_item_id(scene, source).scene_item_id
+    c.set_scene_item_enabled(scene, item, False)
+    return f"{source} hidden"
+
+
 def toggle_filter(s, source, filter):
     c = _client(s)
     enabled = c.get_source_filter(source, filter).filter_enabled

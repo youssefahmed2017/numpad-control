@@ -176,8 +176,8 @@ def _swayosd(*args):
 
 
 def media(command):
-    """command: "play-pause", "stop", "next" or "previous"."""
-    if not _swayosd("--playerctl", "prev" if command == "previous" else command):
+    """command: "play-pause", "pause", "stop", "next" or "previous"."""
+    if command == "pause" or not _swayosd("--playerctl", "prev" if command == "previous" else command):
         _run("playerctl", command)
 
 
@@ -194,6 +194,11 @@ def set_volume(percent):
     # SwayOSD treats a bare number as "raise by", so the level is set with
     # wpctl and +0 only shows the popup.
     _swayosd("--output-volume", "+0")
+
+
+def set_mute(microphone, muted):
+    """Mute (or unmute) the speakers or the microphone, whatever state it is in now."""
+    _run("wpctl", "set-mute", SOURCE if microphone else SINK, "1" if muted else "0")
 
 
 def toggle_mute(microphone=False):

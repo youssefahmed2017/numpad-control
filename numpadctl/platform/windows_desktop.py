@@ -16,6 +16,7 @@ from ..desktop import DesktopError
 SW_RESTORE, SW_MAXIMIZE = 9, 3
 WM_CLOSE = 0x0010
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+PROCESS_TERMINATE = 0x0001
 
 
 def _user32():
@@ -114,6 +115,33 @@ def _active():
 
 def close_window():
     _user32().PostMessageW(ctypes.c_void_p(_active()), WM_CLOSE, 0, 0)
+
+
+def hide_windows():
+    """Win+D: show the desktop (press it again and the windows come back)."""
+    user32 = _user32()
+    for code, flags in ((0x5B, 0), (0x44, 0), (0x44, 2), (0x5B, 2)):  # Win down, D down, D up, Win up
+        user32.keybd_event(code, 0, flags, 0)
+
+
+def force_close_window():
+    """End the focused window's program at once and return its name. Unsaved work in it is lost."""
+    from ..desktop import PROTECTED
+    hwnd = _active()
+    name = _program(hwnd)
+    pid = ctypes.c_uint32()
+    _user32().GetWindowThreadProcessId(ctypes.c_void_p(hwnd), ctypes.byref(pid))
+    if not pid.value or name.lower() in PROTECTED or pid.value == _kernel32().GetCurrentProcessId():
+        raise DesktopError(f"{name or 'that window'} is protected, it is not force-quit")
+    _kernel32().OpenProcess.restype = ctypes.c_void_p
+    handle = _kernel32().OpenProcess(PROCESS_TERMINATE, False, pid.value)
+    if not handle:
+        raise DesktopError(f"{name} can't be ended from here (it may be running as administrator)")
+    try:
+        _kernel32().TerminateProcess(ctypes.c_void_p(handle), 1)
+    finally:
+        _kernel32().CloseHandle(ctypes.c_void_p(handle))
+    return name
 
 
 def toggle_fullscreen():

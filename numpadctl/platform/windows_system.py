@@ -290,8 +290,8 @@ def _tap(name, times=1):
 
 
 def media(command):
-    """command: "play-pause", "stop", "next" or "previous"."""
-    _tap({"play-pause": "PLAYPAUSE", "stop": "STOPCD", "next": "NEXTSONG",
+    """command: "play-pause", "pause" (Windows can only stop), "stop", "next" or "previous"."""
+    _tap({"play-pause": "PLAYPAUSE", "pause": "STOPCD", "stop": "STOPCD", "next": "NEXTSONG",
           "previous": "PREVIOUSSONG"}[command])
 
 
@@ -306,6 +306,15 @@ def set_volume(percent):
     _tap("VOLUMEDOWN", 100 // VOLUME_STEP)
     if percent:
         _tap("VOLUMEUP", round(percent / VOLUME_STEP))
+
+
+def set_mute(microphone, muted):
+    """Mute (or unmute) the speakers or the microphone, whatever state it is in now."""
+    from .windows_audio import AudioError, set_mute as set_device_mute
+    try:
+        set_device_mute(microphone, muted)
+    except AudioError as e:
+        raise SystemActionError(str(e))
 
 
 def toggle_mute(microphone=False):

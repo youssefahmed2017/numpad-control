@@ -20,7 +20,7 @@ else:
 class Param:
     name: str
     label: str
-    kind: str = "text"  # "text", "code", "app" (a .desktop id) or "macro" (a list of steps)
+    kind: str = "text"  # "text", "code", "bool" (a checkbox), "app" (a .desktop id) or "macro" (a list of steps)
     default: object = ""
     suggest: str = ""          # key into SUGGESTIONS: a list of names to pick from
     placeholders: bool = False # {time}, {date}, {clipboard} are filled in when it runs
@@ -121,6 +121,46 @@ def _show_notification(cfg, title, body):
 
 def _lock_screen(cfg):
     desktop.lock_screen()
+
+
+def _truthy(value):
+    """A checkbox's value (a hand-edited settings file may have "false" or "yes" text there)."""
+    return value.strip().lower() in ("1", "true", "yes", "on") if isinstance(value, str) else bool(value)
+
+
+def _privacy_panic(cfg, mic=True, speakers=True, media=True, windows=True, scene="", source="", lock=False):
+    """Everything private out of sight and earshot, as fast as it can: one step failing never stops the rest."""
+    done, failed = [], []
+
+    def step(name, enabled, work):
+        if not _truthy(enabled):
+            return
+        try:
+            work()
+            done.append(name)
+        except Exception as e:  # a panic button keeps going whatever goes wrong
+            failed.append(f"{name} ({e})")
+    step("microphone muted", mic, lambda: system.set_mute(True, True))
+    step("speakers muted", speakers, lambda: system.set_mute(False, True))
+    step("media paused", media, lambda: system.media("pause"))
+    step("windows hidden", windows, desktop.hide_windows)
+    if scene.strip() and source.strip():  # the network one last: OBS can be slow
+        step("OBS source hidden", True, lambda: obs.hide_source(cfg["obs"], scene.strip(), source.strip()))
+    step("screen locked", lock, desktop.lock_screen)
+    if not done:
+        raise ActionError("; ".join(failed) or "nothing is switched on")
+    return ", ".join(done).capitalize() + (f". Failed: {'; '.join(failed)}" if failed else "")
+
+
+def _force_quit(cfg, url="", trigger="tap"):
+    if not _confirmed("force_quit"):
+        show_osd(cfg, f"{AGAIN.get(trigger, AGAIN['tap'])} to force-quit this window", "process-stop-symbolic",
+                 force=True)
+        return
+    name = desktop.force_close_window()
+    if url.strip():
+        _open_browser(cfg, url)
+    return f"Force-quit {name}"
 
 
 def _screenshot(cfg, region=False):
@@ -519,6 +559,18 @@ ACTIONS = [
     Action("dnd_toggle", "Do not disturb on / off", _toggle_dnd, group="System",
            osd_icon="notifications-disabled-symbolic"),
     Action("lock_screen", "Lock screen", _lock_screen, group="System"),
+    Action("privacy_panic", "Privacy panic", _privacy_panic,
+           [Param("mic", "Mute the microphone", kind="bool", default=True),
+            Param("speakers", "Mute the speakers", kind="bool", default=True),
+            Param("media", "Pause the music or video", kind="bool", default=True),
+            Param("windows", "Hide every window", kind="bool", default=True),
+            Param("scene", "OBS scene with your camera (optional)", suggest="obs_scenes"),
+            Param("source", "OBS camera source to hide (optional)", suggest="obs_scene_sources"),
+            Param("lock", "Lock the screen too", kind="bool", default=False)],
+           group="System", osd_icon="security-high-symbolic"),
+    Action("force_quit", "Force-quit the focused window (press twice)", _force_quit,
+           [Param("url", "Then open this page (optional)", placeholders=False)],
+           group="Window", confirm=True, osd_icon="process-stop-symbolic"),
     Action("suspend", "Sleep (press twice)",
            _power("suspend", "suspend", "to sleep", "Going to sleep…",
                   "system-suspend-symbolic"), group="System", confirm=True),

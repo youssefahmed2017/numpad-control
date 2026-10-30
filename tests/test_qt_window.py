@@ -455,6 +455,19 @@ class QtWindowTest(unittest.TestCase):
             panel.on_letter(letter)
         self.assertIn("hint 1/5", panel.log.toPlainText())
 
+    def test_privacy_panic_settings_are_checkboxes(self):
+        from PySide6.QtWidgets import QCheckBox
+        self.w.select("2")
+        self.pick(0, "privacy_panic")
+        boxes = self.editor(QCheckBox)
+        self.assertEqual(len(boxes), 5)
+        self.assertEqual([b.isChecked() for b in boxes], [True, True, True, True, False])
+        boxes[0].setChecked(False)  # "Mute the microphone"
+        self.assertTrue(self.w.dirty)
+        self.assertIs(self.w.keymap()["2"]["tap"]["params"]["mic"], False)
+        self.assertTrue(self.w.save())
+        self.assertIs(self.saved()["2"]["tap"]["params"]["mic"], False)
+
     def test_the_console_effects_only_use_the_numpads_own_keys(self):
         from PySide6.QtWidgets import QPushButton
         self.w.key_buttons["hp:KEY_A"] = QPushButton()  # a key of a keyboard picture
