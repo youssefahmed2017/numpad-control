@@ -447,7 +447,7 @@ you) or `"off"`; `python -m numpadctl update` checks right away.
 To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
 matching tag (`git tag v0.3.0 && git push --tags`).
 
-**Next:** a voice changer (EasyEffects presets on your microphone, one key), the key map overlay (Ghost HUD: hold the layer key to see what every key does), Privacy panic (mute, pause and hide everything at once), Force-quit the focused window and a soundboard (Play a sound), Turbo (repeat any Press action while held, up to 60 a second); a whole keyboard can be added as an extra pad (Linux): every key can run actions, with
+**Next:** a voice changer (EasyEffects presets on your microphone, one key; pause now checks that OBS really paused), the key map overlay (Ghost HUD: hold the layer key to see what every key does), Privacy panic (mute, pause and hide everything at once), Force-quit the focused window and a soundboard (Play a sound), Turbo (repeat any Press action while held, up to 60 a second); a whole keyboard can be added as an extra pad (Linux): every key can run actions, with
 Ctrl+Alt+Esc to give it back; the settings window draws it. See "A whole keyboard as an extra pad".
 
 **0.2.4:** a welcome tour on first launch (find the numpad, pick a starting point, press a key to
@@ -531,6 +531,21 @@ system; your user name and home folder taken out) is also kept in
 GitHub runs them on Linux and Windows for every push and pull request
 (`.github/workflows/tests.yml`). Pushing a tag such as `v0.2.0` publishes a GitHub
 release with generated notes (`release.yml`).
+
+**End-to-end tests with a real OBS** (Linux; not part of the normal run, and not on GitHub):
+
+    .venv/bin/python -m unittest tests.e2e_obs -v      # the OBS actions against a real OBS
+    .venv/bin/python -m unittest tests.e2e_voice -v    # the voice changer: EasyEffects + OBS, pitch measured
+
+`e2e_obs` starts its own OBS in a headless compositor (`cage`), with its own empty config folder and its own
+WebSocket port (4466), so your OBS, its scenes and settings are never touched and nothing appears on screen.
+It switches scenes, shows and hides sources, mutes, toggles a filter, records, pauses, resumes and stops (and
+checks the video file with `ffprobe`), saves a replay clip, and runs Privacy panic's OBS step. `e2e_voice` plays
+a 440 Hz tone into a silent virtual microphone, lets EasyEffects change it with NumpadPilot's voice keys,
+records the result in OBS and measures the pitch (440 Hz normal, 349 Hz with a voice four semitones down). It
+never uses your real microphone, refuses to run while EasyEffects is running, and puts back your default
+microphone, EasyEffects and its preset file even if it fails. They need `obs`, `cage`, `ffmpeg`, `pw-play`,
+`numpy` and (for the voice test) `easyeffects`; without them they skip.
 
 ## Plans
 - A Windows version (with one Qt settings window for both systems) is planned

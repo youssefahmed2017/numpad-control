@@ -4,6 +4,7 @@ Enable it in OBS: Tools -> WebSocket Server Settings -> Enable WebSocket server.
 """
 
 import logging
+import time
 
 logging.getLogger("obsws_python").setLevel(logging.CRITICAL)
 
@@ -28,6 +29,27 @@ def _client(settings):
         raise OBSError("OBS is not running or its WebSocket server is disabled")
     except Exception as e:
         raise OBSError(f"could not connect to OBS: {e}")
+
+
+def friendly(error):
+    """OBS's own wording for a refused request, without the technical wrapping:
+    "No source was found by the name of `Gaming`" instead of "Request SetCurrentProgramScene returned code 600 ..."."""
+    text = str(error)
+    if "With message:" in text:
+        text = text.split("With message:", 1)[1].strip()
+    return text.replace(" within the canvas `Main`", "").rstrip(".")
+
+
+def _pause(c):
+    """Pause the recording and make sure OBS did: some recording formats (Hybrid MP4) accept the request and
+    carry on recording, which would leave you thinking the pause worked."""
+    c.pause_record()
+    for _ in range(10):
+        if c.get_record_status().output_paused:
+            return "Recording paused"
+        time.sleep(0.1)
+    raise OBSError("OBS did not pause: this recording can't be paused. In OBS, Settings, Output: set Recording Quality "
+                   "to anything but \"Same as stream\", and Recording Format to MKV or fragmented MP4 (Hybrid MP4 can't pause)")
 
 
 def _recording(c):
@@ -62,8 +84,7 @@ def toggle_recording(s):
 
 
 def pause_recording(s):
-    _client(s).pause_record()
-    return "Recording paused"
+    return _pause(_client(s))
 
 
 def toggle_pause_recording(s):
@@ -75,8 +96,7 @@ def toggle_pause_recording(s):
     if status.output_paused:
         c.resume_record()
         return "Recording resumed"
-    c.pause_record()
-    return "Recording paused"
+    return _pause(c)
 
 
 def resume_recording(s):

@@ -149,7 +149,8 @@ def _privacy_panic(cfg, mic=True, speakers=True, media=True, windows=True, scene
     step("screen locked", lock, desktop.lock_screen)
     if not done:
         raise ActionError("; ".join(failed) or "nothing is switched on")
-    return ", ".join(done).capitalize() + (f". Failed: {'; '.join(failed)}" if failed else "")
+    summary = ", ".join(done)  # (not .capitalize(): it would turn "OBS" into "Obs")
+    return summary[0].upper() + summary[1:] + (f". Failed: {'; '.join(failed)}" if failed else "")
 
 
 def _voice(work):
@@ -462,7 +463,16 @@ def _percent(value):
 
 
 def _obs(fn):
-    return lambda cfg, **p: fn(cfg["obs"], **p)
+    def run(cfg, **params):
+        try:
+            return fn(cfg["obs"], **params)
+        except obs.OBSError:
+            raise
+        except Exception as e:
+            if type(e).__module__.startswith("obsws_python"):  # OBS refused the request: say why, plainly
+                raise obs.OBSError(obs.friendly(e))
+            raise
+    return run
 
 
 def _media(command):

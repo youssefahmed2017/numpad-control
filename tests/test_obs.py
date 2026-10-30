@@ -122,5 +122,37 @@ class PlaceholderTest(unittest.TestCase):
         self.assertEqual(ydotool.call_args.kwargs["stdin"], "Live since 14:05")
 
 
+class PauseAndErrorsTest(unittest.TestCase):
+    def test_a_pause_that_did_not_happen_is_an_error_not_a_lie(self):
+        """Hybrid MP4 accepts PauseRecord and keeps recording."""
+        c = mock.Mock()
+        c.get_record_status.return_value = SimpleNamespace(output_active=True, output_paused=False)
+        with mock.patch.object(obs, "_client", return_value=c), mock.patch.object(obs.time, "sleep", lambda s: None):
+            for work in (obs.pause_recording, obs.toggle_pause_recording):
+                with self.assertRaises(obs.OBSError) as caught:
+                    work({})
+                self.assertIn("Same as stream", str(caught.exception))
+                self.assertIn("MKV", str(caught.exception))
+
+    def test_obs_wording_is_kept_and_its_technical_wrapping_dropped(self):
+        wrapped = ("Request SetCurrentProgramScene returned code 600. With message: No source was found by the name of "
+                   "`Gaming` within the canvas `Main`.")
+        self.assertEqual(obs.friendly(Exception(wrapped)), "No source was found by the name of `Gaming`")
+        self.assertEqual(obs.friendly(Exception("plain text")), "plain text")
+
+    def test_a_refusal_from_obs_becomes_a_normal_action_error(self):
+        class OBSSDKRequestError(Exception):
+            __module__ = "obsws_python.error"
+
+        def refuse(settings, scene):
+            raise OBSSDKRequestError("Request X returned code 600. With message: No source was found by the name of `Z`.")
+        run = actions._obs(refuse)
+        with self.assertRaises(obs.OBSError) as caught:
+            run({"obs": {}}, scene="Z")
+        self.assertEqual(str(caught.exception), "No source was found by the name of `Z`")
+        with self.assertRaises(ZeroDivisionError):  # an ordinary bug is not hidden as an OBS message
+            actions._obs(lambda settings: 1 / 0)({"obs": {}})
+
+
 if __name__ == "__main__":
     unittest.main()
