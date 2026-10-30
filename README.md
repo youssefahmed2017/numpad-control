@@ -187,6 +187,15 @@ to repeat (volume and app volume, workspaces, next/previous track, Press keys, T
 text) and off for the rest; Sleep / Shut down / Restart never rapid-fire. A slow
 action (e.g. a macro) finishes before the next round starts, so runs never pile up.
 
+**Turbo** (a checkbox on the Press action, with a rate from 1 to 60 per second): hold the key and
+the action keeps firing at that rate until you let go, for any action that is safe to repeat. A quick
+tap is still one press: turbo starts after 0.2 s. It needs a key with only a Press action (a key
+that also has Hold or Double tap waits for you to let go, so there is nothing to repeat), and it
+isn't offered for Sleep / Shut down / Restart / Force-quit. In the settings file it is `"turbo": 30`
+next to the action. The rate is as fast as the action can run: Press keys and Type text
+manage it easily; an action that has to start a program or call OBS each time will hit its own
+limit, and a slow action simply finishes before the next one starts.
+
 ## Any other key
 The standard numpad keys have fixed names: `0`-`9`, `.`, `+`, `-`, `*`, `/`, `Enter`,
 `Backspace`, `NumLock`, plus `000` (three `0`s in a burst). A numpad with more keys (a `(`, a
@@ -413,7 +422,7 @@ you) or `"off"`; `python -m numpadctl update` checks right away.
 To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
 matching tag (`git tag v0.3.0 && git push --tags`).
 
-**Next:** Privacy panic (mute, pause and hide everything at once), Force-quit the focused window and a soundboard (Play a sound); a whole keyboard can be added as an extra pad (Linux): every key can run actions, with
+**Next:** Privacy panic (mute, pause and hide everything at once), Force-quit the focused window and a soundboard (Play a sound), Turbo (repeat any Press action while held, up to 60 a second); a whole keyboard can be added as an extra pad (Linux): every key can run actions, with
 Ctrl+Alt+Esc to give it back; the settings window draws it. See "A whole keyboard as an extra pad".
 
 **0.2.4:** a welcome tour on first launch (find the numpad, pick a starting point, press a key to

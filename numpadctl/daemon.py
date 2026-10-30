@@ -22,6 +22,7 @@ DOUBLE_TAP_TIME = 0.3     # second press within this = "double tap"
 REPEAT_DELAY = 0.4        # repeating actions start after this...
 REPEAT_INTERVAL = 0.08    # ...and then run this often
 RAPID_DELAY = 2.0         # a Hold action with rapid-fire on starts repeating after this much more holding
+TURBO_DELAY = 0.2         # a Press slot with turbo on starts repeating after this long, so a normal tap is still one press
 GAME_CHECK_SECONDS = 3    # how often the running programs are checked for a game with anti-cheat
 MISSING_NOTICE = 5        # seconds the numpad must stay missing before saying so (not for a wobbly plug)
 RETRY_DELAYS = (1, 2, 5, 10, 30)  # seconds before reopening a numpad whose reader keeps failing at once
@@ -113,6 +114,10 @@ class Daemon:
         delay = REPEAT_DELAY if delay is None else delay
         binding = press.slots[slot]
         action = actions.BY_ID.get(binding["action"])
+        interval = REPEAT_INTERVAL
+        turbo = actions.turbo_rate(binding) if slot == "tap" else 0
+        if turbo:  # turbo: any (safe) action, at the rate you chose
+            force, delay, interval = True, TURBO_DELAY, 1 / turbo
         if action is None or action.confirm or not (action.repeat or force):
             return
 
@@ -123,7 +128,7 @@ class Daemon:
                 # A slow action (e.g. a macro) finishes before the next one starts.
                 if running is None or running.done():
                     running = self.run_action(key, binding, slot)
-                await asyncio.sleep(REPEAT_INTERVAL)
+                await asyncio.sleep(interval)
         press.repeater = asyncio.get_running_loop().create_task(repeat())
 
     # ------------------------------------------------------------ keys from the numpad

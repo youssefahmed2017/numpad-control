@@ -687,5 +687,21 @@ def rapid_fire(binding):
     return bool(binding.get("rapid", action.repeat or action.rapid))
 
 
+TURBO_MAX = 60  # presses per second
+
+
+def turbo_rate(binding):
+    """Presses per second a Press slot repeats at while its key is held (0: no turbo).
+
+    Any action can do it except ones that need confirming (sleep, force-quit...)."""
+    action = BY_ID.get(binding.get("action"))
+    if action is None or action.confirm or action.id == "none":
+        return 0
+    try:
+        return max(0, min(TURBO_MAX, int(binding.get("turbo") or 0)))
+    except (TypeError, ValueError):
+        return 0
+
+
 def is_set(binding):
     return bool(binding) and binding.get("action", "none") != "none"

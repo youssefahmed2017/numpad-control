@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QComboBox,
 from numpadctl import actions, config, keys, presets, ui_common
 from numpadctl.platform import IS_WINDOWS
 from . import dialogs, effects, egg, secret, theme, tokens, tools, welcome
-from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, ToolButton, _Morph
+from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, SpinBox, ToolButton, _Morph
 from .picker import ActionPicker
 from .widgets import Dispatcher, add_param_widgets, card, label
 
@@ -656,10 +656,41 @@ class MainWindow(QMainWindow):
                 rapid.setChecked(actions.rapid_fire(binding))
                 rapid.toggled.connect(lambda on: (binding.__setitem__("rapid", on), self.mark_dirty()))
                 layout.addWidget(rapid)
+            if slot == "tap" and not action.confirm:
+                self._turbo_row(layout, key, binding)
             test = PushButton("▶ Test now")
             test.clicked.connect(lambda: self.test(slot))
             layout.addWidget(test)
         return frame
+
+    def _turbo_row(self, layout, key, binding):
+        """Turbo: keep firing the Press action while the key is held, N times a second."""
+        others = any(actions.is_set(self.slot_binding(key, slot)) for slot in ("hold", "double") if slot in self.slots_for(key))
+        row = QHBoxLayout()
+        turbo = QCheckBox("Turbo: repeat while held")
+        turbo.setToolTip("Fires once, then keeps firing as fast as you choose for as long as the key is down")
+        rate = SpinBox()
+        rate.setRange(1, actions.TURBO_MAX)
+        rate.setSuffix(" per second")
+        rate.setValue(actions.turbo_rate(binding) or 20)
+        rate.setAccessibleName("Turbo rate")
+        turbo.setChecked(bool(actions.turbo_rate(binding)))
+
+        def update(*_):
+            binding["turbo"] = rate.value() if turbo.isChecked() else 0
+            rate.setEnabled(turbo.isChecked())
+            self.mark_dirty()
+        turbo.toggled.connect(update)
+        rate.valueChanged.connect(update)
+        rate.setEnabled(turbo.isChecked())
+        row.addWidget(turbo)
+        row.addWidget(rate)
+        row.addStretch()
+        layout.addLayout(row)
+        if others:
+            turbo.setEnabled(False)
+            layout.addWidget(label("Turbo needs a key with only a Press action (this key also has Hold or Double tap).",
+                                   "small", wrap=True))
 
     def on_action_changed(self, slot, index):
         action = actions.ACTIONS[index]

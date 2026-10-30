@@ -74,6 +74,32 @@ class DaemonTest(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(0.1)
         self.assertEqual(len(self.fired), count, "must stop repeating on release")
 
+    async def test_turbo_repeats_any_safe_action_while_held(self):
+        with mock.patch.object(daemon, "TURBO_DELAY", 0.05):
+            self.d.cfg = make_cfg({"5": {"tap": {**b("media_play_pause"), "turbo": 60}}})
+            await self.tap("5", hold=0.4)
+            count = len(self.fired)
+            self.assertGreaterEqual(count, 8, "about 60 a second after the short delay")
+            await asyncio.sleep(0.1)
+            self.assertEqual(len(self.fired), count, "must stop on release")
+
+    async def test_turbo_off_or_not_a_number_is_a_normal_press(self):
+        for turbo in (0, None, "fast"):
+            self.fired.clear()
+            self.d.cfg = make_cfg({"5": {"tap": {**b("media_play_pause"), "turbo": turbo}}})
+            await self.tap("5", hold=0.3)
+            self.assertEqual(self.fired, ["media_play_pause"], f"turbo={turbo!r}")
+
+    async def test_turbo_never_repeats_an_action_that_needs_confirming(self):
+        self.d.cfg = make_cfg({"5": {"tap": {**b("shutdown"), "turbo": 60}}})
+        await self.tap("5", hold=0.4)
+        self.assertEqual(len(self.fired), 1)
+
+    async def test_turbo_does_not_apply_to_a_hold_action(self):
+        self.d.cfg = make_cfg({"5": {"hold": {**b("media_play_pause"), "turbo": 60}}})
+        await self.tap("5", hold=0.15)
+        self.assertEqual(self.fired, ["media_play_pause"], "fired once by the hold, no turbo")
+
     async def test_non_repeating_action_fires_once(self):
         self.d.cfg = make_cfg({"5": {"tap": b("media_play_pause")}})
         await self.tap("5", hold=0.25)

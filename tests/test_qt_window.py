@@ -455,11 +455,41 @@ class QtWindowTest(unittest.TestCase):
             panel.on_letter(letter)
         self.assertIn("hint 1/5", panel.log.toPlainText())
 
+    def test_turbo_is_a_checkbox_and_a_rate_saved_with_the_press_action(self):
+        from PySide6.QtWidgets import QCheckBox
+        from numpadctl_ui.buttons import SpinBox
+        self.w.select("2")
+        self.pick(0, "media_play_pause")
+        turbo = [c for c in self.editor(QCheckBox) if c.text().startswith("Turbo")][0]
+        rate = [s for s in self.editor(SpinBox) if s.accessibleName() == "Turbo rate"][0]
+        self.assertFalse(turbo.isChecked())
+        self.assertFalse(rate.isEnabled(), "the rate is only for when turbo is on")
+        turbo.setChecked(True)
+        rate.setValue(30)
+        self.assertTrue(self.w.save())
+        self.assertEqual(self.saved()["2"]["tap"]["turbo"], 30)
+        turbo.setChecked(False)
+        self.assertEqual(self.w.keymap()["2"]["tap"]["turbo"], 0)
+
+    def test_turbo_is_not_offered_when_the_key_has_a_hold_action(self):
+        from PySide6.QtWidgets import QCheckBox
+        self.w.select("2")
+        self.pick(0, "media_play_pause")
+        self.pick(1, "mic_mute")  # the Hold slot
+        turbo = [c for c in self.editor(QCheckBox) if c.text().startswith("Turbo")][0]
+        self.assertFalse(turbo.isEnabled())
+
+    def test_turbo_is_not_offered_for_actions_that_need_confirming(self):
+        from PySide6.QtWidgets import QCheckBox
+        self.w.select("2")
+        self.pick(0, "shutdown")
+        self.assertEqual([c for c in self.editor(QCheckBox) if c.text().startswith("Turbo")], [])
+
     def test_privacy_panic_settings_are_checkboxes(self):
         from PySide6.QtWidgets import QCheckBox
         self.w.select("2")
         self.pick(0, "privacy_panic")
-        boxes = self.editor(QCheckBox)
+        boxes = [c for c in self.editor(QCheckBox) if not c.text().startswith("Turbo")]  # (Turbo is on every Press action)
         self.assertEqual(len(boxes), 5)
         self.assertEqual([b.isChecked() for b in boxes], [True, True, True, True, False])
         boxes[0].setChecked(False)  # "Mute the microphone"
