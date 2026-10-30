@@ -83,8 +83,9 @@ def detect_device(timeout=15):
 class Numpad:
     """The opened input devices of one numpad (a USB numpad often has several)."""
 
-    def __init__(self, devices):
+    def __init__(self, devices, prefix=""):
         self.devices = devices
+        self.prefix = prefix  # an extra device: all its keys are named "<prefix>:KEY_X"
 
     @property
     def names(self):
@@ -103,10 +104,12 @@ class Numpad:
                 async for ev in dev.async_read_loop():
                     if ev.type != ecodes.EV_KEY or ev.value not in (0, 1):  # ignore autorepeat
                         continue
-                    key = CODE_TO_KEY.get(ev.code)
+                    key = None if self.prefix else CODE_TO_KEY.get(ev.code)
                     if key is None:  # not a standard numpad key: report it by its code (Learn mode can add it)
                         key = keys.evdev_id(ecodes.KEY.get(ev.code) or ecodes.BTN.get(ev.code) or f"KEY_{ev.code}")
-                        if ev.value == 1:
+                        if self.prefix:
+                            key = keys.DEVICE_SEP.join((self.prefix, key))
+                        elif ev.value == 1:
                             log.info("extra key %s", key)
                     await queue.put((key, ev.value == 1))
             except OSError as e:
@@ -123,6 +126,14 @@ class Numpad:
             for task in tasks:
                 task.cancel()
 
+    def ungrab(self):
+        """Give the keys back to the system (the escape chord of a grabbed keyboard)."""
+        for dev in self.devices:
+            try:
+                dev.ungrab()
+            except OSError:
+                pass
+
     def close(self):
         for dev in self.devices:
             try:
@@ -133,6 +144,15 @@ class Numpad:
 
 def open_numpad(spec, grab):
     """Open (and grab) every input device of the numpad; None if it isn't there."""
+    return _open(spec, grab, "")
+
+
+def open_device(spec, grab):
+    """Same for an extra device from the config's "devices" (spec has its "id"); every key is a pad key."""
+    return _open(spec, grab, spec["id"])
+
+
+def _open(spec, grab, prefix):
     vendor, product = int(spec["vendor"], 16), int(spec["product"], 16)
     devices = []
     for path in evdev.list_devices():
@@ -154,4 +174,4 @@ def open_numpad(spec, grab):
                 dev.grab()
             except OSError as e:
                 log.warning("could not grab %s: %s", dev.path, e)
-    return Numpad(devices)
+    return Numpad(devices, prefix)

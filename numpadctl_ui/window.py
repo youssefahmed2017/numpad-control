@@ -6,9 +6,10 @@ from PySide6.QtCore import QEvent, QRectF, Qt, QTimer, QVariantAnimation
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QComboBox, QFrame, QGridLayout, QHBoxLayout,
                                QLineEdit, QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea, QSizePolicy,
-                               QToolButton, QVBoxLayout, QWidget)
+                               QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
 from numpadctl import actions, config, keys, presets, ui_common
+from numpadctl.platform import IS_WINDOWS
 from . import dialogs, effects, egg, secret, theme, tokens, tools, welcome
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, ToolButton, _Morph
 from .picker import ActionPicker
@@ -23,19 +24,22 @@ DEFAULTS_LOOK = {"appearance": "auto", "accent": tokens.DEFAULT_ACCENT, "contras
 
 
 class KeyButton(_Morph, QPushButton):
-    """A numpad key: its name, and below it what it does."""
+    """A numpad key: its name, and below it what it does (a compact key of a keyboard picture shows only its
+    name; what it does is in the tooltip and a tinted tile)."""
 
-    def __init__(self, key, name=None):
+    def __init__(self, key, name=None, compact=False):
         super().__init__()
         self.key = key
+        self.compact = compact
         self.setObjectName("numkey")
+        self.setProperty("compact", compact)
         self._morph_setup()  # hover and press animation (buttons.py)
         self._sel = 0.0      # 0..1, animated
         self._sel_animation = self._animation(lambda v: setattr(self, "_sel", v))
         self.setToolTip(name or key)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Enter fills its two rows
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setContentsMargins(*(1, 1, 1, 1) if compact else (4, 4, 4, 4))
         layout.setSpacing(0)
         self.name = label(name or ui_common.KEY_LABELS.get(key, key), "keyname")
         self.action = label("", "keyaction")
@@ -43,6 +47,7 @@ class KeyButton(_Morph, QPushButton):
             part.setAlignment(Qt.AlignCenter)
             part.setAttribute(Qt.WA_TransparentForMouseEvents)
             layout.addWidget(part)
+        self.action.setVisible(not compact)
 
     def _animation(self, apply):
         animation = QVariantAnimation(self, duration=KEY_FADE_MS)
@@ -56,6 +61,8 @@ class KeyButton(_Morph, QPushButton):
         animation.start()
 
     def _set(self, prop, value):
+        if self.property(prop) == value:  # re-styling is slow: only when something changed
+            return
         self.setProperty(prop, value)
         for widget in (self, self.name, self.action):
             widget.style().unpolish(widget)
@@ -74,7 +81,8 @@ class KeyButton(_Morph, QPushButton):
     def current_radius(self):
         """Rounded tile at rest, rounder on hover, squeezed while pressed (like the other buttons)."""
         radius = KEY_RADIUS + (KEY_HOVER_RADIUS - KEY_RADIUS) * self._hover
-        return radius + (KEY_PRESSED_RADIUS - radius) * self._press
+        radius += (KEY_PRESSED_RADIUS - radius) * self._press
+        return radius * 0.35 if self.compact else radius
 
     def ripple_color(self):
         c = theme.current
@@ -87,6 +95,8 @@ class KeyButton(_Morph, QPushButton):
             return super().paintEvent(event)
         resting = c["tertiaryContainer"] if self.property("layer") else c["surfaceContainerHigh"]
         content = c["onTertiaryContainer"] if self.property("layer") else c["onSurface"]
+        if self.property("bound") and not self.property("layer"):  # a key of a keyboard picture that does something
+            resting, content = c["secondaryContainer"], c["onSecondaryContainer"]
         look = tokens.blend(resting, content, tokens.STATE["hover"] * self._hover)
         chosen = tokens.blend(c["primaryContainer"], c["onPrimaryContainer"], tokens.STATE["hover"] * self._hover)
         color = QColor(tokens.blend(look, chosen, self._sel))
@@ -124,6 +134,7 @@ class MainWindow(QMainWindow):
         self.secret = None  # the open SecretPanel
         self.last_key_press = None
         self.profile_index, self.layer, self.selected = 0, False, None
+        self.device = ""  # the id of the keyboard shown on the left ("" is the numpad)
         self.dirty = False
         self.on_detected = None
         self.last_status = {"running": False}
@@ -219,6 +230,7 @@ class MainWindow(QMainWindow):
 
     def _build_left(self):
         panel = QWidget()
+        panel.setObjectName("left_panel")
         panel.setFixedWidth(470)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 8, 14, 8)
@@ -242,6 +254,27 @@ class MainWindow(QMainWindow):
         profiles.addWidget(menu_button)
         layout.addLayout(profiles)
 
+        self.device_row = QWidget()
+        devices = QHBoxLayout(self.device_row)
+        devices.setContentsMargins(0, 0, 0, 0)
+        devices.addWidget(label("Device", "heading"))
+        self.device_combo = ComboBox()
+        self.device_combo.currentIndexChanged.connect(self.on_device_changed)
+        devices.addWidget(self.device_combo, 1)
+        device_button = ToolButton(text="⋯", toolTip="Use a keyboard as an extra pad")
+        device_button.setPopupMode(QToolButton.InstantPopup)
+        device_menu = Menu(device_button)
+        device_menu.addAction("Add a keyboard…", self.add_device)
+        self.grab_action = device_menu.addAction("Stop this keyboard typing")
+        self.grab_action.setCheckable(True)
+        self.grab_action.setToolTip("On: its keys only run actions. Holding Ctrl+Alt+Esc on it gives it back.")
+        self.grab_action.toggled.connect(self.on_grab_toggled)
+        self.remove_device_action = device_menu.addAction("Remove this keyboard", self.remove_device)
+        device_button.setMenu(device_menu)
+        devices.addWidget(device_button)
+        layout.addWidget(self.device_row)
+        self.device_row.setVisible(not IS_WINDOWS)  # extra keyboards are Linux-only so far
+
         self.layer_frame = QFrame()
         self.layer_frame.setObjectName("segments")
         segments = QHBoxLayout(self.layer_frame)
@@ -258,6 +291,12 @@ class MainWindow(QMainWindow):
         self.layer_group = group
         layout.addWidget(self.layer_frame)
 
+        self.pad_stack = QStackedWidget()
+        self.pad_stack.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        numpad_page = QWidget()
+        page_layout = QVBoxLayout(numpad_page)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.setSpacing(10)
         grid = QGridLayout()
         grid.setSpacing(8)
         for key, row, col, span in ui_common.LAYOUT:
@@ -265,17 +304,35 @@ class MainWindow(QMainWindow):
             button.clicked.connect(lambda _=False, k=key: self.select(k))
             grid.addWidget(button, row, col, span, 1)
             self.key_buttons[key] = button
-        layout.addLayout(grid)
+        page_layout.addLayout(grid)
 
         self.extra_title = label("Extra keys", "heading")
-        layout.addWidget(self.extra_title)
+        page_layout.addWidget(self.extra_title)
         self.extra_grid = QGridLayout()
         self.extra_grid.setSpacing(8)
-        layout.addLayout(self.extra_grid)
-        self.rebuild_extras()
+        page_layout.addLayout(self.extra_grid)
+        self.pad_stack.addWidget(numpad_page)
 
-        layout.addWidget(label("Click a key to choose what it does. A key that isn't here (a “(”, Tab, a macro key…): "
-                               "turn on Learn and press it, and it's added.", "small", wrap=True))
+        keyboard_page = QWidget()
+        page_layout = QVBoxLayout(keyboard_page)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.setSpacing(10)
+        self.keyboard_grid = QGridLayout()
+        self.keyboard_grid.setSpacing(3)
+        page_layout.addLayout(self.keyboard_grid)
+        self.keyboard_extra_title = label("Other keys of this keyboard", "heading")
+        page_layout.addWidget(self.keyboard_extra_title)
+        self.keyboard_extra_grid = QGridLayout()
+        self.keyboard_extra_grid.setSpacing(8)
+        page_layout.addLayout(self.keyboard_extra_grid)
+        self.pad_stack.addWidget(keyboard_page)
+        layout.addWidget(self.pad_stack)
+        self.rebuild_extras()
+        self.refresh_devices()
+
+        self.pad_help = label("", "small", wrap=True)
+        layout.addWidget(self.pad_help)
+        self.set_pad_help()
         layout.addStretch()
         return panel
 
@@ -284,7 +341,7 @@ class MainWindow(QMainWindow):
 
     def rebuild_extras(self):
         """The pad's extra keys (added in Learn mode) below the standard ones."""
-        for key in [k for k in self.key_buttons if k not in keys.BUILTIN]:
+        for key in [k for k in self.key_buttons if k not in keys.BUILTIN and not keys.split(k)[0]]:
             self.key_buttons.pop(key).deleteLater()
         for i in reversed(range(self.extra_grid.count())):
             self.extra_grid.takeAt(i)
@@ -295,16 +352,23 @@ class MainWindow(QMainWindow):
             self.key_buttons[extra["id"]] = button
         self.extra_title.setVisible(bool(self.cfg.get("extra_keys")))
 
+    def extra_list(self, key):
+        """Where the extra keys of this key's device are kept in the config."""
+        device = keys.split(key)[0]
+        return keys.device_extras(self.cfg, device) if device else self.cfg.setdefault("extra_keys", [])
+
     def add_extra_key(self, key, name=None):
-        if keys.known(key, self.cfg):
+        device = keys.split(key)[0]
+        if device and key in self.key_buttons or not device and keys.known(key, self.cfg):
             return
-        self.cfg.setdefault("extra_keys", []).append({"id": key, "label": name or keys.label_for(key)})
+        self.extra_list(key).append({"id": key, "label": name or keys.label_for(key)})
         self.rebuild_extras()
+        self.rebuild_device_extras()
         self.mark_dirty()
         self.refresh_pad()
 
     def rename_extra_key(self, key, name):
-        for extra in self.cfg.get("extra_keys", []):
+        for extra in self.extra_list(key):
             if extra["id"] == key:
                 extra["label"] = name
         button = self.key_buttons.get(key)
@@ -314,13 +378,149 @@ class MainWindow(QMainWindow):
         self.mark_dirty()
 
     def remove_extra_key(self, key):
-        self.cfg["extra_keys"] = [e for e in self.cfg.get("extra_keys", []) if e["id"] != key]
+        device = keys.split(key)[0]
+        remaining = [e for e in self.extra_list(key) if e["id"] != key]
+        if device:
+            self.device_config()["extra_keys"] = remaining
+        else:
+            self.cfg["extra_keys"] = remaining
         if self.cfg.get("layer_key") == key:
             self.cfg["layer_key"] = None
             self.refresh_layer_switch()
         self.rebuild_extras()
+        self.rebuild_device_extras()
         self.mark_dirty()
-        self.select("1")
+        self.select(self.default_key())
+
+    # ---------------------------------------------------------------- extra keyboards
+    def device_config(self):
+        """The config entry of the keyboard shown now (None for the numpad)."""
+        return next((d for d in self.cfg.get("devices", []) if d["id"] == self.device), None)
+
+    def default_key(self):
+        return f"{self.device}:KEY_ESC" if self.device else "1"
+
+    def set_pad_help(self):
+        if self.device:
+            self.pad_help.setText("Click a key to choose what it does; tinted keys already do something. A key that "
+                                  "isn't drawn (media keys…): turn on Learn and press it, and it's added below.")
+        else:
+            self.pad_help.setText("Click a key to choose what it does. A key that isn't here (a “(”, Tab, a macro key…): "
+                                  "turn on Learn and press it, and it's added.")
+
+    def refresh_devices(self):
+        """The Device list: the numpad, then the keyboards added in the config."""
+        devices = self.cfg.get("devices", [])
+        if self.device and not self.device_config():
+            self.device = ""
+        extra = self.last_status.get("extra", {})
+        self.device_combo.blockSignals(True)
+        self.device_combo.clear()
+        self.device_combo.addItem("Numpad")
+        for device in devices:
+            state = extra.get(device["id"], {})
+            note = " (given back)" if state.get("released") else \
+                " (not connected)" if state and not state.get("connected") else ""
+            self.device_combo.addItem(device["name"] + note)
+        self.device_combo.setCurrentIndex(1 + [d["id"] for d in devices].index(self.device) if self.device else 0)
+        self.device_combo.blockSignals(False)
+        config_entry = self.device_config()
+        self.grab_action.blockSignals(True)
+        self.grab_action.setChecked(bool(config_entry and config_entry.get("grab", True)))
+        self.grab_action.blockSignals(False)
+        self.grab_action.setEnabled(config_entry is not None)
+        self.remove_device_action.setEnabled(config_entry is not None)
+
+    def say_given_back(self, before, after):
+        """A keyboard just went back to typing (its escape chord was held): say so here as well."""
+        for device in self.cfg.get("devices", []):
+            if after.get(device["id"], {}).get("released") and not before.get(device["id"], {}).get("released"):
+                self.toast(f"{device['name']} is typing again (Ctrl+Alt+Esc). Remove it and add it again to use it as a pad.")
+
+    def on_device_changed(self, index):
+        devices = self.cfg.get("devices", [])
+        self.set_device(devices[index - 1]["id"] if 0 < index <= len(devices) else "")
+
+    def set_device(self, device):
+        self.device = device
+        for key in [k for k in self.key_buttons if keys.split(k)[0]]:
+            self.key_buttons.pop(key).deleteLater()
+        if device:
+            self.build_keyboard()
+        self.pad_stack.setCurrentIndex(1 if device else 0)
+        self.pad_stack.currentWidget().adjustSize()
+        self.pad_stack.setFixedHeight(self.pad_stack.currentWidget().sizeHint().height())
+        self.centralWidget().findChild(QWidget, "left_panel").setFixedWidth(620 if device else 470)
+        self.refresh_devices()
+        self.set_pad_help()
+        self.select(self.default_key())
+
+    def build_keyboard(self):
+        for i in reversed(range(self.keyboard_grid.count())):
+            self.keyboard_grid.takeAt(i)
+        for name, text, row, col, width, height in ui_common.KEYBOARD_LAYOUT:
+            key = f"{self.device}:{name}"
+            button = KeyButton(key, text, compact=True)
+            button.clicked.connect(lambda _=False, k=key: self.select(k))
+            self.keyboard_grid.addWidget(button, row, col, height, width)
+            self.key_buttons[key] = button
+        for column in range(60):
+            self.keyboard_grid.setColumnStretch(column, 1)
+        self.rebuild_device_extras()
+
+    def rebuild_device_extras(self):
+        """Keys of this keyboard that the picture doesn't have, added in Learn mode."""
+        if not self.device:
+            return
+        for key in [k for k in self.key_buttons if keys.split(k)[0] and k not in self.layout_keys()]:
+            self.key_buttons.pop(key).deleteLater()
+        for i in reversed(range(self.keyboard_extra_grid.count())):
+            self.keyboard_extra_grid.takeAt(i)
+        extras = keys.device_extras(self.cfg, self.device)
+        for index, extra in enumerate(extras):
+            button = KeyButton(extra["id"], extra.get("label") or keys.label_for(extra["id"]))
+            button.clicked.connect(lambda _=False, k=extra["id"]: self.select(k))
+            self.keyboard_extra_grid.addWidget(button, index // self.EXTRA_COLUMNS, index % self.EXTRA_COLUMNS)
+            self.key_buttons[extra["id"]] = button
+        self.keyboard_extra_title.setVisible(bool(extras))
+
+    def layout_keys(self):
+        return {f"{self.device}:{name}" for name, *_ in ui_common.KEYBOARD_LAYOUT}
+
+    def add_device(self):
+        taken = {(self.cfg["device"]["vendor"], self.cfg["device"]["product"])}
+        taken |= {(d["vendor"], d["product"]) for d in self.cfg.get("devices", [])}
+        dialog = dialogs.AddDeviceDialog(self, taken, {d["id"] for d in self.cfg.get("devices", [])})
+        if dialog.exec():
+            spec = dialog.values()
+            self.cfg.setdefault("devices", []).append(spec)
+            self.mark_dirty()
+            self.set_device(spec["id"])
+            self.toast("Keyboard added. Save to start using it.")
+
+    def remove_device(self):
+        device = self.device_config()
+        if device is None:
+            return
+        answer = QMessageBox.question(self, "Remove keyboard",
+                                      f"Remove {device['name']} and the actions you set on its keys?")
+        if answer != QMessageBox.Yes:
+            return
+        self.cfg["devices"].remove(device)
+        for profile in self.cfg["profiles"]:
+            for kind in ("bindings", "layer_bindings"):
+                profile[kind] = {k: v for k, v in profile[kind].items() if keys.split(k)[0] != device["id"]}
+        if keys.split(self.cfg.get("layer_key") or "")[0] == device["id"]:
+            self.cfg["layer_key"] = None
+            self.refresh_layer_switch()
+        self.mark_dirty()
+        self.set_device("")
+
+    def on_grab_toggled(self, on):
+        device = self.device_config()
+        if device is not None:
+            device["grab"] = on
+            self.mark_dirty()
 
     # ---------------------------------------------------------------- model
     @property
@@ -342,9 +542,11 @@ class MainWindow(QMainWindow):
         self.dirty_label.setText("Unsaved changes")
 
     # ---------------------------------------------------------------- the numpad
-    def refresh_pad(self):
+    def refresh_pad(self, only=None):
+        """Update the keys' look and labels: all of them, or just `only` (typing changes one key)."""
         layer_key = self.cfg.get("layer_key")
-        for key, button in self.key_buttons.items():
+        for key, button in ([(only, self.key_buttons[only])] if only in self.key_buttons else
+                            [] if only else self.key_buttons.items()):
             button._set("layer", key == layer_key)
             if key == layer_key:
                 text = "Layer key"
@@ -354,8 +556,14 @@ class MainWindow(QMainWindow):
                 text = "—" if tap.id == "none" else tap.label
                 if extra:
                     text = ("" if tap.id == "none" else text + " ") + f"+{extra}"
-            metrics = button.action.fontMetrics()
-            button.action.setText(metrics.elidedText(text, Qt.ElideRight, 96))
+            if button.compact:
+                button._set("bound", text != "—" and key != layer_key)
+                tip = f"{button.name.text()}: {text}"
+                if button.toolTip() != tip:
+                    button.setToolTip(tip)
+            elided = button.action.fontMetrics().elidedText(text, Qt.ElideRight, 96)
+            if button.action.text() != elided:
+                button.action.setText(elided)
             button.set_selected(key == self.selected)
 
     def select(self, key):
@@ -371,11 +579,12 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(page)
         layout.setContentsMargins(14, 8, 14, 14)
         layout.setSpacing(12)
-        layout.addWidget(label(f"Key  {keys.display(key, self.cfg)}", "title"))
+        device = self.device_config() if keys.split(key)[0] else None
+        layout.addWidget(label(f"Key  {keys.display(key, self.cfg)}" + (f" on {device['name']}" if device else ""), "title"))
         context = self.profile["name"] + (" profile" if self.profile_index else " profile · applies everywhere")
         layout.addWidget(label(context + (" · layer" if self.layer else ""), "dim"))
 
-        if key in keys.extra_ids(self.cfg):
+        if key in keys.extra_ids(self.cfg) or key in (e["id"] for e in keys.device_extras(self.cfg, keys.split(key)[0])):
             frame, inner = card()
             inner.addWidget(label("Extra key", "heading"))
             inner.addWidget(label(f"Added in Learn mode (it reports itself as {key}).", "small"))
@@ -461,7 +670,7 @@ class MainWindow(QMainWindow):
 
     def on_param_changed(self):
         self.mark_dirty()
-        self.refresh_pad()
+        self.refresh_pad(only=self.selected)
 
     # ---------------------------------------------------------------- profiles & layer
     def refresh_profiles(self):
@@ -607,8 +816,10 @@ class MainWindow(QMainWindow):
     def on_service_message(self, message):
         event = message.get("event")
         if event == "status":
+            self.say_given_back(self.last_status.get("extra", {}), message.get("extra", {}))
             self.last_status = message
             self.update_status(message)
+            self.refresh_devices()
             if self.tour:
                 self.tour.refresh_status()
             if self.tester:  # the service (re)started: ask for the raw keys again
@@ -618,9 +829,18 @@ class MainWindow(QMainWindow):
         elif event == "key":
             if self.tester:
                 self.tester.add_key(message["key"])
-            if self.learn.isChecked() and message.get("unknown") and not keys.known(message["key"], self.cfg):
+            key_device = keys.split(message["key"])[0]
+            if self.learn.isChecked() and key_device == self.device and key_device and message["key"] not in self.key_buttons:
+                self.add_extra_key(message["key"], message.get("label"))
+                self.toast(f"Added the key “{keys.display(message['key'], self.cfg)}” to the keyboard")
+            elif self.learn.isChecked() and message.get("unknown") and not keys.known(message["key"], self.cfg):
                 self.add_extra_key(message["key"], message.get("label"))
                 self.toast(f"Added the key “{keys.display(message['key'], self.cfg)}” to the pad")
+            if key_device and key_device != self.device and key_device in keys.device_ids(self.cfg) \
+                    and (self.learn.isChecked() or self.following_keys()):
+                self.set_device(key_device)  # pressed on another keyboard: show that one
+            elif not key_device and self.device and (self.learn.isChecked() or self.following_keys()):
+                self.set_device("")
             if self.tour:
                 self.tour.on_key(message["key"])
             if self.secret:
@@ -749,7 +969,8 @@ class MainWindow(QMainWindow):
         self.dirty_label.setText("")
         self.refresh_profiles()
         self.refresh_layer_switch()
-        self.select(self.selected or "1")
+        self.refresh_devices()
+        self.set_device(self.device)
 
     def closeEvent(self, event):
         if self.dirty:

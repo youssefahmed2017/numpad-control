@@ -223,3 +223,54 @@ def installed_apps():
         return []
     apps = [(a.get_display_name(), a.get_id()) for a in Gio.AppInfo.get_all() if a.should_show()]
     return sorted(apps, key=lambda a: a[0].lower())
+
+
+def _keyboard_layout():
+    """A full keyboard for the settings window: [(evdev name, label, row, column, columns, rows)] on a grid of
+    quarter-key columns (a normal key is 4 wide), the main block on top and navigation + numpad below it."""
+    cells = []
+
+    def row(r, specs, col=0):
+        for item in specs:
+            if item is None:  # a gap of one key
+                col += 4
+                continue
+            if isinstance(item, (int, float)):  # a gap of that many keys
+                col += int(item * 4)
+                continue
+            name, text, width = (item + (1,))[:3] if len(item) == 2 else item
+            cells.append((name, text, r, col, int(width * 4), 1))
+            col += int(width * 4)
+
+    def plain(names, labels=None):
+        return [(f"KEY_{n}", (labels or {}).get(n, n)) for n in names]
+
+    row(0, [("KEY_ESC", "Esc"), None] + [(f"KEY_F{n}", f"F{n}") for n in range(1, 13)])
+    row(1, plain(["GRAVE"], {"GRAVE": "`"}) + plain("1234567890", None)
+        + plain(["MINUS", "EQUAL"], {"MINUS": "-", "EQUAL": "="}) + [("KEY_BACKSPACE", "⌫", 2)])
+    row(2, [("KEY_TAB", "Tab", 1.5)] + plain("QWERTYUIOP") + plain(["LEFTBRACE", "RIGHTBRACE"], {"LEFTBRACE": "[", "RIGHTBRACE": "]"})
+        + [("KEY_BACKSLASH", "\\", 1.5)])
+    row(3, [("KEY_CAPSLOCK", "Caps", 1.75)] + plain("ASDFGHJKL")
+        + plain(["SEMICOLON", "APOSTROPHE"], {"SEMICOLON": ";", "APOSTROPHE": "'"}) + [("KEY_ENTER", "Enter", 2.25)])
+    row(4, [("KEY_LEFTSHIFT", "Shift", 2.25)] + plain("ZXCVBNM")
+        + plain(["COMMA", "DOT", "SLASH"], {"COMMA": ",", "DOT": ".", "SLASH": "/"}) + [("KEY_RIGHTSHIFT", "Shift", 2.75)])
+    row(5, [("KEY_LEFTCTRL", "Ctrl", 1.25), ("KEY_LEFTMETA", "Super", 1.25), ("KEY_LEFTALT", "Alt", 1.25),
+            ("KEY_SPACE", "Space", 6.25), ("KEY_RIGHTALT", "Alt", 1.25), ("KEY_COMPOSE", "Menu", 1.25),
+            ("KEY_RIGHTCTRL", "Ctrl", 1.25)])
+    row(7, plain(["SYSRQ", "SCROLLLOCK", "PAUSE"], {"SYSRQ": "Prt", "SCROLLLOCK": "ScrLk", "PAUSE": "Pause"}))
+    row(8, plain(["INSERT", "HOME", "PAGEUP"], {"INSERT": "Ins", "HOME": "Home", "PAGEUP": "PgUp"}))
+    row(9, plain(["DELETE", "END", "PAGEDOWN"], {"DELETE": "Del", "END": "End", "PAGEDOWN": "PgDn"}))
+    row(11, [1] + plain(["UP"], {"UP": "↑"}))
+    row(12, plain(["LEFT", "DOWN", "RIGHT"], {"LEFT": "←", "DOWN": "↓", "RIGHT": "→"}))
+    pad = 20  # the numpad block, to the right of the navigation keys
+    row(7, plain(["NUMLOCK", "KPSLASH", "KPASTERISK", "KPMINUS"], {"NUMLOCK": "Num", "KPSLASH": "/", "KPASTERISK": "*", "KPMINUS": "-"}), col=pad)
+    for r, trio in ((8, "789"), (9, "456"), (10, "123")):
+        row(r, plain([f"KP{n}" for n in trio], {f"KP{n}": n for n in trio}), col=pad)
+    cells.append(("KEY_KPPLUS", "+", 8, pad + 12, 4, 2))
+    cells.append(("KEY_KPENTER", "Enter", 10, pad + 12, 4, 2))
+    cells.append(("KEY_KP0", "0", 11, pad, 8, 1))
+    cells.append(("KEY_KPDOT", ".", 11, pad + 8, 4, 1))
+    return cells
+
+
+KEYBOARD_LAYOUT = _keyboard_layout()

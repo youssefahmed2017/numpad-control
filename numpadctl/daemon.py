@@ -28,6 +28,8 @@ RETRY_DELAYS = (1, 2, 5, 10, 30)  # seconds before reopening a numpad whose read
 QUICK_FAILURE = 5         # a reader that fails within this many seconds counts as failing at once
 UPDATE_FIRST_CHECK = 60   # seconds after starting before looking for an update (not slowing the start)
 UPDATE_LOOP_SECONDS = 3600  # how often it wakes to see whether the daily check is due
+DEVICE_CHECK_SECONDS = 2  # how often extra devices (whole keyboards) are looked for or dropped
+RELEASE_CHORD = {"KEY_LEFTCTRL", "KEY_LEFTALT", "KEY_ESC"}  # held on a grabbed extra keyboard: gives it back
 
 # Used by the settings window and setup.sh.
 detect_device = numpad_input.detect_device
@@ -74,6 +76,9 @@ class Daemon:
         self.following = set()  # capturing clients that only want keys to select, not to learn new ones
         self.raw_clients = set()  # key tester windows: want every raw key event
         self.detect_future = None
+        self.extra = {}         # device id -> {"spec": ..., "task": ..., "pad": ...} of the extra devices
+        self.released = set()   # extra devices given back to the system with the escape chord
+        self.held = {}          # device id -> keys currently down on it (for that chord)
 
     def reload_if_changed(self):
         mtime = config.mtime()
@@ -278,7 +283,9 @@ class Daemon:
     # ------------------------------------------------------------ settings window link
     def status(self):
         return {"event": "status", "connected": self.numpad is not None,
-                "devices": self.numpad.names if self.numpad else [], "paused_for": self.paused_for}
+                "devices": self.numpad.names if self.numpad else [], "paused_for": self.paused_for,
+                "extra": {dev_id: {"connected": item["pad"] is not None, "released": dev_id in self.released}
+                          for dev_id, item in self.extra.items()}}
 
     def current_device_spec(self):
         return self.numpad.spec if self.numpad else None
@@ -357,6 +364,82 @@ class Daemon:
             for writer in list(self.raw_clients):
                 self.send(writer, {"event": "raw", "key": key, "down": down, "t": time.monotonic()})
             self.on_key(key, down)
+
+    # ------------------------------------------------------------ extra devices (whole keyboards)
+    async def manage_devices(self):
+        """Keep one reader per device in the config's "devices": start new ones, drop removed or changed ones."""
+        try:
+            while True:
+                self.reload_if_changed()
+                wanted = {d["id"]: d for d in self.cfg.get("devices", []) if d.get("id")}
+                for dev_id, item in list(self.extra.items()):
+                    if wanted.get(dev_id) != item["spec"]:
+                        item["task"].cancel()
+                        del self.extra[dev_id]
+                        self.released.discard(dev_id)
+                for dev_id, spec in wanted.items():
+                    if dev_id not in self.extra:
+                        item = self.extra[dev_id] = {"spec": spec, "pad": None}
+                        item["task"] = asyncio.create_task(self.device_session(dev_id, item))
+                await asyncio.sleep(DEVICE_CHECK_SECONDS)
+        finally:
+            for item in self.extra.values():
+                item["task"].cancel()
+                if item["pad"] is not None:
+                    item["pad"].close()
+
+    async def device_session(self, dev_id, item):
+        """Open one extra device whenever it is there, read it until it goes, and start over."""
+        spec = item["spec"]
+        while True:
+            if self.paused_for or dev_id in self.released:
+                await asyncio.sleep(DEVICE_CHECK_SECONDS)
+                continue
+            pad = numpad_input.open_device(spec, spec.get("grab", True))
+            if pad is None:
+                await asyncio.sleep(DEVICE_CHECK_SECONDS)
+                continue
+            item["pad"] = pad
+            self.broadcast(self.status())
+            try:
+                reader = asyncio.create_task(self.read_device(dev_id, pad))
+                while not reader.done() and not self.paused_for and dev_id not in self.released:
+                    await asyncio.sleep(1)
+                if reader.done() and reader.exception():
+                    log.info("device %s disconnected: %s", dev_id, reader.exception())
+                reader.cancel()
+            finally:
+                pad.close()
+                item["pad"] = None
+                self.held.pop(dev_id, None)
+                self.reset_device(dev_id)
+                self.broadcast(self.status())
+
+    async def read_device(self, dev_id, pad):
+        async for key, down in pad.events():
+            for writer in list(self.raw_clients):
+                self.send(writer, {"event": "raw", "key": key, "down": down, "t": time.monotonic()})
+            held = self.held.setdefault(dev_id, set())
+            (held.add if down else held.discard)(keys.split(key)[1])
+            if RELEASE_CHORD <= held and self.extra[dev_id]["spec"].get("grab", True):
+                self.release_device(dev_id, pad)
+                return
+            self.on_key(key, down)
+
+    def release_device(self, dev_id, pad):
+        """The escape chord: give a grabbed keyboard back to the system (until it is reopened by a restart)."""
+        log.info("device %s given back to the system (Ctrl+Alt+Esc)", dev_id)
+        self.released.add(dev_id)
+        pad.ungrab()
+        name = self.extra[dev_id]["spec"].get("name") or dev_id
+        actions.notify("Keyboard given back",
+                       f"{name} types normally again. To use it as a pad again, remove it and add it again in the "
+                       "settings window, or restart NumpadPilot.")
+
+    def reset_device(self, dev_id):
+        """Forget the presses of a device that went away (so no key stays down)."""
+        for key in [k for k in self.presses if keys.split(k)[0] == dev_id]:
+            self.cancel(self.presses.pop(key))
 
     async def watch_device_settings(self):
         """Return when the device or grab setting changes so we reopen."""
@@ -438,10 +521,12 @@ class Daemon:
     async def main(self):
         await self.serve()
         updates = asyncio.create_task(self.update_loop())
+        devices = asyncio.create_task(self.manage_devices())
         try:
             await self._device_loop()
         finally:  # quitting (the task is cancelled): let the numpad and the connection go
             updates.cancel()
+            devices.cancel()
             if self.numpad is not None:
                 self.numpad.close()
                 self.numpad = None

@@ -55,6 +55,12 @@ class LinuxNumpadTest(unittest.IsolatedAsyncioTestCase):
         got = await asyncio.wait_for(self.collect(linux_numpad.Numpad([dev]), 4), 2)
         self.assertEqual(got, [("5", True), ("KEY_TAB", True), ("KEY_TAB", False), ("KEY_KPLEFTPAREN", True)])
 
+    async def test_an_extra_device_names_every_key_after_itself(self):
+        dev = FakeDevice("HP keyboard", [event(ecodes.KEY_KP5, 1), event(ecodes.KEY_A, 1), event(ecodes.KEY_A, 0),
+                                         event(ecodes.KEY_A, 2)])
+        got = await asyncio.wait_for(self.collect(linux_numpad.Numpad([dev], "hp"), 3), 2)
+        self.assertEqual(got, [("hp:KEY_KP5", True), ("hp:KEY_A", True), ("hp:KEY_A", False)])
+
     async def test_several_devices_are_merged(self):
         a = FakeDevice("Usb KeyBoard", [event(ecodes.KEY_KP1, 1)])
         b = FakeDevice("Usb KeyBoard Consumer Control", [event(ecodes.KEY_KP2, 1)])

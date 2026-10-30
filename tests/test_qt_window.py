@@ -455,6 +455,13 @@ class QtWindowTest(unittest.TestCase):
             panel.on_letter(letter)
         self.assertIn("hint 1/5", panel.log.toPlainText())
 
+    def test_the_console_effects_only_use_the_numpads_own_keys(self):
+        from PySide6.QtWidgets import QPushButton
+        self.w.key_buttons["hp:KEY_A"] = QPushButton()  # a key of a keyboard picture
+        panel = self.make_panel()
+        self.assertNotIn("hp:KEY_A", panel.pad_keys())
+        self.assertIn("5", panel.pad_keys())
+
     def test_gravity_brings_the_keys_back(self):
         self.w.resize(1000, 700)
         self.w.show()

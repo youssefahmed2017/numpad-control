@@ -215,6 +215,10 @@ QFrame#segments { background: transparent; border: 1px solid ${outline}; border-
 QPushButton#numkey { padding: 4px; min-width: 76px; min-height: 60px; }
 QPushButton#numkey[selected="true"] QLabel#keyname, QPushButton#numkey[selected="true"] QLabel#keyaction { color: ${onPrimaryContainer}; }
 QPushButton#numkey[layer="true"] QLabel#keyname, QPushButton#numkey[layer="true"] QLabel#keyaction { color: ${onTertiaryContainer}; }
+QPushButton#numkey[compact="true"] { padding: 1px; min-width: 18px; min-height: 34px; }
+QPushButton#numkey[compact="true"] QLabel#keyname { font-size: ${bodySmall_size}; font-weight: 500; }
+QPushButton#numkey[bound="true"] QLabel#keyname { color: ${onSecondaryContainer}; }
+QPushButton#numkey[bound="true"][selected="true"] QLabel#keyname { color: ${onPrimaryContainer}; }
 QLabel#keyname { font-size: ${titleLarge_size}; font-weight: 600; color: ${onSurface}; }
 QLabel#keyaction { font-size: ${bodySmall_size}; color: ${onSurfaceVariant}; }
 

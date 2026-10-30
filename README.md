@@ -184,6 +184,35 @@ recognised once `{"id": "00"}` is in `extra_keys` (or while the app's Learn mode
 double-tapping `0` is unchanged. Detecting the numpad only finds which keyboard it is (vendor
 and product ID); the standard names are fixed, everything else is learned.
 
+## A whole keyboard as an extra pad (Linux)
+Any plugged-in keyboard can be a second control pad: every one of its keys can run an action,
+with the same Press / Hold / Double tap, layers and profiles as the numpad.
+
+- **Add it:** in the settings window, **Device ⋯ → Add a keyboard…**, pick it, give it a name,
+  then **Save**. The window then draws that keyboard (tinted keys already do something). Keys the
+  drawing doesn't have (media keys…) are added with **Learn**, below the picture.
+- **Stop this keyboard typing** is on by default: its keys only run actions. **Hold Ctrl+Alt+Esc on
+  it to give it back** to the system (it types normally again; remove it and add it again, or
+  restart NumpadPilot, to use it as a pad again). Try that on a spare keyboard first, never on
+  the only one you have. If NumpadPilot stops, the keyboard is given back by itself.
+- **Access:** Linux only lets you read keyboards you're allowed to. The add dialog marks the
+  ones that need it, and **Allow access…** installs a small udev rule for that one keyboard
+  (through `pkexec`, so it asks for your password). That is the same permission the numpad gets,
+  and it means programs you run can read that keyboard's keys, so think twice before allowing a
+  keyboard you type passwords on.
+- **While a game with anti-cheat runs** (see below), extra keyboards are let go like the numpad.
+- **Not on Windows yet** (the window hides the Device row there).
+
+The settings file keeps them in `devices`, and a key of an extra keyboard is written with
+the keyboard's `id` in front (`hp:KEY_A`); the numpad's own keys have no prefix:
+
+        "devices": [{"id": "hp", "vendor": "03f0", "product": "0024", "name": "HP keyboard", "grab": true,
+                     "extra_keys": [{"id": "hp:KEY_MUTE", "label": "Mute"}]}],
+        "profiles": [{ ..., "bindings": {"hp:KEY_F1": {"tap": {"action": "mic_mute", "params": {}}}}}]
+
+The service picks up a changed `devices` list by itself (within a couple of seconds). Removing a
+keyboard in the window also removes the actions set on its keys.
+
 ## Layer key and profiles
 - **Layer key** (Settings): hold it and every other key uses its "Layer" actions,
   doubling the number of actions.
@@ -359,6 +388,9 @@ you) or `"off"`; `python -m numpadctl update` checks right away.
 To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
 matching tag (`git tag v0.3.0 && git push --tags`).
 
+**Next:** a whole keyboard can be added as an extra pad (Linux): every key can run actions, with
+Ctrl+Alt+Esc to give it back; the settings window draws it. See "A whole keyboard as an extra pad".
+
 **0.2.4:** a welcome tour on first launch (find the numpad, pick a starting point, press a key to
 see it register), also in Tools → Welcome tour; the Linux launcher entry now matches "Numpad Pilot"
 and shows its logo (including in hyprlauncher); updating with `setup.sh` no longer asks for sudo.
@@ -399,7 +431,8 @@ system; your user name and home folder taken out) is also kept in
 ## Code layout
 - `numpadctl/daemon.py`: the background service: key timing (press / hold / double
   tap, repeat, rapid-fire, layer key, `000`), profiles, and the link to the window
-- `numpadctl/keys.py`: key ids and names for the standard keys and learned extra keys
+- `numpadctl/keys.py`: key ids and names for the standard keys, learned extra keys and the keys of extra keyboards (`hp:KEY_A`)
+- `numpadctl/devices.py`: finds the keyboards that can be added as extra pads, and installs the udev rule that lets you read one (Linux)
 - `numpadctl/actions.py`: every action, plus macros and modes logic
 - `numpadctl_ui/`: the settings window and its dialogs (Qt for Python, Material 3 look;
   `tools/generate_m3_palettes.py` makes its colour palettes)

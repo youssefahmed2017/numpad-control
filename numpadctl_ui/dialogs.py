@@ -1,11 +1,11 @@
 """Settings and profile dialogs."""
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QLineEdit,
-                               QListWidget, QPushButton, QScrollArea, QVBoxLayout, QWidget)
+                               QListWidget, QListWidgetItem, QPushButton, QScrollArea, QVBoxLayout, QWidget)
 
-from numpadctl import desktop, keys, modes, obs, presets, ui_common
+from numpadctl import desktop, devices, keys, modes, obs, presets, ui_common
 from . import tokens
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, SpinBox, ToolButton
 from .widgets import card, label
@@ -307,3 +307,102 @@ class PresetDialog(QDialog):
     def ask(cls, parent, profile_name):
         dialog = cls(parent, profile_name)
         return dialog.chosen() if dialog.exec() == QDialog.Accepted else None
+
+
+class AddDeviceDialog(QDialog):
+    """Pick a plugged-in keyboard to use as an extra pad. Read the result with values()."""
+
+    def __init__(self, window, taken, taken_ids):
+        super().__init__(window)
+        self.window, self.taken, self.taken_ids = window, taken, taken_ids
+        self.setWindowTitle("Add a keyboard")
+        self.resize(480, 460)
+        layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        layout.addWidget(label("Pick the keyboard to use as a pad. All of its keys can run actions.", wrap=True))
+        self.list = QListWidget()
+        self.list.currentItemChanged.connect(self.on_selected)
+        layout.addWidget(self.list, 1)
+        refresh = PushButton("Refresh")
+        refresh.setObjectName("flat")
+        refresh.clicked.connect(self.scan)
+        layout.addWidget(refresh, 0, Qt.AlignLeft)
+
+        self.name = QLineEdit()
+        self.name.setPlaceholderText("Name shown in the window")
+        self.name.setAccessibleName("Keyboard name")
+        layout.addWidget(self.name)
+        self.grab = QCheckBox("Stop this keyboard typing (its keys only run actions)")
+        self.grab.setChecked(True)
+        layout.addWidget(self.grab)
+        layout.addWidget(label("Hold Ctrl+Alt+Esc on it to give it back if you ever need to type with it.", "small", wrap=True))
+
+        self.access = QWidget()
+        box = QVBoxLayout(self.access)
+        box.setContentsMargins(0, 0, 0, 0)
+        self.access_text = label("NumpadPilot may only read the keyboards you allow. This one isn't allowed yet.", wrap=True)
+        box.addWidget(self.access_text)
+        self.allow = PushButton("Allow access…")
+        self.allow.clicked.connect(self.allow_access)
+        box.addWidget(self.allow, 0, Qt.AlignLeft)
+        self.command = QLineEdit()
+        self.command.setReadOnly(True)
+        self.command.setAccessibleName("Command to run in a terminal")
+        self.command.hide()
+        box.addWidget(self.command)
+        layout.addWidget(self.access)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.ok = buttons.button(QDialogButtonBox.Ok)
+        self.ok.setText("Add keyboard")
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        self.scan()
+
+    def scan(self, select=None):
+        self.list.clear()
+        for item in devices.keyboards(skip=self.taken):
+            entry = QListWidgetItem(item["name"] + ("" if item["readable"] else "  (needs access)"))
+            entry.setData(Qt.UserRole, item)
+            self.list.addItem(entry)
+            if select == (item["vendor"], item["product"]):
+                self.list.setCurrentItem(entry)
+        if self.list.count() == 0:
+            self.on_selected(None, None)
+        elif self.list.currentItem() is None:
+            self.list.setCurrentRow(0)
+
+    def current(self):
+        item = self.list.currentItem()
+        return item.data(Qt.UserRole) if item else None
+
+    def on_selected(self, item, _previous):
+        device = self.current()
+        self.name.setText(device["name"] if device else "")
+        self.access.setVisible(bool(device) and not device["readable"])
+        self.command.hide()
+        self.allow.setEnabled(True)
+        self.ok.setEnabled(bool(device) and device["readable"])
+
+    def allow_access(self):
+        device = self.current()
+        self.allow.setEnabled(False)
+        self.access_text.setText("Waiting for your password…")
+
+        def done(_output, error):
+            if error:
+                self.access_text.setText(f"Couldn't do it from here ({error}). Run this in a terminal, then press Refresh:")
+                self.command.setText(devices.manual_command(device["vendor"], device["product"]))
+                self.command.show()
+                self.allow.setEnabled(True)
+            else:  # udev needs a moment to apply the rule
+                QTimer.singleShot(1000, lambda: self.scan((device["vendor"], device["product"])))
+        ui_common.run_in_background(lambda: devices.install_rule(device["vendor"], device["product"]), done,
+                                    self.window.dispatch)
+
+    def values(self):
+        device = self.current()
+        name = self.name.text().strip() or device["name"]
+        return {"id": devices.make_id(name, self.taken_ids), "vendor": device["vendor"],
+                "product": device["product"], "name": name, "grab": self.grab.isChecked()}

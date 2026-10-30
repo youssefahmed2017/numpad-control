@@ -5,7 +5,12 @@ burst keys "00" / "000" have fixed names. A key the app doesn't know (a "(" key,
 macro key...) is reported by its code: "KEY_TAB" from Linux's evdev, "SC_0F" or "SC_E0_1D" (scan
 code, E0 prefix) from Windows. Learn mode in the settings window adds such a key to the pad
 ("extra_keys" in the config), with a name you can change.
+
+A key of an extra device (a whole keyboard added under "devices" in the config) carries its device's
+id in front: "hp:KEY_A". The numpad's own keys have no prefix.
 """
+
+DEVICE_SEP = ":"
 
 BUILTIN = ("NumLock", "/", "*", "Backspace", "7", "8", "9", "-", "4", "5", "6", "+", "1", "2", "3", "Enter",
            "0", "000", ".")
@@ -30,8 +35,28 @@ def scancode_id(code, extended):
     return f"SC_{'E0_' if extended else ''}{code:02X}"
 
 
+def split(key):
+    """(device id, key id): ("hp", "KEY_A") for "hp:KEY_A", ("", "5") for the numpad's own keys."""
+    device, sep, base = key.partition(DEVICE_SEP)
+    return (device, base) if sep and device else ("", key)
+
+
+def device_ids(cfg):
+    return {device["id"] for device in cfg.get("devices", [])}
+
+
+def device_extras(cfg, device_id):
+    """The keys added in Learn mode on an extra device that the keyboard picture doesn't have (media keys...):
+    [{"id": "hp:KEY_MUTE", "label": "Mute"}], kept in that device's entry in the config."""
+    for device in cfg.get("devices", []):
+        if device["id"] == device_id:
+            return device.setdefault("extra_keys", [])
+    return []
+
+
 def label_for(key):
     """A readable default name for a key id."""
+    key = split(key)[1]
     if key in BUILTIN or key == DOUBLE_ZERO:
         return key
     if key.startswith("KEY_"):
@@ -48,12 +73,21 @@ def extra_ids(cfg):
 
 
 def known(key, cfg):
-    """Is this key on the pad: a standard key, or one added in Learn mode?"""
+    """Is this key on the pad: a key of an extra device, a standard key, or one added in Learn mode?"""
+    device, key = split(key)
+    if device:
+        return device in device_ids(cfg)
     return key in BUILTIN or key in extra_ids(cfg)
 
 
 def display(key, cfg):
     """The name shown for a key: the name you gave an extra key, or the standard one."""
+    device = split(key)[0]
+    if device:
+        for extra in device_extras(cfg, device):
+            if extra["id"] == key:
+                return extra.get("label") or label_for(key)
+        return label_for(key)
     for extra in cfg.get("extra_keys", []):
         if extra["id"] == key:
             return extra.get("label") or label_for(key)

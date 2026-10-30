@@ -44,9 +44,9 @@ Both ways, every message is one JSON object on one line (UTF-8, ending in `\n`).
 
 | Message | When |
 |---|---|
-| `{"event": "status", "connected": true, "devices": ["…"], "paused_for": null}` | On connecting, on request, and whenever it changes. `connected`: the numpad is open. `devices`: its device names. `paused_for`: the game with anti-cheat the numpad is let go for, or `null`. |
-| `{"event": "key", "key": "5"}` | A key was pressed (after the `000` burst is recognised, so `"000"` is a key here). |
-| `{"event": "raw", "key": "0", "down": true, "t": 1234.567}` | With `raw` on: every press and release as the numpad sends it; `t` is a monotonic time in seconds. |
+| `{"event": "status", "connected": true, "devices": ["…"], "paused_for": null, "extra": {"hp": {"connected": true, "released": false}}}` | On connecting, on request, and whenever it changes. `connected`: the numpad is open. `devices`: its device names. `paused_for`: the game with anti-cheat the numpad is let go for, or `null`. `extra`: one entry per keyboard added under `devices` in the settings file (empty without any): `connected` is whether it is open now, `released` whether it was given back to the system with Ctrl+Alt+Esc (until it is removed and added again, or the service restarts). |
+| `{"event": "key", "key": "5"}` | A key was pressed (after the `000` burst is recognised, so `"000"` is a key here). A key of an extra keyboard has its id in front: `"hp:KEY_A"`. |
+| `{"event": "raw", "key": "0", "down": true, "t": 1234.567}` | With `raw` on: every press and release as the numpad (or an extra keyboard, with its id in front of the key) sends it; `t` is a monotonic time in seconds. |
 | `{"event": "detected", "spec": {"vendor": "c0f4", "product": "05f5", "name": "…"}}` | The answer to `detect`; `spec` is `null` if nothing was pressed in time. Put it in the settings file's `device` to use that numpad. |
 
 Clients must ignore fields and events they don't know: newer services add them.

@@ -225,7 +225,7 @@ class SocketTest(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(0.02)
 
     async def test_status_then_key_events(self):
-        self.assertEqual(await self.message(), {"event": "status", "connected": False, "devices": [], "paused_for": None})
+        self.assertEqual(await self.message(), {"event": "status", "connected": False, "devices": [], "paused_for": None, "extra": {}})
         self.d.key_event("5", True)
         self.d.key_event("5", False)
         self.assertEqual(await self.message(), {"event": "key", "key": "5", "label": "5", "unknown": False})

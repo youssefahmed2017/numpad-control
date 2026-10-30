@@ -27,6 +27,7 @@ TAP_ONLY_KEYS = {"000", "00"}  # a burst of 0s can't be held or double-tapped
 
 DEFAULT_CONFIG = {
     "device": {"vendor": "c0f4", "product": "05f5"},
+    "devices": [],      # more devices, every key a pad key: [{"id": "hp", "vendor": "03f0", "product": "0024", "name": "HP keyboard", "grab": true}]
     "grab": True,       # stop the numpad from also typing digits
     "extra_keys": [],   # keys added in Learn mode: [{"id": "KEY_TAB", "label": "Tab"}] (see keys.py)
     "feedback": True,   # on-screen confirmations

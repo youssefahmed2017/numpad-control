@@ -18,7 +18,7 @@ from PySide6.QtGui import QColor, QCursor, QFont, QPainter, QPixmap, QRadialGrad
 from PySide6.QtWidgets import (QApplication, QDialog, QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QProgressBar,
                                QPushButton, QStackedWidget, QTabWidget, QVBoxLayout, QWidget)
 
-from numpadctl import actions, config, presets, ui_common
+from numpadctl import actions, config, keys, presets, ui_common
 
 from . import egg, theme, tokens
 
@@ -412,7 +412,7 @@ class SecretPanel(QDialog):
             return
         surface = self.surface()
         sprites = []
-        for button in self.window.key_buttons.values():
+        for button in self.pad_keys().values():
             if not button.isVisible():
                 continue
             picture = button.grab()
@@ -484,7 +484,7 @@ class SecretPanel(QDialog):
     def eight_ball(self):
         answer, key = random.choice(EIGHT_BALL)
         self.say(f"the numpad says: {answer}")
-        button = self.window.key_buttons.get(key)
+        button = self.pad_keys().get(key)
         if button:
             button.flash()
 
@@ -557,6 +557,10 @@ class SecretPanel(QDialog):
     def surface(self):
         return self.window.centralWidget()
 
+    def pad_keys(self):
+        """The numpad's own key buttons (not the many keys of a keyboard picture, when one is shown)."""
+        return {key: button for key, button in self.window.key_buttons.items() if not keys.split(key)[0]}
+
     def restore_look(self):
         look = self.window.cfg
         theme.apply(self.app, look.get("appearance", "auto"), look.get("accent", tokens.DEFAULT_ACCENT),
@@ -627,7 +631,7 @@ class SecretPanel(QDialog):
         egg.Confetti(self.surface(), text=text, pieces=pieces, duration=duration, sprite=sprite)
 
     def wave(self):
-        for i, button in enumerate(self.window.key_buttons.values()):
+        for i, button in enumerate(self.pad_keys().values()):
             self.later(i * 70, button.flash)
 
     def fireworks(self):
@@ -645,7 +649,7 @@ class SecretPanel(QDialog):
         if self.keyrain:
             self.confetti(text="", pieces=45, duration=1600)
         if self.echo:
-            others = [b for k, b in self.window.key_buttons.items() if k != key]
+            others = [b for k, b in self.pad_keys().items() if k != key]
             for button in random.sample(others, min(3, len(others))):
                 button.flash()
 
