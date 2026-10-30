@@ -687,6 +687,18 @@ def rapid_fire(binding):
     return bool(binding.get("rapid", action.repeat or action.rapid))
 
 
+def slot_summary(slots):
+    """A short text for what a key does ({slot: binding}, set slots only): its Press action, else Hold / Double tap
+    labelled as such, with "+N" when more slots are set (the pad and the key map overlay show this)."""
+    names = {"tap": "", "hold": "Hold: ", "double": "2×: "}
+    order = [s for s in ("tap", "hold", "double") if s in slots and BY_ID.get(slots[s].get("action"))]
+    if not order:
+        return ""
+    first = order[0]
+    text = names[first] + BY_ID[slots[first]["action"]].label
+    return text + (f" +{len(order) - 1}" if len(order) > 1 else "")
+
+
 TURBO_MAX = 60  # presses per second
 
 

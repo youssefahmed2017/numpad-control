@@ -455,6 +455,28 @@ class QtWindowTest(unittest.TestCase):
             panel.on_letter(letter)
         self.assertIn("hint 1/5", panel.log.toPlainText())
 
+    def test_the_key_map_overlay_settings_are_in_the_settings_dialog(self):
+        dialog = dialogs.SettingsDialog(self.w)
+        self.addCleanup(dialog.deleteLater)
+        self.assertEqual(dialog.values()["hud"], {"enabled": True, "opacity": 90})
+        dialog.hud_enabled.setChecked(False)
+        dialog.hud_opacity.setValue(55)
+        self.assertEqual(dialog.values()["hud"], {"enabled": False, "opacity": 55})
+
+    def test_the_preview_button_needs_the_service_and_a_layer_key(self):
+        dialog = dialogs.SettingsDialog(self.w)
+        self.addCleanup(dialog.deleteLater)
+        dialog.preview_hud()
+        self.assertIn("isn't running", self.w.statusBar().currentMessage())
+        self.w.link.connected = True
+        self.addCleanup(lambda: setattr(self.w.link, "connected", False))
+        dialog.preview_hud()
+        self.assertIn("layer key", self.w.statusBar().currentMessage())
+        self.assertEqual(self.w.link.sent, [])
+        self.w.cfg["layer_key"] = "."
+        dialog.preview_hud()
+        self.assertEqual(self.w.link.sent[-1], {"cmd": "hud"})
+
     def test_turbo_is_a_checkbox_and_a_rate_saved_with_the_press_action(self):
         from PySide6.QtWidgets import QCheckBox
         from numpadctl_ui.buttons import SpinBox

@@ -38,6 +38,7 @@ Both ways, every message is one JSON object on one line (UTF-8, ending in `\n`).
 | `{"cmd": "status"}` | Send the status again (it's also sent on connecting and whenever it changes). |
 | `{"cmd": "capture", "on": true}` | "Learn" mode: key presses are reported but run no actions, until `"on": false` or the client disconnects. Add `"learn": false` to only report the keys (the settings window uses it to select a key as you press it): unknown keys aren't picked up and `00` isn't a key. |
 | `{"cmd": "raw", "on": true}` | Also send every raw press and release (for a key tester), until `"on": false`. |
+| `{"cmd": "hud"}` | Show the key map overlay for a few seconds (the settings window's Preview), starting the overlay process if it isn't running. |
 | `{"cmd": "detect"}` | Report the next numpad key pressed on any keyboard, to find which device is the numpad (15 seconds at most). |
 
 ### Messages from the service
@@ -47,6 +48,7 @@ Both ways, every message is one JSON object on one line (UTF-8, ending in `\n`).
 | `{"event": "status", "connected": true, "devices": ["…"], "paused_for": null, "extra": {"hp": {"connected": true, "released": false}}}` | On connecting, on request, and whenever it changes. `connected`: the numpad is open. `devices`: its device names. `paused_for`: the game with anti-cheat the numpad is let go for, or `null`. `extra`: one entry per keyboard added under `devices` in the settings file (empty without any): `connected` is whether it is open now, `released` whether it was given back to the system with Ctrl+Alt+Esc (until it is removed and added again, or the service restarts). |
 | `{"event": "key", "key": "5"}` | A key was pressed (after the `000` burst is recognised, so `"000"` is a key here). A key of an extra keyboard has its id in front: `"hp:KEY_A"`. |
 | `{"event": "raw", "key": "0", "down": true, "t": 1234.567}` | With `raw` on: every press and release as the numpad (or an extra keyboard, with its id in front of the key) sends it; `t` is a monotonic time in seconds. |
+| `{"event": "hud", "on": true, "opacity": 90, "keys": {"7": "Mute / unmute microphone"}}` | The layer key went down (`on`, with what each key does in the layer, for the focused app) or up (`on` false), or a preview started or ended. The key map overlay listens for this. A client that connects while the map should be showing is sent it at once. |
 | `{"event": "detected", "spec": {"vendor": "c0f4", "product": "05f5", "name": "…"}}` | The answer to `detect`; `spec` is `null` if nothing was pressed in time. Put it in the settings file's `device` to use that numpad. |
 
 Clients must ignore fields and events they don't know: newer services add them.

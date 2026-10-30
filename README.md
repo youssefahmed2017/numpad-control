@@ -255,6 +255,17 @@ keyboard in the window also removes the actions set on its keys.
   leaves unset uses Default.
   The profile menu can create, **duplicate** (copies every key, slot and layer key
   to start from), edit and delete profiles.
+- **Key map overlay (the "Ghost HUD").** Hold the layer key and a see-through copy of your numpad
+  fades onto the middle of the screen, showing what each key does in the layer (for the app you are
+  in: its profile first, Default for the rest; a key with more than one action shows "+1"); let go
+  and it fades away. It never takes focus and lets every click through. Settings → *Key map
+  overlay* switches it off, sets the opacity (30 to 100 %), and has a **Preview** button. It only
+  runs when a layer key is set: it is a small separate process the service starts and stops by
+  itself, so it costs nothing without one. On Linux it is drawn through XWayland (Wayland itself
+  doesn't let an ordinary window float above the others without taking focus, XWayland does), so
+  XWayland has to be running, as it is by default on Hyprland and KDE. On Windows it is a normal
+  topmost window that doesn't take focus. If it keeps failing to start, the service log says so
+  and tries again, slower each time.
 
 ## Modes and if / otherwise
 **Modes** are named on/off switches, e.g. "Stream mode" or "Gaming", created in
@@ -422,7 +433,7 @@ you) or `"off"`; `python -m numpadctl update` checks right away.
 To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
 matching tag (`git tag v0.3.0 && git push --tags`).
 
-**Next:** Privacy panic (mute, pause and hide everything at once), Force-quit the focused window and a soundboard (Play a sound), Turbo (repeat any Press action while held, up to 60 a second); a whole keyboard can be added as an extra pad (Linux): every key can run actions, with
+**Next:** the key map overlay (Ghost HUD: hold the layer key to see what every key does), Privacy panic (mute, pause and hide everything at once), Force-quit the focused window and a soundboard (Play a sound), Turbo (repeat any Press action while held, up to 60 a second); a whole keyboard can be added as an extra pad (Linux): every key can run actions, with
 Ctrl+Alt+Esc to give it back; the settings window draws it. See "A whole keyboard as an extra pad".
 
 **0.2.4:** a welcome tour on first launch (find the numpad, pick a starting point, press a key to
@@ -466,6 +477,7 @@ system; your user name and home folder taken out) is also kept in
 - `numpadctl/daemon.py`: the background service: key timing (press / hold / double
   tap, repeat, rapid-fire, layer key, `000`), profiles, and the link to the window
 - `numpadctl/keys.py`: key ids and names for the standard keys, learned extra keys and the keys of extra keyboards (`hp:KEY_A`)
+- `numpadctl_ui/hud.py`: the key map overlay, a separate small process the service starts (`Daemon.manage_hud`)
 - `numpadctl/devices.py`: finds the keyboards that can be added as extra pads, and installs the udev rule that lets you read one (Linux)
 - `numpadctl/actions.py`: every action, plus macros and modes logic
 - `numpadctl_ui/`: the settings window and its dialogs (Qt for Python, Material 3 look;

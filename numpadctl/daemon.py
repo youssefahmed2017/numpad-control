@@ -7,12 +7,15 @@ service is running, light up keys as they're pressed, and use "learn" mode.
 import asyncio
 import json
 import logging
+import os
+import subprocess
+import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
 from . import actions, config, games, keys, updater
-from .platform import ipc, numpad_input, processes
+from .platform import IS_WINDOWS, ipc, numpad_input, processes
 
 log = logging.getLogger("numpadctl")
 
@@ -29,8 +32,24 @@ RETRY_DELAYS = (1, 2, 5, 10, 30)  # seconds before reopening a numpad whose read
 QUICK_FAILURE = 5         # a reader that fails within this many seconds counts as failing at once
 UPDATE_FIRST_CHECK = 60   # seconds after starting before looking for an update (not slowing the start)
 UPDATE_LOOP_SECONDS = 3600  # how often it wakes to see whether the daily check is due
+HUD_CHECK_SECONDS = 2      # how often the key map overlay process is checked on (started, restarted, stopped)
+HUD_QUICK_FAILURE = 5     # an overlay process that dies within this many seconds counts as failing at once
+HUD_PREVIEW_SECONDS = 3   # how long the settings window's "Preview" shows the key map
+HUD_PREVIEW_DELAY = 0.3   # ...after this short wait (an overlay that connects later is told by itself)
 DEVICE_CHECK_SECONDS = 2  # how often extra devices (whole keyboards) are looked for or dropped
 RELEASE_CHORD = {"KEY_LEFTCTRL", "KEY_LEFTALT", "KEY_ESC"}  # held on a grabbed extra keyboard: gives it back
+
+def spawn_hud():
+    """Start the key map overlay as its own process: on Linux it runs through XWayland (an unmanaged window that
+    floats above everything and never takes focus, which Wayland doesn't allow ordinary windows to do)."""
+    actions.refresh_session_env()
+    env = dict(os.environ)
+    if not IS_WINDOWS and env.get("DISPLAY") and env.get("WAYLAND_DISPLAY"):
+        env["QT_QPA_PLATFORM"] = "xcb"
+    kwargs = {"creationflags": 0x08000008} if IS_WINDOWS else {"start_new_session": True}  # no console window, own group
+    return subprocess.Popen([sys.executable, "-m", "numpadctl_ui.hud"], env=env, stdin=subprocess.DEVNULL,
+                            stdout=subprocess.DEVNULL, **kwargs)
+
 
 # Used by the settings window and setup.sh.
 detect_device = numpad_input.detect_device
@@ -75,6 +94,13 @@ class Daemon:
         self.clients = set()
         self.capturing = set()
         self.following = set()  # capturing clients that only want keys to select, not to learn new ones
+        self.hud_proc = None        # the key map overlay (numpadctl_ui/hud.py), a small separate process
+        self.hud_sig = None         # the look it was started with (it restarts when that changes)
+        self.hud_started = 0.0
+        self.hud_failures = 0
+        self.hud_retry = 0.0
+        self.hud_preview_until = 0.0
+        self.hud_show_until = 0.0   # a preview is showing until then
         self.raw_clients = set()  # key tester windows: want every raw key event
         self.detect_future = None
         self.extra = {}         # device id -> {"spec": ..., "task": ..., "pad": ...} of the extra devices
@@ -191,7 +217,9 @@ class Daemon:
         if self.capturing or self.paused:  # learn mode in the settings window, or paused
             return
         if key == self.cfg.get("layer_key"):
-            self.layer_held = down
+            if self.layer_held != down:
+                self.layer_held = down
+                self.broadcast(self.hud_message(down))  # the key map overlay shows while it is held
             return
         if down:
             self.press(key)
@@ -279,11 +307,87 @@ class Daemon:
         for press in self.presses.values():
             self.cancel(press)
         self.presses.clear()
+        if self.layer_held:  # the numpad went away with the layer key down: take the key map off the screen
+            self.layer_held = False
+            self.broadcast(self.hud_message(False))
         self.layer_held = False
         self.zero_events = []
         if self.zero_timer:
             self.zero_timer.cancel()
             self.zero_timer = None
+
+    # ------------------------------------------------------------ the key map overlay
+    def hud_keys(self):
+        """{key: short text} of what every key does while the layer key is held (for the focused app's profile)."""
+        window = active_window_class() if len(self.cfg["profiles"]) > 1 else ""
+        every = {key for profile in self.cfg["profiles"] for key in profile["layer_bindings"]}
+        shown = {}
+        for key in sorted(every):
+            text = actions.slot_summary(config.resolve(self.cfg, key, True, window))
+            if text:
+                shown[key] = text
+        return shown
+
+    def hud_message(self, on):
+        return {"event": "hud", "on": on, "opacity": config.hud_settings(self.cfg)["opacity"],
+                "keys": self.hud_keys() if on else {}}
+
+    def hud_preview(self):
+        """Show the key map for a few seconds (the settings window's Preview button), starting the overlay if needed."""
+        now = time.monotonic()
+        self.hud_show_until = now + HUD_PREVIEW_DELAY + HUD_PREVIEW_SECONDS
+        self.hud_preview_until = self.hud_show_until + 1
+        self.ensure_hud()  # now, not at the next check: the overlay needs a moment to start and connect
+        loop = asyncio.get_running_loop()
+        loop.call_later(HUD_PREVIEW_DELAY, lambda: self.broadcast(self.hud_message(True)))
+        loop.call_later(HUD_PREVIEW_DELAY + HUD_PREVIEW_SECONDS,
+                        lambda: self.layer_held or self.broadcast(self.hud_message(False)))
+
+    def hud_showing(self):
+        return self.layer_held or time.monotonic() < self.hud_show_until
+
+    def hud_wanted(self):
+        shown = bool(self.cfg.get("layer_key")) or time.monotonic() < self.hud_preview_until
+        return config.hud_settings(self.cfg)["enabled"] and shown
+
+    def stop_hud(self):
+        if self.hud_proc is not None and self.hud_proc.poll() is None:
+            self.hud_proc.terminate()
+        self.hud_proc = None
+
+    def ensure_hud(self):
+        """Start, restart or stop the key map overlay process so it runs exactly when it can be needed (a layer key
+        is set and it is on, or a preview), restart it when the look changes, and back off when it keeps dying."""
+        look = (self.cfg.get("appearance"), self.cfg.get("accent"), self.cfg.get("contrast"))
+        alive = self.hud_proc is not None and self.hud_proc.poll() is None
+        now = time.monotonic()
+        if self.hud_proc is not None and not alive:  # it ended by itself
+            quick = now - self.hud_started < HUD_QUICK_FAILURE
+            self.hud_failures = self.hud_failures + 1 if quick else 0
+            if quick:
+                self.hud_retry = now + min(60, 5 * self.hud_failures)
+                log.warning("the key map overlay stopped at once (%s time(s)); trying again in %d s",
+                            self.hud_failures, self.hud_retry - now)
+            self.hud_proc = None
+        if alive and (not self.hud_wanted() or look != self.hud_sig):
+            self.stop_hud()
+            alive = False
+        if not alive and self.hud_wanted() and now >= self.hud_retry:
+            try:
+                self.hud_proc = spawn_hud()
+                self.hud_sig, self.hud_started = look, now
+            except OSError as e:
+                log.warning("can't start the key map overlay: %s", e)
+                self.hud_retry = now + 30
+
+    async def manage_hud(self):
+        try:
+            while True:
+                self.reload_if_changed()
+                self.ensure_hud()
+                await asyncio.sleep(HUD_CHECK_SECONDS)
+        finally:
+            self.stop_hud()
 
     # ------------------------------------------------------------ settings window link
     def status(self):
@@ -309,6 +413,8 @@ class Daemon:
     async def handle_client(self, reader, writer):
         self.clients.add(writer)
         self.send(writer, self.status())
+        if self.hud_showing():  # e.g. the overlay was only just started: it still has to be told
+            self.send(writer, self.hud_message(True))
         try:
             while line := await reader.readline():
                 try:
@@ -330,6 +436,8 @@ class Daemon:
                     asyncio.create_task(self.detect(writer))
                 elif command == "status":
                     self.send(writer, self.status())
+                elif command == "hud":
+                    self.hud_preview()
         except ConnectionError:
             pass
         finally:
@@ -527,11 +635,13 @@ class Daemon:
         await self.serve()
         updates = asyncio.create_task(self.update_loop())
         devices = asyncio.create_task(self.manage_devices())
+        overlay = asyncio.create_task(self.manage_hud())
         try:
             await self._device_loop()
         finally:  # quitting (the task is cancelled): let the numpad and the connection go
             updates.cancel()
             devices.cancel()
+            overlay.cancel()
             if self.numpad is not None:
                 self.numpad.close()
                 self.numpad = None

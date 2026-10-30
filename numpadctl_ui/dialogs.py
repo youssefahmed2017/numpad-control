@@ -5,7 +5,7 @@ from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QLineEdit,
                                QListWidget, QListWidgetItem, QPushButton, QScrollArea, QVBoxLayout, QWidget)
 
-from numpadctl import desktop, devices, keys, modes, obs, presets, ui_common
+from numpadctl import config, desktop, devices, keys, modes, obs, presets, ui_common
 from . import tokens
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, SpinBox, ToolButton
 from .widgets import card, label
@@ -81,6 +81,32 @@ class SettingsDialog(QDialog):
         self.contrast.addItems(["Standard", "Medium", "High"])
         self.contrast.setCurrentIndex(tokens.CONTRASTS.index(cfg.get("contrast", "standard")))
         box.addWidget(self.contrast)
+        layout.addWidget(frame)
+
+        frame, box = card()
+        box.addWidget(label("Key map overlay", "heading"))
+        box.addWidget(label("Hold the layer key and a see-through copy of your numpad fades onto the screen, "
+                            "showing what each key does in the layer. It never takes focus or catches clicks.",
+                            "dim", wrap=True))
+        hud = config.hud_settings(cfg)
+        self.hud_enabled = QCheckBox("Show the key map while the layer key is held")
+        self.hud_enabled.setChecked(hud["enabled"])
+        box.addWidget(self.hud_enabled)
+        row = QHBoxLayout()
+        row.addWidget(label("Opacity", "small"))
+        self.hud_opacity = SpinBox()
+        self.hud_opacity.setRange(30, 100)
+        self.hud_opacity.setSuffix(" %")
+        self.hud_opacity.setValue(hud["opacity"])
+        self.hud_opacity.setAccessibleName("Key map opacity")
+        row.addWidget(self.hud_opacity)
+        preview = PushButton("Preview")
+        preview.setObjectName("flat")
+        preview.setToolTip("Shows the key map for a few seconds (it uses the saved settings and layer key)")
+        preview.clicked.connect(self.preview_hud)
+        row.addWidget(preview)
+        row.addStretch()
+        box.addLayout(row)
         layout.addWidget(frame)
 
         frame, box = card()
@@ -200,8 +226,19 @@ class SettingsDialog(QDialog):
             self.obs_result.setText(str(error) if error else f"Connected to OBS {version}")
         ui_common.run_in_background(lambda: obs.test_connection(settings), done, self.window.dispatch)
 
+    def preview_hud(self):
+        if not self.window.link.connected:
+            self.window.toast("The background service isn't running.")
+            return
+        if not self.window.cfg.get("layer_key"):
+            self.window.toast("Choose a layer key (Keys, above) and save first: the key map shows what it unlocks.")
+            return
+        self.window.link.send({"cmd": "hud"})
+        self.window.toast("Showing the key map for a few seconds (saved settings).")
+
     def values(self):
         return {"device": self.device, "grab": self.grab.isChecked(),
+                "hud": {"enabled": self.hud_enabled.isChecked(), "opacity": self.hud_opacity.value()},
                 "layer_key": self.layer_choices[self.layer_key.currentIndex()],
                 "feedback": self.feedback.isChecked(),
                 "appearance": APPEARANCES[self.appearance.currentIndex()][0],

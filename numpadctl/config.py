@@ -38,6 +38,7 @@ DEFAULT_CONFIG = {
     "pause_for_games": "auto",  # let go of the numpad while a game with anti-cheat runs (auto: on Windows)
     "protected_games": [],      # more program names for that, e.g. ["MyGame.exe"] (games.py has the list)
     "welcomed": False,  # the first-run welcome has been seen
+    "hud": {"enabled": True, "opacity": 90},  # the key map shown while the layer key is held (opacity in %)
     "layer_key": None,  # hold this key for the second set of actions
     "modes": [],        # names of on/off modes (their state is in modes.py)
     "obs": {"host": "localhost", "port": 4455, "password": ""},
@@ -95,6 +96,16 @@ def mtime():
 def profile_matches(profile, window_class):
     classes = {c.strip().lower() for c in profile.get("match", "").split(",") if c.strip()}
     return bool(window_class) and window_class.lower() in classes
+
+
+def hud_settings(cfg):
+    """The key map overlay settings, always complete: {"enabled": bool, "opacity": 30..100}."""
+    hud = cfg.get("hud") if isinstance(cfg.get("hud"), dict) else {}
+    try:
+        opacity = max(30, min(100, int(hud.get("opacity", 90))))
+    except (TypeError, ValueError):
+        opacity = 90
+    return {"enabled": bool(hud.get("enabled", True)), "opacity": opacity}
 
 
 def resolve(cfg, key, layer, window_class):
