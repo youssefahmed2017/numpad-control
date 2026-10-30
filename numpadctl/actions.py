@@ -152,6 +152,17 @@ def _privacy_panic(cfg, mic=True, speakers=True, media=True, windows=True, scene
     return ", ".join(done).capitalize() + (f". Failed: {'; '.join(failed)}" if failed else "")
 
 
+def _play_sound(cfg, path, volume="100"):
+    if not path.strip():
+        raise ActionError("no sound file set")
+    system.play_sound(path.strip(), _percent(volume))
+    return None  # the sound is the confirmation
+
+
+def _stop_sounds(cfg):
+    return "Sounds stopped" if system.stop_sounds() else "Nothing was playing"
+
+
 def _force_quit(cfg, url="", trigger="tap"):
     if not _confirmed("force_quit"):
         show_osd(cfg, f"{AGAIN.get(trigger, AGAIN['tap'])} to force-quit this window", "process-stop-symbolic",
@@ -526,6 +537,11 @@ ACTIONS = [
     Action("media_stop", "Stop", _media("stop"), group="Media"),
     Action("media_next", "Next track", _media("next"), group="Media", rapid=True),
     Action("media_previous", "Previous track", _media("previous"), group="Media", rapid=True),
+    Action("play_sound", "Play a sound", _play_sound,
+           [Param("path", "Sound file (a path, e.g. ~/Sounds/airhorn.mp3)"),
+            Param("volume", "Volume (%)", default="100")],
+           group="Media", check=lambda path, volume: (None if path.strip() else _raise("no sound file set"), _percent(volume))),
+    Action("stop_sounds", "Stop all sounds", _stop_sounds, group="Media", osd_icon="media-playback-stop-symbolic"),
     Action("volume_up", "Volume up", lambda cfg: system.change_volume(+5), group="Media", repeat=True),
     Action("volume_down", "Volume down", lambda cfg: system.change_volume(-5), group="Media", repeat=True),
     Action("volume_set", "Set volume to…", _set_volume,

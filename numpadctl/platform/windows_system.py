@@ -308,6 +308,26 @@ def set_volume(percent):
         _tap("VOLUMEUP", round(percent / VOLUME_STEP))
 
 
+# ---------------------------------------------------------------- sounds (the soundboard)
+
+def play_sound(path, percent=100):
+    """Start playing a .wav file and return at once (Windows' own player has no volume setting here)."""
+    import winsound
+    path = os.path.expanduser(path)
+    if not os.path.isfile(path):
+        raise SystemActionError(f"sound file not found: {path}")
+    if not path.lower().endswith(".wav"):
+        raise SystemActionError("on Windows the soundboard plays .wav files")
+    winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_ASYNC)
+
+
+def stop_sounds():
+    """Stop the sound that is playing; returns how many were (Windows can't say, so 1)."""
+    import winsound
+    winsound.PlaySound(None, winsound.SND_PURGE)
+    return 1
+
+
 def set_mute(microphone, muted):
     """Mute (or unmute) the speakers or the microphone, whatever state it is in now."""
     from .windows_audio import AudioError, set_mute as set_device_mute

@@ -196,6 +196,41 @@ def set_volume(percent):
     _swayosd("--output-volume", "+0")
 
 
+# ---------------------------------------------------------------- sounds (the soundboard)
+
+_sounds = []  # the players still running
+
+
+def _player(path, percent):
+    """The command that plays `path` at `percent`% with whatever is installed, best first."""
+    if shutil.which("pw-play"):
+        return ["pw-play", "--volume", f"{percent / 100:.2f}", path]
+    if shutil.which("paplay"):
+        return ["paplay", f"--volume={percent * 65536 // 100}", path]
+    if shutil.which("ffplay"):
+        return ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-volume", str(percent), path]
+    raise SystemActionError("no sound player found (install pipewire's pw-play, paplay or ffplay)")
+
+
+def play_sound(path, percent=100):
+    """Start playing a sound file (any format the player knows) and return at once: sounds can overlap."""
+    path = os.path.expanduser(path)
+    if not os.path.isfile(path):
+        raise SystemActionError(f"sound file not found: {path}")
+    _sounds[:] = [p for p in _sounds if p.poll() is None]
+    _sounds.append(subprocess.Popen(_player(path, percent), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL, start_new_session=True))
+
+
+def stop_sounds():
+    """Stop every sound that is still playing; returns how many were."""
+    running = [p for p in _sounds if p.poll() is None]
+    for player in running:
+        player.terminate()
+    _sounds.clear()
+    return len(running)
+
+
 def set_mute(microphone, muted):
     """Mute (or unmute) the speakers or the microphone, whatever state it is in now."""
     _run("wpctl", "set-mute", SOURCE if microphone else SINK, "1" if muted else "0")

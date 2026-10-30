@@ -117,7 +117,7 @@ uses that desktop's own tools:
 | Screenshot | Full screen · Select a region (saved to `~/Pictures/Screenshots` and copied) |
 | Window | Go to workspace N · Move window to workspace N · Next / previous workspace · Close window · Toggle fullscreen · Focus a window (by class) · Toggle floating (Hyprland) · Show / hide scratchpad (Hyprland) · Force-quit the focused window (press twice) |
 | OBS | Start / stop / toggle recording · Pause / resume recording (one key, flips each press; separate Pause and Resume too) · Start / stop / toggle streaming · Start / stop streaming AND recording · Switch scene · Show / hide a source in a scene · Mute / unmute an audio source · Turn a filter on / off (voice changer, camera effect, …) · Toggle virtual camera · Toggle replay buffer · Save replay buffer |
-| Media | Play / pause · Stop · Next / previous track · Volume up / down · Set volume to N% · Mute speakers · Mute microphone |
+| Media | Play / pause · Stop · Next / previous track · Volume up / down · Set volume to N% · Mute speakers · Mute microphone · Play a sound (soundboard) · Stop all sounds |
 | Per-app audio | App volume up / down · Set app volume to N% · Mute / unmute an app (e.g. Spotify, Firefox) |
 | Audio output | Switch audio output to a device · Next audio output (cycles through devices) |
 | System | Do not disturb on / off · Lock screen · Privacy panic · Sleep · Shut down · Restart |
@@ -145,6 +145,14 @@ filter list the filters on the source you entered. You can still type names by h
 `{time}` (e.g. 14:05), `{date}` (e.g. 2026-10-24) and `{clipboard}` (the clipboard's
 text) when the key runs; the insert button next to the field adds them at the cursor.
 Only these exact names are replaced; other text in braces stays as written.
+
+**Soundboard:** *Play a sound* plays an audio file you name (`~/Sounds/airhorn.mp3`) at the
+volume you choose, on top of whatever else is playing, and returns at once, so sounds can overlap;
+*Stop all sounds* cuts them off. One key, one sound: bind it to a Press, Hold or Double tap
+slot. On Linux it uses `pw-play` (PipeWire), else `paplay`, else `ffplay`, so mp3, ogg, wav and
+more all work. The sound comes out of your normal speakers, which OBS records with "Desktop
+audio"; it isn't sent into your microphone. On Windows only `.wav` files play (and there is no
+volume setting).
 
 **Privacy panic** is for the moment someone walks in: one press mutes the microphone and the
 speakers, pauses the music or video and hides every window (an empty workspace on Hyprland,
@@ -405,7 +413,7 @@ you) or `"off"`; `python -m numpadctl update` checks right away.
 To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
 matching tag (`git tag v0.3.0 && git push --tags`).
 
-**Next:** Privacy panic (mute, pause and hide everything at once) and Force-quit the focused window; a whole keyboard can be added as an extra pad (Linux): every key can run actions, with
+**Next:** Privacy panic (mute, pause and hide everything at once), Force-quit the focused window and a soundboard (Play a sound); a whole keyboard can be added as an extra pad (Linux): every key can run actions, with
 Ctrl+Alt+Esc to give it back; the settings window draws it. See "A whole keyboard as an extra pad".
 
 **0.2.4:** a welcome tour on first launch (find the numpad, pick a starting point, press a key to
