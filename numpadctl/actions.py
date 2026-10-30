@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import desktop, modes, obs, sandbox
+from . import desktop, modes, obs, sandbox, voice
 from .platform import IS_WINDOWS, system
 
 if IS_WINDOWS:  # per-app audio: Core Audio on Windows, PipeWire on Linux
@@ -150,6 +150,15 @@ def _privacy_panic(cfg, mic=True, speakers=True, media=True, windows=True, scene
     if not done:
         raise ActionError("; ".join(failed) or "nothing is switched on")
     return ", ".join(done).capitalize() + (f". Failed: {'; '.join(failed)}" if failed else "")
+
+
+def _voice(work):
+    """A voice changer action: EasyEffects is Linux only."""
+    def run(cfg, **params):
+        if IS_WINDOWS:
+            raise ActionError("the voice changer uses EasyEffects, which only exists on Linux")
+        return work(**params)
+    return run
 
 
 def _play_sound(cfg, path, volume="100"):
@@ -537,6 +546,18 @@ ACTIONS = [
     Action("media_stop", "Stop", _media("stop"), group="Media"),
     Action("media_next", "Next track", _media("next"), group="Media", rapid=True),
     Action("media_previous", "Previous track", _media("previous"), group="Media", rapid=True),
+    Action("voice_toggle", "Voice changer on / off", _voice(voice.toggle),
+           [Param("preset", "Voice (an EasyEffects microphone preset)", suggest="voice_presets"),
+            Param("normal", "Normal voice preset (optional, else effects switch off)", suggest="voice_presets")],
+           group="Voice", osd_icon="audio-input-microphone-symbolic",
+           check=lambda preset, normal: None if preset.strip() else _raise("no voice preset set")),
+    Action("voice_on", "Voice changer: use a voice", _voice(lambda preset: voice.load(preset)),
+           [Param("preset", "Voice (an EasyEffects microphone preset)", suggest="voice_presets")],
+           group="Voice", osd_icon="audio-input-microphone-symbolic",
+           check=lambda preset: None if preset.strip() else _raise("no voice preset set")),
+    Action("voice_off", "Voice changer: back to normal", _voice(voice.off),
+           [Param("normal", "Normal voice preset (optional, else effects switch off)", suggest="voice_presets")],
+           group="Voice", osd_icon="audio-input-microphone-symbolic"),
     Action("play_sound", "Play a sound", _play_sound,
            [Param("path", "Sound file (a path, e.g. ~/Sounds/airhorn.mp3)"),
             Param("volume", "Volume (%)", default="100")],
@@ -646,6 +667,7 @@ SUGGESTIONS = {
     "audio_apps": lambda cfg, p: audio.playing_apps(),
     "modes": lambda cfg, p: list(cfg.get("modes", [])),
     "audio_outputs": lambda cfg, p: audio.outputs(),
+    "voice_presets": lambda cfg, p: voice.presets("input"),
 }
 
 
@@ -660,7 +682,7 @@ def perform(cfg, binding, trigger="tap"):
         if action.confirm:  # the prompt says how to confirm: press / hold / double-tap
             params["trigger"] = trigger
         return action.run(cfg, **params)
-    except (obs.OBSError, audio.AudioError, desktop.DesktopError, system.SystemActionError) as e:
+    except (obs.OBSError, audio.AudioError, desktop.DesktopError, system.SystemActionError, voice.VoiceError) as e:
         raise ActionError(str(e))
 
 
