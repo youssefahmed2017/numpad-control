@@ -1,5 +1,6 @@
 """The voice changer: EasyEffects' command line, as measured on the real thing (8.3), with a stand-in for it."""
 
+import subprocess
 import unittest
 from types import SimpleNamespace
 from unittest import mock
@@ -15,6 +16,7 @@ class FakeEasyEffects:
     def __init__(self, presets=("Deep", "Robot"), running=True, installed=True):
         self.presets, self.is_running, self.installed = list(presets), running, installed
         self.bypass, self.loaded, self.calls, self.started = "2", "", [], 0
+        self.busy_probes = 0  # how many "are you ready?" questions it fails to answer in time, while starting up
 
     def which(self, name):
         return f"/usr/bin/{name}" if name != "easyeffects" or self.installed else None
@@ -28,6 +30,9 @@ class FakeEasyEffects:
             out = "No output presets.\n" + ("Input presets:\n" + "".join(f"{i}\t{n}\n" for i, n in enumerate(self.presets, 1))
                                             if self.presets else "No input presets.\n")
         elif args == ["-b", "3"]:
+            if self.busy_probes > 0:
+                self.busy_probes -= 1
+                raise subprocess.TimeoutExpired(argv, 3)
             out = self.bypass + "\n"
         elif args[0] == "-b":
             self.bypass = "1" if args[1] == "1" else "2"
@@ -125,6 +130,20 @@ class VoiceTest(unittest.TestCase):
         self.assertEqual(self.ee.started, 1)
         self.assertEqual(self.ee.loaded, "Deep")
 
+    def test_easyeffects_still_loading_its_plugins_is_waited_for_not_given_up_on(self):
+        """The first press after boot found it starting, asked "ready?", got no answer in 3 s and failed."""
+        self.ee.is_running = False
+        self.ee.busy_probes = 4
+        self.assertEqual(voice.load("Deep"), "Voice: Deep")
+        self.assertEqual(self.ee.started, 1, "started once, not once per question")
+
+    def test_one_that_never_answers_is_an_error_after_the_wait(self):
+        self.ee.is_running = False
+        self.ee.busy_probes = 10 ** 6
+        with mock.patch.object(voice, "READY_SECONDS", 0.05), self.assertRaises(voice.VoiceError) as caught:
+            voice.load("Deep")
+        self.assertIn("didn't start", str(caught.exception))
+
     def test_a_running_easyeffects_is_left_alone(self):
         voice.load("Deep")
         self.assertEqual(self.ee.started, 0)
@@ -135,7 +154,12 @@ class VoiceTest(unittest.TestCase):
             with self.assertRaises(voice.VoiceError) as caught:
                 work()
             self.assertIn("pacman -S easyeffects", str(caught.exception))
-        self.assertEqual(voice.presets(), [], "the pick list is just empty")
+        import os
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"XDG_DATA_HOME": tmp, "XDG_DATA_DIRS": tmp}), \
+                mock.patch.object(voice.Path, "home", return_value=Path(tmp)):  # (not your real preset folders)
+            self.assertEqual(voice.presets(), [], "the pick list is just empty")
 
 
 class VoiceActionsTest(unittest.TestCase):

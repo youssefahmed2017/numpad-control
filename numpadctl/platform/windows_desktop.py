@@ -122,6 +122,13 @@ def hide_windows():
     user32 = _user32()
     for code, flags in ((0x5B, 0), (0x44, 0), (0x44, 2), (0x5B, 2)):  # Win down, D down, D up, Win up
         user32.keybd_event(code, 0, flags, 0)
+    return {"win_d": True}
+
+
+def restore_windows(token):
+    """Win+D again brings the windows back."""
+    if token.get("win_d"):
+        hide_windows()
 
 
 def force_close_window():

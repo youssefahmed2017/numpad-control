@@ -177,7 +177,7 @@ def _swayosd(*args):
 
 def media(command):
     """command: "play-pause", "pause", "stop", "next" or "previous"."""
-    if command == "pause" or not _swayosd("--playerctl", "prev" if command == "previous" else command):
+    if command in ("pause", "play") or not _swayosd("--playerctl", "prev" if command == "previous" else command):
         _run("playerctl", command)
 
 
@@ -229,6 +229,20 @@ def stop_sounds():
         player.terminate()
     _sounds.clear()
     return len(running)
+
+
+def is_muted(microphone):
+    """Is the default microphone (or the speakers) muted right now?"""
+    done = _run("wpctl", "get-volume", SOURCE if microphone else SINK, capture_output=True, text=True)
+    return "[MUTED]" in (done.stdout or "")
+
+
+def media_playing():
+    """Is a media player playing right now?"""
+    if not shutil.which("playerctl"):
+        return False
+    done = subprocess.run(["playerctl", "status"], capture_output=True, text=True, timeout=5, check=False)
+    return done.stdout.strip() == "Playing"
 
 
 def set_mute(microphone, muted):

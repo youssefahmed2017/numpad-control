@@ -6,10 +6,13 @@ It starts its own OBS (see obs_testbed.py), so your own OBS and its scenes are n
 and nothing is streamed. Recordings go to a temporary folder that is deleted afterwards."""
 
 import json
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -31,6 +34,11 @@ class ObsActionsTest(unittest.TestCase):
         c.create_input("Test", "Mic", "pulse_input_capture", {"device_id": "numpad_test_no_such_device"}, True)  # captures nothing
         c.create_source_filter("Background", "Tint", "color_filter_v2", {})
         cls.cfg = {**config.DEFAULT_CONFIG, "feedback": False, "obs": cls.bed.cfg}
+        state = tempfile.mkdtemp(prefix="numpad-state-")  # Privacy panic remembers what it did: not in your real state folder
+        patch = mock.patch.object(actions.paths, "state_dir", lambda: Path(state))
+        patch.start()
+        cls.addClassCleanup(patch.stop)
+        cls.addClassCleanup(shutil.rmtree, state, True)
 
     def setUp(self):
         """Every test starts from the same OBS: Test scene, background shown, mic unmuted, filter on, not recording."""

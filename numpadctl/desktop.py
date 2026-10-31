@@ -253,12 +253,27 @@ PROTECTED = {"hyprland", "plasmashell", "kwin_wayland", "kwin_x11", "krunner", "
 
 
 def hide_windows():
-    """Get everything off the screen at once: an empty workspace (Hyprland), every window minimised (KDE)."""
+    """Get everything off the screen at once: an empty workspace (Hyprland), every window minimised (KDE).
+
+    Returns what restore_windows() needs to bring it all back (JSON-friendly)."""
     if _supported("Hiding the windows") == HYPRLAND:
+        info = json.loads(_run(["hyprctl", "activeworkspace", "-j"], timeout=2).stdout or "{}")
         _hyprctl('hl.dsp.focus({ workspace = "empty" })')
+        return {"workspace": info.get("id")}
+    windows = _kdotool("search", "--class", ".").split()
+    for window in windows:
+        _kdotool("windowminimize", window)
+    return {"windows": windows}
+
+
+def restore_windows(token):
+    """Undo hide_windows(): back to the workspace you were on, or every minimised window shown again."""
+    if _supported("Showing the windows again") == HYPRLAND:
+        if token.get("workspace") is not None:
+            _hyprctl(f"hl.dsp.focus({{ workspace = {int(token['workspace'])} }})")
     else:
-        for window in _kdotool("search", "--class", ".").split():
-            _kdotool("windowminimize", window)
+        for window in token.get("windows", []):
+            _kdotool("windowactivate", window)
 
 
 def force_close_window():
@@ -295,6 +310,6 @@ if IS_WINDOWS:
     for _name in ("active_window_class", "open_windows", "focus_window", "close_window", "toggle_fullscreen",
                   "toggle_floating", "toggle_scratchpad", "go_to_workspace", "move_window_to_workspace",
                   "step_workspace", "show_osd", "toggle_dnd", "screenshot", "lock_screen", "focus_app_window",
-                  "hide_windows", "force_close_window"):
+                  "hide_windows", "restore_windows", "force_close_window"):
         globals()[_name] = getattr(_windows, _name)
 

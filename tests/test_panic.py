@@ -21,12 +21,36 @@ def panic(**params):
 class PrivacyPanicTest(unittest.TestCase):
     def setUp(self):
         self.calls = []
+        import tempfile
+        from pathlib import Path
+        self.state = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.state, ignore_errors=True))
+        self.muted = {True: False, False: False}  # {microphone?: muted now}
+        self.playing = True
+
+        def set_mute(mic, muted):
+            self.calls.append(("mute", mic, muted))
+            self.muted[mic] = muted
+
+        def media(command):
+            self.calls.append(("media", command))
+            self.playing = command == "play"
+
+        def hide():
+            self.calls.append(("hide",))
+            return {"workspace": 3}
         patches = [
-            mock.patch.object(actions.system, "set_mute", lambda mic, muted: self.calls.append(("mute", mic, muted))),
-            mock.patch.object(actions.system, "media", lambda command: self.calls.append(("media", command))),
-            mock.patch.object(actions.desktop, "hide_windows", lambda: self.calls.append(("hide",))),
+            mock.patch.object(actions.paths, "state_dir", lambda: self.state),
+            mock.patch.object(actions.system, "set_mute", set_mute),
+            mock.patch.object(actions.system, "is_muted", lambda mic: self.muted[mic]),
+            mock.patch.object(actions.system, "media", media),
+            mock.patch.object(actions.system, "media_playing", lambda: self.playing),
+            mock.patch.object(actions.desktop, "hide_windows", hide),
+            mock.patch.object(actions.desktop, "restore_windows", lambda token: self.calls.append(("restore", token))),
             mock.patch.object(actions.desktop, "lock_screen", lambda: self.calls.append(("lock",))),
+            mock.patch.object(actions.obs, "source_visible", lambda s, scene, source: True),
             mock.patch.object(actions.obs, "hide_source", lambda s, scene, source: self.calls.append(("obs", scene, source))),
+            mock.patch.object(actions.obs, "show_source", lambda s, scene, source: self.calls.append(("obs-show", scene, source))),
         ]
         for patch in patches:
             patch.start()
@@ -70,6 +94,67 @@ class PrivacyPanicTest(unittest.TestCase):
                 panic()
         self.assertIn("no audio", str(caught.exception))
         self.assertIn("no desktop", str(caught.exception))
+
+    def undo(self):
+        return actions.perform(CFG, {"action": "privacy_restore", "params": {}})
+
+    def test_undo_puts_back_exactly_what_the_panic_changed(self):
+        panic(scene="Cam", source="Webcam")
+        self.calls.clear()
+        result = self.undo()
+        self.assertEqual(self.calls, [("mute", True, False), ("mute", False, False), ("restore", {"workspace": 3}),
+                                      ("obs-show", "Cam", "Webcam"), ("media", "play")])
+        for part in ("Microphone unmuted", "speakers unmuted", "windows back", "OBS source shown", "media playing"):
+            self.assertIn(part, result)
+
+    def test_something_that_was_already_off_is_left_off(self):
+        self.muted[True] = True    # the microphone was already muted
+        self.playing = False       # nothing was playing
+        panic()
+        self.calls.clear()
+        self.undo()
+        self.assertEqual(self.calls, [("mute", False, False), ("restore", {"workspace": 3})],
+                         "no un-muting a microphone you had muted yourself, no starting music")
+
+    def test_a_second_panic_does_not_forget_what_the_first_one_changed(self):
+        panic()
+        panic()  # everything is already off now: it would "remember" that nothing needs undoing
+        self.calls.clear()
+        self.undo()
+        self.assertIn(("mute", True, False), self.calls)
+        self.assertIn(("mute", False, False), self.calls)
+
+    def test_undo_twice_or_without_a_panic_does_nothing(self):
+        self.assertEqual(self.undo(), "Nothing to undo")
+        panic()
+        self.undo()
+        self.calls.clear()
+        self.assertEqual(self.undo(), "Nothing to undo")
+        self.assertEqual(self.calls, [])
+
+    def test_undo_survives_the_service_restarting(self):
+        panic()
+        self.assertTrue((self.state / "privacy-panic.json").exists(), "it is remembered on disk, not just in memory")
+        self.assertIn("unmuted", self.undo())
+
+    def test_if_it_cannot_tell_what_it_was_before_it_still_panics_and_just_does_not_undo_that(self):
+        with mock.patch.object(actions.system, "is_muted", side_effect=OSError("no wpctl")):
+            panic(media=False, windows=False)
+        self.calls.clear()
+        self.assertEqual(self.undo(), "Nothing to undo")  # nothing was recorded, so there is nothing to put back
+        self.assertEqual(self.calls, [])
+
+    def test_a_failed_undo_step_does_not_stop_the_others(self):
+        panic()
+        self.calls.clear()
+        with mock.patch.object(actions.system, "set_mute", side_effect=OSError("no audio")):
+            result = self.undo()
+        self.assertIn("indows back", result)
+        self.assertIn("Failed: microphone unmuted (no audio)", result)
+
+    def test_it_is_a_one_press_action_that_can_be_a_macro_step(self):
+        self.assertFalse(actions.BY_ID["privacy_restore"].confirm)
+        self.assertIn("privacy_restore", actions.STEP_IDS)
 
     def test_it_is_a_normal_one_press_action_with_checkbox_settings(self):
         action = actions.BY_ID["privacy_panic"]
@@ -151,21 +236,30 @@ class ForceCloseWindowTest(unittest.TestCase):
 
 
 class HideWindowsTest(unittest.TestCase):
-    def test_hyprland_goes_to_an_empty_workspace(self):
-        with mock.patch.multiple(desktop, current=lambda: desktop.HYPRLAND), \
+    def test_hyprland_goes_to_an_empty_workspace_and_comes_back_to_the_one_it_left(self):
+        reply = mock.Mock(stdout='{"id": 3}')
+        with mock.patch.multiple(desktop, current=lambda: desktop.HYPRLAND, _run=lambda argv, timeout=5: reply), \
                 mock.patch.object(desktop, "_hyprctl") as hyprctl:
-            desktop.hide_windows()
-        hyprctl.assert_called_once_with('hl.dsp.focus({ workspace = "empty" })')
+            token = desktop.hide_windows()
+            self.assertEqual(token, {"workspace": 3})
+            hyprctl.assert_called_once_with('hl.dsp.focus({ workspace = "empty" })')
+            hyprctl.reset_mock()
+            desktop.restore_windows(json.loads(json.dumps(token)))  # the token goes through a file in between
+            hyprctl.assert_called_once_with("hl.dsp.focus({ workspace = 3 })")
 
-    def test_kde_minimises_every_window(self):
+    def test_kde_minimises_every_window_and_activates_them_again(self):
         calls = []
 
         def kdotool(*args):
             calls.append(args)
             return "w1 w2" if args[0] == "search" else ""
         with mock.patch.multiple(desktop, current=lambda: desktop.KDE), mock.patch.object(desktop, "_kdotool", kdotool):
-            desktop.hide_windows()
-        self.assertEqual(calls[1:], [("windowminimize", "w1"), ("windowminimize", "w2")])
+            token = desktop.hide_windows()
+            self.assertEqual(token, {"windows": ["w1", "w2"]})
+            self.assertEqual(calls[1:], [("windowminimize", "w1"), ("windowminimize", "w2")])
+            calls.clear()
+            desktop.restore_windows(token)
+        self.assertEqual(calls, [("windowactivate", "w1"), ("windowactivate", "w2")])
 
 
 class MuteAndPauseTest(unittest.TestCase):
@@ -175,6 +269,26 @@ class MuteAndPauseTest(unittest.TestCase):
             linux_system.set_mute(False, False)
         self.assertEqual(run.call_args_list, [mock.call("wpctl", "set-mute", linux_system.SOURCE, "1"),
                                               mock.call("wpctl", "set-mute", linux_system.SINK, "0")])
+
+    def test_it_can_tell_whether_something_is_muted_or_playing(self):
+        with mock.patch.object(linux_system, "_run", return_value=mock.Mock(stdout="Volume: 0.60 [MUTED]\n")):
+            self.assertTrue(linux_system.is_muted(False))
+        with mock.patch.object(linux_system, "_run", return_value=mock.Mock(stdout="Volume: 1.00\n")):
+            self.assertFalse(linux_system.is_muted(True))
+        with mock.patch.object(linux_system.shutil, "which", lambda n: "/usr/bin/playerctl"), \
+                mock.patch.object(linux_system.subprocess, "run", return_value=mock.Mock(stdout="Playing\n")):
+            self.assertTrue(linux_system.media_playing())
+        with mock.patch.object(linux_system.shutil, "which", lambda n: "/usr/bin/playerctl"), \
+                mock.patch.object(linux_system.subprocess, "run", return_value=mock.Mock(stdout="Paused\n")):
+            self.assertFalse(linux_system.media_playing())
+        with mock.patch.object(linux_system.shutil, "which", lambda n: None):
+            self.assertFalse(linux_system.media_playing(), "no player program: nothing is playing as far as we can tell")
+
+    def test_play_resumes_with_playerctl(self):
+        with mock.patch.object(linux_system, "_run") as run, mock.patch.object(linux_system, "_swayosd") as osd:
+            linux_system.media("play")
+        run.assert_called_once_with("playerctl", "play")
+        osd.assert_not_called()
 
     def test_pause_asks_playerctl_for_pause_not_play_pause(self):
         with mock.patch.object(linux_system, "_run") as run, mock.patch.object(linux_system, "_swayosd") as osd:

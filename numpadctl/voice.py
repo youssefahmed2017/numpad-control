@@ -16,7 +16,7 @@ class VoiceError(Exception):
     pass
 
 
-READY_SECONDS = 6   # how long to wait for EasyEffects to come up after starting it
+READY_SECONDS = 30  # how long to wait for EasyEffects to come up after starting it (it loads all its audio plugins first)
 BYPASSED, ACTIVE = "1", "2"  # what `easyeffects -b 3` prints
 
 
@@ -44,10 +44,14 @@ def ensure_running():
                      stderr=subprocess.DEVNULL, start_new_session=True)
     deadline = time.monotonic() + READY_SECONDS
     while time.monotonic() < deadline:
-        if running() and _run("-b", "3", timeout=3) in (BYPASSED, ACTIVE):
-            return
+        if running():
+            try:
+                if _run("-b", "3", timeout=3) in (BYPASSED, ACTIVE):
+                    return
+            except VoiceError:  # it is up but still busy starting: not answering yet is not a failure, keep waiting
+                pass
         time.sleep(0.3)
-    raise VoiceError("EasyEffects didn't start")
+    raise VoiceError("EasyEffects didn't start (it is still not answering after 30 seconds)")
 
 
 def _preset_folders(kind):

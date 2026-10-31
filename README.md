@@ -121,7 +121,7 @@ uses that desktop's own tools:
 | Voice | Voice changer on / off · Use a voice · Back to normal (EasyEffects, Linux) |
 | Per-app audio | App volume up / down · Set app volume to N% · Mute / unmute an app (e.g. Spotify, Firefox) |
 | Audio output | Switch audio output to a device · Next audio output (cycles through devices) |
-| System | Do not disturb on / off · Lock screen · Privacy panic · Sleep · Shut down · Restart |
+| System | Do not disturb on / off · Lock screen · Privacy panic · Undo privacy panic · Sleep · Shut down · Restart |
 | Mode | Toggle a mode · Turn a mode on · Turn a mode off · If a mode is on… (if / otherwise) |
 | Advanced | Macro · Run Python (sandboxed) |
 
@@ -177,6 +177,13 @@ one step fails (no microphone, OBS not open…) the rest still happen and the on
 says what failed. Mutes are real "mute", not a toggle, so pressing it twice doesn't un-mute
 anything; unmute with the normal mute keys. On Windows "pause" is a media Stop, and hiding
 windows is Win+D (a second press of it brings them back).
+
+**Undo privacy panic** puts back what the last panic changed, and only that: it un-mutes the microphone and the
+speakers it muted (one you had already muted stays muted), brings the windows back (the workspace you were on,
+every minimised window, Win+D on Windows), shows the OBS camera again and resumes the music it paused. It
+remembers on disk, so it works after a restart, and pressing the panic twice doesn't make it forget the first
+time. It can't unlock the screen (you do that) and on Windows it never presses play for you, since Windows can't
+say whether something was playing. Bind it next to the panic key, for example on the same key in the layer.
 
 **Force-quit the focused window** (press twice, like Sleep) kills the focused program at once,
 with no chance to save: use it on a frozen or raging app, not on work you want to keep. It

@@ -291,7 +291,7 @@ def _tap(name, times=1):
 
 def media(command):
     """command: "play-pause", "pause" (Windows can only stop), "stop", "next" or "previous"."""
-    _tap({"play-pause": "PLAYPAUSE", "pause": "STOPCD", "stop": "STOPCD", "next": "NEXTSONG",
+    _tap({"play-pause": "PLAYPAUSE", "play": "PLAYPAUSE", "pause": "STOPCD", "stop": "STOPCD", "next": "NEXTSONG",
           "previous": "PREVIOUSSONG"}[command])
 
 
@@ -326,6 +326,20 @@ def stop_sounds():
     import winsound
     winsound.PlaySound(None, winsound.SND_PURGE)
     return 1
+
+
+def is_muted(microphone):
+    """Is the default microphone (or the speakers) muted right now?"""
+    from .windows_audio import AudioError, is_muted as device_is_muted
+    try:
+        return device_is_muted(microphone)
+    except AudioError as e:
+        raise SystemActionError(str(e))
+
+
+def media_playing():
+    """Windows can't tell whether something is playing, so a panic never presses play again for you."""
+    return False
 
 
 def set_mute(microphone, muted):

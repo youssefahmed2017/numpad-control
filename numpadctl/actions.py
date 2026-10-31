@@ -1,6 +1,7 @@
 """Everything a key can be bound to."""
 
 import copy
+import json
 import re
 import threading
 import time
@@ -8,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import desktop, modes, obs, sandbox, voice
-from .platform import IS_WINDOWS, system
+from .platform import IS_WINDOWS, paths, system
 
 if IS_WINDOWS:  # per-app audio: Core Audio on Windows, PipeWire on Linux
     from .platform import windows_audio as audio
@@ -128,9 +129,35 @@ def _truthy(value):
     return value.strip().lower() in ("1", "true", "yes", "on") if isinstance(value, str) else bool(value)
 
 
+def _panic_file():
+    return paths.state_dir() / "privacy-panic.json"
+
+
+def _panic_undo_load():
+    """What the last privacy panic changed (so "Undo privacy panic" puts back exactly that), {} if nothing."""
+    try:
+        data = json.loads(_panic_file().read_text())
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _panic_undo_save(state):
+    try:
+        if state:
+            _panic_file().parent.mkdir(parents=True, exist_ok=True)
+            _panic_file().write_text(json.dumps(state))
+        else:
+            _panic_file().unlink(missing_ok=True)
+    except OSError:
+        pass  # not being able to remember must never stop the panic itself
+
+
 def _privacy_panic(cfg, mic=True, speakers=True, media=True, windows=True, scene="", source="", lock=False):
-    """Everything private out of sight and earshot, as fast as it can: one step failing never stops the rest."""
-    done, failed = [], []
+    """Everything private out of sight and earshot, as fast as it can: one step failing never stops the rest.
+
+    It remembers what it really changed (a microphone that was already muted stays muted when you undo it)."""
+    done, failed, undo = [], [], {}
 
     def step(name, enabled, work):
         if not _truthy(enabled):
@@ -140,16 +167,77 @@ def _privacy_panic(cfg, mic=True, speakers=True, media=True, windows=True, scene
             done.append(name)
         except Exception as e:  # a panic button keeps going whatever goes wrong
             failed.append(f"{name} ({e})")
-    step("microphone muted", mic, lambda: system.set_mute(True, True))
-    step("speakers muted", speakers, lambda: system.set_mute(False, True))
-    step("media paused", media, lambda: system.media("pause"))
-    step("windows hidden", windows, desktop.hide_windows)
+
+    def known(read, default=None):  # what it was before: unknown (None) must never stop the panic
+        try:
+            return read()
+        except Exception:
+            return default
+
+    def mute(is_mic, key):
+        was = known(lambda: system.is_muted(is_mic))
+        system.set_mute(is_mic, True)
+        if was is False:
+            undo[key] = True
+
+    def pause():
+        playing = known(system.media_playing, False)
+        system.media("pause")
+        if playing:
+            undo["media"] = True
+
+    def hide():
+        token = desktop.hide_windows()
+        if token:
+            undo["windows"] = token
+
+    def hide_camera():
+        was = known(lambda: obs.source_visible(cfg["obs"], scene.strip(), source.strip()))
+        obs.hide_source(cfg["obs"], scene.strip(), source.strip())
+        if was:
+            undo["obs"] = [scene.strip(), source.strip()]
+    step("microphone muted", mic, lambda: mute(True, "mic"))
+    step("speakers muted", speakers, lambda: mute(False, "speakers"))
+    step("media paused", media, pause)
+    step("windows hidden", windows, hide)
     if scene.strip() and source.strip():  # the network one last: OBS can be slow
-        step("OBS source hidden", True, lambda: obs.hide_source(cfg["obs"], scene.strip(), source.strip()))
+        step("OBS source hidden", True, hide_camera)
     step("screen locked", lock, desktop.lock_screen)
+    if undo:  # a second press must not forget what the first one changed (it would find everything already off)
+        _panic_undo_save({**undo, **_panic_undo_load()})
     if not done:
         raise ActionError("; ".join(failed) or "nothing is switched on")
     summary = ", ".join(done)  # (not .capitalize(): it would turn "OBS" into "Obs")
+    return summary[0].upper() + summary[1:] + (f". Failed: {'; '.join(failed)}" if failed else "")
+
+
+def _privacy_restore(cfg):
+    """Put back what the last Privacy panic changed, and only that."""
+    state = _panic_undo_load()
+    if not state:
+        return "Nothing to undo"
+    done, failed = [], []
+
+    def step(name, work):
+        try:
+            work()
+            done.append(name)
+        except Exception as e:
+            failed.append(f"{name} ({e})")
+    if state.get("mic"):
+        step("microphone unmuted", lambda: system.set_mute(True, False))
+    if state.get("speakers"):
+        step("speakers unmuted", lambda: system.set_mute(False, False))
+    if state.get("windows"):
+        step("windows back", lambda: desktop.restore_windows(state["windows"]))
+    if state.get("obs"):
+        step("OBS source shown", lambda: obs.show_source(cfg["obs"], *state["obs"]))
+    if state.get("media"):
+        step("media playing", lambda: system.media("play"))
+    _panic_undo_save({})
+    if not done:
+        raise ActionError("; ".join(failed))
+    summary = ", ".join(done)
     return summary[0].upper() + summary[1:] + (f". Failed: {'; '.join(failed)}" if failed else "")
 
 
@@ -615,6 +703,8 @@ ACTIONS = [
             Param("source", "OBS camera source to hide (optional)", suggest="obs_scene_sources"),
             Param("lock", "Lock the screen too", kind="bool", default=False)],
            group="System", osd_icon="security-high-symbolic"),
+    Action("privacy_restore", "Undo privacy panic", _privacy_restore, group="System",
+           osd_icon="edit-undo-symbolic"),
     Action("force_quit", "Force-quit the focused window (press twice)", _force_quit,
            [Param("url", "Then open this page (optional)", placeholders=False)],
            group="Window", confirm=True, osd_icon="process-stop-symbolic"),
