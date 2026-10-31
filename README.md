@@ -286,7 +286,8 @@ keyboard in the window also removes the actions set on its keys.
   doesn't let an ordinary window float above the others without taking focus, XWayland does), so
   XWayland has to be running, as it is by default on Hyprland and KDE. On Windows it is a normal
   topmost window that doesn't take focus. If it keeps failing to start, the service log says so
-  and tries again, slower each time.
+  and tries again, slower each time. Restarting or stopping
+  the service takes the overlay with it (and a crashed service's leftover is ended by the next one), so there is only ever one.
 
 ## Modes and if / otherwise
 **Modes** are named on/off switches, e.g. "Stream mode" or "Gaming", created in

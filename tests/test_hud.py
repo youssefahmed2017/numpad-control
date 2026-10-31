@@ -244,6 +244,102 @@ class SupervisorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.spawned), 1)
 
 
+class StaleOverlayTest(unittest.TestCase):
+    """A restart (or a crash) must never leave an old overlay running next to the new one."""
+
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+        self.state = Path(tempfile.mkdtemp())
+        patch = mock.patch.object(daemon.paths, "state_dir", lambda: self.state)
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.state, ignore_errors=True))
+        self.started = []
+        self.addCleanup(lambda: [p.kill() for p in self.started if p.poll() is None])
+
+    def sleeper(self, marker):
+        import subprocess
+        import sys
+        process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)", marker])
+        self.started.append(process)
+        return process
+
+    def wait_gone(self, process):
+        try:
+            process.wait(timeout=5)
+        except Exception:
+            pass
+        return process.poll() is not None
+
+    def test_an_overlay_left_behind_is_ended(self):
+        stale = self.sleeper("numpadctl_ui.hud")  # looks like our overlay in the process list
+        daemon.hud_pid_file().write_text(str(stale.pid))
+        daemon.kill_stale_hud()
+        self.assertTrue(self.wait_gone(stale))
+        self.assertFalse(daemon.hud_pid_file().exists())
+
+    def test_a_process_that_is_not_our_overlay_is_left_alone(self):
+        other = self.sleeper("something-else")  # the pid was reused by an unrelated program
+        daemon.hud_pid_file().write_text(str(other.pid))
+        daemon.kill_stale_hud()
+        self.assertFalse(self.wait_gone(other) and False)
+        self.assertIsNone(other.poll(), "still running")
+
+    def test_junk_or_nothing_in_the_pid_file_is_fine(self):
+        daemon.kill_stale_hud()
+        daemon.hud_pid_file().write_text("not a number")
+        daemon.kill_stale_hud()
+        self.assertFalse(daemon.hud_pid_file().exists())
+
+    def test_spawning_ends_the_old_one_and_remembers_the_new_one(self):
+        stale = self.sleeper("numpadctl_ui.hud")
+        daemon.hud_pid_file().write_text(str(stale.pid))
+        with mock.patch.object(daemon.subprocess, "Popen", return_value=mock.Mock(pid=424242)), \
+                mock.patch.object(daemon.actions, "refresh_session_env", lambda: True), \
+                mock.patch.object(daemon, "IS_WINDOWS", False):
+            daemon.spawn_hud()
+        self.assertTrue(self.wait_gone(stale))
+        self.assertEqual(daemon.hud_pid_file().read_text(), "424242")
+
+    def test_stopping_it_forgets_the_pid(self):
+        d = daemon.Daemon(run_action=lambda *a: None)
+        daemon.hud_pid_file().write_text("1")
+        d.stop_hud()
+        self.assertFalse(daemon.hud_pid_file().exists())
+
+
+class StopsCleanlyTest(unittest.IsolatedAsyncioTestCase):
+    async def test_sigterm_leaves_through_the_clean_up_so_the_overlay_goes_with_it(self):
+        """systemd stops the service with SIGTERM; without a handler it was cut off and the overlay stayed behind."""
+        import signal
+        cleaned = []
+
+        async def forever(self=None):
+            await asyncio.sleep(3600)
+
+        async def overlay(self):
+            try:
+                await asyncio.sleep(3600)
+            finally:
+                cleaned.append("overlay stopped")
+        d = daemon.Daemon(run_action=lambda *a: None)
+        with mock.patch.object(daemon.Daemon, "serve", lambda self: asyncio.sleep(0)), \
+                mock.patch.object(daemon.Daemon, "_device_loop", forever), \
+                mock.patch.object(daemon.Daemon, "update_loop", forever), \
+                mock.patch.object(daemon.Daemon, "manage_devices", forever), \
+                mock.patch.object(daemon.Daemon, "manage_hud", overlay), \
+                mock.patch.object(daemon.ipc, "stop_server", lambda: cleaned.append("server stopped")):
+            task = asyncio.create_task(d.main())
+            await asyncio.sleep(0.1)
+            loop = asyncio.get_running_loop()
+            self.assertIn(signal.SIGTERM, loop._signal_handlers, "the handler is in place (so the signal below is safe)")
+            signal.raise_signal(signal.SIGTERM)
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+        self.assertCountEqual(cleaned, ["overlay stopped", "server stopped"])  # both happen, whichever comes first
+
+
 class SpawnTest(unittest.TestCase):
     def test_on_linux_wayland_it_runs_through_xwayland_so_it_can_float_above_everything(self):
         with mock.patch.object(daemon.subprocess, "Popen") as popen, \

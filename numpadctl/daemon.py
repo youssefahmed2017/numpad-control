@@ -8,14 +8,16 @@ import asyncio
 import json
 import logging
 import os
+import signal
 import subprocess
 import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 from . import actions, config, games, keys, updater
-from .platform import IS_WINDOWS, ipc, numpad_input, processes
+from .platform import IS_WINDOWS, ipc, numpad_input, paths, processes
 
 log = logging.getLogger("numpadctl")
 
@@ -39,6 +41,21 @@ HUD_PREVIEW_DELAY = 0.3   # ...after this short wait (an overlay that connects l
 DEVICE_CHECK_SECONDS = 2  # how often extra devices (whole keyboards) are looked for or dropped
 RELEASE_CHORD = {"KEY_LEFTCTRL", "KEY_LEFTALT", "KEY_ESC"}  # held on a grabbed extra keyboard: gives it back
 
+def hud_pid_file():
+    return paths.state_dir() / "hud.pid"
+
+
+def kill_stale_hud():
+    """End a key map overlay left behind by an earlier service (it was killed or crashed): only ever one."""
+    try:
+        pid = int(hud_pid_file().read_text().strip())
+        if pid != os.getpid() and "numpadctl_ui.hud" in Path(f"/proc/{pid}/cmdline").read_text().replace("\0", " "):
+            os.kill(pid, signal.SIGTERM)  # (a pid that is not our overlay any more is left alone)
+    except (OSError, ValueError):
+        pass
+    hud_pid_file().unlink(missing_ok=True)
+
+
 def spawn_hud():
     """Start the key map overlay as its own process: on Linux it runs through XWayland (an unmanaged window that
     floats above everything and never takes focus, which Wayland doesn't allow ordinary windows to do)."""
@@ -47,8 +64,16 @@ def spawn_hud():
     if not IS_WINDOWS and env.get("DISPLAY") and env.get("WAYLAND_DISPLAY"):
         env["QT_QPA_PLATFORM"] = "xcb"
     kwargs = {"creationflags": 0x08000008} if IS_WINDOWS else {"start_new_session": True}  # no console window, own group
-    return subprocess.Popen([sys.executable, "-m", "numpadctl_ui.hud"], env=env, stdin=subprocess.DEVNULL,
-                            stdout=subprocess.DEVNULL, **kwargs)
+    if not IS_WINDOWS:
+        kill_stale_hud()
+    process = subprocess.Popen([sys.executable, "-m", "numpadctl_ui.hud"], env=env, stdin=subprocess.DEVNULL,
+                               stdout=subprocess.DEVNULL, **kwargs)
+    try:
+        hud_pid_file().parent.mkdir(parents=True, exist_ok=True)
+        hud_pid_file().write_text(str(process.pid))
+    except OSError:
+        pass
+    return process
 
 
 # Used by the settings window and setup.sh.
@@ -354,6 +379,7 @@ class Daemon:
         if self.hud_proc is not None and self.hud_proc.poll() is None:
             self.hud_proc.terminate()
         self.hud_proc = None
+        hud_pid_file().unlink(missing_ok=True)
 
     def ensure_hud(self):
         """Start, restart or stop the key map overlay process so it runs exactly when it can be needed (a layer key
@@ -632,6 +658,8 @@ class Daemon:
         ipc.stop_server()
 
     async def main(self):
+        if not IS_WINDOWS:  # systemd stops the service with SIGTERM: leave through the clean-up below, not by being cut off
+            asyncio.get_running_loop().add_signal_handler(signal.SIGTERM, asyncio.current_task().cancel)
         await self.serve()
         updates = asyncio.create_task(self.update_loop())
         devices = asyncio.create_task(self.manage_devices())
@@ -724,7 +752,7 @@ def run():
     crash.install("service")
     try:
         asyncio.run(Daemon().main())
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, asyncio.CancelledError):  # (CancelledError: stopped with SIGTERM, after cleaning up)
         pass
     finally:
         ipc.stop_server()
