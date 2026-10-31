@@ -36,6 +36,7 @@ def meter(quiet, loud):
     return done.stdout.replace("\r", "\n"), done.returncode
 
 
+@unittest.skipIf(sys.platform == "win32", "Linux only: PipeWire, and the stand-in is a shell script")
 class MicLevelTest(unittest.TestCase):
     def test_the_room_is_measured_first_and_a_known_loudness_is_read_correctly(self):
         out, code = meter(0.01, 0.5)  # the room at -43 dB, then 34 dB louder

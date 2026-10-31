@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import sys
 import unittest
 from unittest import mock
 
@@ -244,6 +245,10 @@ class SupervisorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.spawned), 1)
 
 
+LINUX_ONLY = unittest.skipIf(sys.platform == "win32", "Linux only: /proc, SIGTERM, XWayland")
+
+
+@LINUX_ONLY
 class StaleOverlayTest(unittest.TestCase):
     """A restart (or a crash) must never leave an old overlay running next to the new one."""
 
@@ -309,6 +314,7 @@ class StaleOverlayTest(unittest.TestCase):
         self.assertFalse(daemon.hud_pid_file().exists())
 
 
+@LINUX_ONLY
 class StopsCleanlyTest(unittest.IsolatedAsyncioTestCase):
     async def test_sigterm_leaves_through_the_clean_up_so_the_overlay_goes_with_it(self):
         """systemd stops the service with SIGTERM; without a handler it was cut off and the overlay stayed behind."""
@@ -340,6 +346,7 @@ class StopsCleanlyTest(unittest.IsolatedAsyncioTestCase):
         self.assertCountEqual(cleaned, ["overlay stopped", "server stopped"])  # both happen, whichever comes first
 
 
+@LINUX_ONLY
 class SpawnTest(unittest.TestCase):
     def test_on_linux_wayland_it_runs_through_xwayland_so_it_can_float_above_everything(self):
         with mock.patch.object(daemon.subprocess, "Popen") as popen, \

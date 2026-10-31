@@ -3,6 +3,7 @@
 import json
 import os
 import signal
+import sys
 import unittest
 from unittest import mock
 
@@ -210,6 +211,7 @@ class ForceQuitTest(unittest.TestCase):
         self.assertNotIn("force_quit", actions.STEP_IDS)
 
 
+@unittest.skipIf(sys.platform == "win32", "Linux only: Hyprland and KDE")
 class ForceCloseWindowTest(unittest.TestCase):
     def window(self, cls, pid):
         reply = mock.Mock(stdout=json.dumps({"class": cls, "pid": pid}))
@@ -235,6 +237,7 @@ class ForceCloseWindowTest(unittest.TestCase):
             kill.assert_not_called()
 
 
+@unittest.skipIf(sys.platform == "win32", "Linux only: Hyprland and KDE")
 class HideWindowsTest(unittest.TestCase):
     def test_hyprland_goes_to_an_empty_workspace_and_comes_back_to_the_one_it_left(self):
         reply = mock.Mock(stdout='{"id": 3}')
