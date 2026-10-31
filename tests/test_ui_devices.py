@@ -3,6 +3,7 @@
 import json
 import os
 import tempfile
+import sys
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -190,6 +191,7 @@ class AddDeviceDialogTest(unittest.TestCase):
         self.assertFalse(d.ok.isEnabled())
 
 
+@unittest.skipIf(sys.platform == "win32", "Linux only: udev rules and /sys paths")
 class DevicesModuleTest(unittest.TestCase):
     def test_make_id(self):
         self.assertEqual(devices.make_id("HP USB Slim Keyboard", set()), "hp")

@@ -1,6 +1,7 @@
 """The voice changer: EasyEffects' command line, as measured on the real thing (8.3), with a stand-in for it."""
 
 import subprocess
+import sys
 import unittest
 from types import SimpleNamespace
 from unittest import mock
@@ -61,6 +62,7 @@ class VoiceTest(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
 
+    @unittest.skipIf(sys.platform == "win32", "Linux only: XDG folders are separated by a colon")
     def test_the_preset_list_is_read_from_the_preset_folders_even_before_easyeffects_runs(self):
         import os
         import tempfile
