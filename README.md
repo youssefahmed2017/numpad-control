@@ -160,6 +160,12 @@ voice name has a pick list of your presets. Apps hear the effect when they recor
 seconds the first time (about 0.6 s afterwards), so let EasyEffects start at login if you want the first press to
 be instant. A preset name that doesn't exist says so and lists the ones that do.
 
+**Hearing your voices without a microphone:** `tools/voice-demo CLIP` takes any audio or video file (`--start 15
+--seconds 8` picks the part), plays it into a silent virtual microphone, lets EasyEffects change it with each of your
+microphone voices, and saves one file per voice in `~/Music/voice-demo` (`00-original`, `01-Normal`, `02-...`) to
+listen to with `mpv ~/Music/voice-demo/*.wav`. Nothing plays through your speakers while it works, and your default
+microphone, EasyEffects and the voice that was loaded are put back afterwards.
+
 **Soundboard:** *Play a sound* plays an audio file you name (`~/Sounds/airhorn.mp3`) at the
 volume you choose, on top of whatever else is playing, and returns at once, so sounds can overlap;
 *Stop all sounds* cuts them off. One key, one sound: bind it to a Press, Hold or Double tap
