@@ -16,6 +16,7 @@ def soda(*args, stdin="", **extra):
     return done.returncode, done.stdout, done.stderr
 
 
+@unittest.skipIf(sys.platform == "win32", "soda is a bash script (Windows has no real bash on the test machines)")
 class SodaTest(unittest.TestCase):
     def test_help_and_no_arguments(self):
         for args in (("--help",), ()):
