@@ -4,8 +4,9 @@
     tools/mic-level                 # the default microphone
     tools/mic-level SOURCE_NAME     # a specific one (see: pactl list short sources)
 
-A working microphone jumps by 15 dB or more when you talk. A flat line that never moves means no signal arrives
-(a muted headset cable, the wrong jack or plug, a microphone that needs power, a mute switch...). Ctrl+C stops it.
+It first listens to the room for 2 seconds (stay quiet), then shows how far above the room each sound is: a working
+microphone rises 15 dB or more when you talk. When you stop it (Ctrl+C) it says whether the microphone works, is weak,
+or hears nothing but the room (a muted cable, the wrong jack or plug, a microphone that needs power...).
 It only measures the level: nothing is saved."""
 import math
 import shutil
@@ -14,6 +15,7 @@ import subprocess
 import sys
 
 RATE, CHUNK = 16000, 1600  # a reading every tenth of a second
+CALIBRATE_SECONDS = 2
 
 
 def main():
@@ -28,24 +30,42 @@ def main():
     if header[:4] != b".snd":
         sys.exit("pw-record gave an unexpected format")
     process.stdout.read(struct.unpack(">I", header[4:8])[0] - 8)
-    low, high = 0.0, -120.0
-    print("speak or tap the microphone; Ctrl+C to stop\n")
+    print(f"stay QUIET for {CALIBRATE_SECONDS} seconds: the meter is listening to the room first\n")
+    floor, readings, loudest = None, [], -120.0
     try:
         while True:
             data = process.stdout.read(CHUNK * 2)
             if len(data) < CHUNK * 2:
                 break
             samples = struct.unpack(f">{CHUNK}h", data)
-            rms = math.sqrt(sum(s * s for s in samples) / CHUNK) / 32768
-            level = 20 * math.log10(max(rms, 1e-6))
-            low, high = (level if high == -120.0 else min(low, level)), max(high, level)
-            bar = "#" * max(0, int((level + 80) / 80 * 50))
-            print(f"\r{level:6.1f} dB |{bar:<50}| moved {high - low:4.0f} dB so far   ", end="", flush=True)
+            level = 20 * math.log10(max(math.sqrt(sum(s * s for s in samples) / CHUNK) / 32768, 1e-6))
+            if floor is None:
+                readings.append(level)
+                if len(readings) >= CALIBRATE_SECONDS * 10:
+                    floor = sorted(readings)[len(readings) // 2]  # the room's usual level (the middle reading)
+                    print(f"the room is at {floor:.0f} dB.  NOW talk or tap the microphone:\n")
+                continue
+            above = level - floor
+            loudest = max(loudest, above)
+            bar = "#" * max(0, min(50, int(above / 40 * 50)))
+            print(f"\r{level:6.1f} dB   {above:+5.1f} dB over the room |{bar:<50}| best so far {loudest:+.0f} dB   ", end="", flush=True)
     except KeyboardInterrupt:
         pass
     finally:
         process.terminate()
         print()
+    if floor is not None:
+        print(verdict(loudest))
+
+
+def verdict(loudest):
+    if loudest >= 15:
+        return f"Your microphone WORKS: it rose {loudest:.0f} dB above the room."
+    if loudest >= 6:
+        return (f"Your microphone is WEAK: it only rose {loudest:.0f} dB above the room. Speak closer, check it is the right "
+                "jack, or use a microphone with its own power or a USB one.")
+    return (f"Nothing rose above the room (best {loudest:.0f} dB): no voice arrives. Check the cable's mute switch, the jack "
+            "and plug type, and the microphone's power.")
 
 
 main()

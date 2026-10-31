@@ -14,30 +14,40 @@ from pathlib import Path
 TOOL = Path(__file__).resolve().parent.parent / "tools" / "mic-level"
 
 
-def fake_pw_record(folder, amplitude):
+def fake_pw_record(folder, quiet, loud):
+    """A stream that is `quiet` for 2.5 s (the room), then `loud`, as amplitudes (0 to 1) of a 440 Hz sine."""
     header = b".snd" + struct.pack(">IIIII", 24, 0xFFFFFFFF, 3, 16000, 1)
-    samples = b"".join(struct.pack(">h", int(amplitude * 32767 * math.sin(2 * math.pi * 440 * i / 16000))) for i in range(16000 * 3))
+
+    def sine(amplitude, seconds):
+        return b"".join(struct.pack(">h", int(amplitude * 32767 * math.sin(2 * math.pi * 440 * i / 16000)))
+                        for i in range(int(16000 * seconds)))
     script = Path(folder) / "pw-record"
-    script.write_text("#!/bin/sh\nexec python3 -c \"import sys; sys.stdout.buffer.write(open(sys.argv[1], 'rb').read())\" " + str(Path(folder) / "stream.snd") + "\n")
+    script.write_text("#!/bin/sh\nexec python3 -c \"import sys; sys.stdout.buffer.write(open(sys.argv[1], 'rb').read())\" "
+                      + str(Path(folder) / "stream.snd") + "\n")
     script.chmod(script.stat().st_mode | stat.S_IEXEC)
-    (Path(folder) / "stream.snd").write_bytes(header + samples)
+    (Path(folder) / "stream.snd").write_bytes(header + sine(quiet, 2.5) + sine(loud, 2.0))
 
 
-def meter(amplitude):
+def meter(quiet, loud):
     with tempfile.TemporaryDirectory() as folder:
-        fake_pw_record(folder, amplitude)
-        done = subprocess.run([sys.executable, str(TOOL)], capture_output=True, text=True, timeout=20,
+        fake_pw_record(folder, quiet, loud)
+        done = subprocess.run([sys.executable, str(TOOL)], capture_output=True, text=True, timeout=30,
                               env={**os.environ, "PATH": folder + os.pathsep + os.environ["PATH"]})
-    lines = [part for part in done.stdout.replace("\r", "\n").splitlines() if " dB |" in part]
-    return float(lines[-1].split(" dB")[0]), done.returncode
+    return done.stdout.replace("\r", "\n"), done.returncode
 
 
 class MicLevelTest(unittest.TestCase):
-    def test_a_known_loudness_is_read_correctly(self):
-        for amplitude, expected in ((0.5, -9.0), (0.05, -29.0), (0.005, -49.0)):  # a sine's RMS is 3 dB under its peak
-            level, code = meter(amplitude)
-            self.assertEqual(code, 0)
-            self.assertAlmostEqual(level, expected, delta=1.0, msg=f"amplitude {amplitude}")
+    def test_the_room_is_measured_first_and_a_known_loudness_is_read_correctly(self):
+        out, code = meter(0.01, 0.5)  # the room at -43 dB, then 34 dB louder
+        self.assertEqual(code, 0)
+        self.assertIn("the room is at -4", out)  # a 0.01 sine is -43 dB RMS
+        best = [float(line.split("best so far")[1].split("dB")[0]) for line in out.splitlines() if "best so far" in line]
+        self.assertAlmostEqual(best[-1], 34, delta=2)
+
+    def test_it_says_works_weak_or_nothing(self):
+        for quiet, loud, word in ((0.01, 0.5, "WORKS"), (0.01, 0.03, "WEAK"), (0.01, 0.011, "Nothing rose")):
+            out, _ = meter(quiet, loud)
+            self.assertIn(word, out, f"{quiet} then {loud}")
 
     def test_it_says_what_it_is_when_pipewire_is_missing(self):
         with tempfile.TemporaryDirectory() as empty:

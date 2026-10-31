@@ -433,14 +433,13 @@ Keys that already do something are never changed, and you can edit everything af
 (`numpadctl/presets.py`)
 
 ## When something doesn't work
-- **No sound from the microphone** (in OBS, a call, anywhere): run `tools/mic-level`, a live level meter for the
-  default microphone (`tools/mic-level SOURCE_NAME` for another; names from `pactl list short sources`). Talk or tap
-  the microphone and watch the bar. A working microphone jumps by 15 dB or more when you talk; a bar that stays flat
-  means no signal arrives: a muted switch on the cable, the wrong jack or plug type (a 4-pole headset plug in a
-  3-pole microphone jack gives silence), a microphone that needs power, or one that is too weak for the jack. It only
-  measures: nothing is recorded.
-The settings window → **Tools** (or `python -m numpadctl list` and the service log, see
-Commands):
+- **No sound from the microphone** (in OBS, a call, anywhere): run `tools/mic-level`, a live meter for the default
+  microphone (`tools/mic-level SOURCE_NAME` for another; names from `pactl list short sources`). Stay quiet for the
+  first 2 seconds (it measures the room), then talk or tap the microphone: it shows how far above the room each sound
+  is, and when you stop it (Ctrl+C) it says whether the microphone works (15 dB or more above the room), is weak, or
+  hears nothing but the room (a muted switch on the cable, the wrong jack, or a 4-pole headset plug in a 3-pole
+  microphone jack). A microphone turned up all the way hears the whole room, so a bar that moves when you are not
+  talking is normal: what matters is that your voice rises well above it. It only measures: nothing is recorded.
 - **Key tester** lists, live, every press and release the numpad sends, with the time
   between them, and what the service made of it (→ `000`, for instance). Use it when a
   key does nothing or the `000` key doesn't register.
