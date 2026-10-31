@@ -466,8 +466,19 @@ you) or `"off"`; `python -m numpadctl update` checks right away.
 To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
 matching tag (`git tag v0.3.0 && git push --tags`).
 
-**Next:** a voice changer (EasyEffects presets on your microphone, one key; pause now checks that OBS really paused), the key map overlay (Ghost HUD: hold the layer key to see what every key does), Privacy panic (mute, pause and hide everything at once), Force-quit the focused window and a soundboard (Play a sound), Turbo (repeat any Press action while held, up to 60 a second); a whole keyboard can be added as an extra pad (Linux): every key can run actions, with
-Ctrl+Alt+Esc to give it back; the settings window draws it. See "A whole keyboard as an extra pad".
+**0.2.5:** a lot of new keys, mostly Linux:
+- **Extra keyboards:** a whole second keyboard can be an extra pad (Ctrl+Alt+Esc gives it back); the settings
+  window draws it.
+- **Key map overlay (Ghost HUD):** hold the layer key and a see-through copy of the numpad shows what each key does.
+- **Privacy panic** (mute, pause and hide everything at once) and **Undo privacy panic**, which puts back exactly
+  what it changed; **Force-quit the focused window** (press twice).
+- **Soundboard** (Play a sound, Stop all sounds), **Turbo** (repeat a Press action while held, up to 60 a second)
+  and a **voice changer** (EasyEffects voices on your microphone, one key; Linux).
+- **OBS:** pause now checks that OBS really paused (some recording settings can't), and refusals read plainly.
+- **Tools:** `tools/mic-level` (a live microphone meter), `tools/voice-demo` (hear each voice without a microphone),
+  and end-to-end tests against a real, private OBS.
+- **Fixes:** the voice key waits for EasyEffects to finish starting; the overlay never outlives its service; an
+  update no longer deletes the launcher entry.
 
 **0.2.4:** a welcome tour on first launch (find the numpad, pick a starting point, press a key to
 see it register), also in Tools → Welcome tour; the Linux launcher entry now matches "Numpad Pilot"
