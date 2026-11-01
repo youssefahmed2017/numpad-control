@@ -227,7 +227,7 @@ QToolButton:checked { color: ${onTertiaryContainer}; }
 QToolButton::menu-indicator { image: none; }
 
 QLineEdit, QPlainTextEdit, QComboBox, QSpinBox, QListWidget { background: transparent; color: ${onSurface};
-    border: 1px solid ${outline}; border-radius: ${r_m}; padding: 8px 14px;
+    border: 1px solid ${outline}; border-radius: ${r_xs}; padding: 8px 14px;
     selection-background-color: ${primary}; selection-color: ${onPrimary}; }
 QLineEdit:hover, QPlainTextEdit:hover, QComboBox:hover, QSpinBox:hover { border-color: ${onSurface}; }
 QLineEdit:focus, QPlainTextEdit:focus, QComboBox:focus, QSpinBox:focus, QListWidget:focus {
@@ -264,6 +264,5 @@ QMenu::separator { height: 1px; background: ${outlineVariant}; margin: 6px 0; }
 QToolTip { background: ${inverseSurface}; color: ${inverseOnSurface}; border: none; padding: 4px 8px; }
 QScrollArea { border: none; background: transparent; }
 QScrollArea > QWidget > QWidget { background: transparent; }
-QStatusBar { color: ${onSurfaceVariant}; background: transparent; }
 QDialogButtonBox QPushButton { min-width: 72px; }
 """

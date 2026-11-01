@@ -225,7 +225,7 @@ class QtWindowTest(unittest.TestCase):
         from numpadctl import presets
         with mock.patch.object(dialogs.PresetDialog, "ask", return_value=presets.BY_NAME["Media and volume"]):
             self.w.add_preset()
-        self.assertIn("kept as they were", self.w.statusBar().currentMessage())
+        self.assertIn("kept as they were", self.w.snackbar.text())
         self.assertTrue(self.w.save())
         keymap = self.saved()
         self.assertEqual(keymap["8"]["tap"]["action"], "if_mode", "key 8 already had a setup: kept")
@@ -234,7 +234,7 @@ class QtWindowTest(unittest.TestCase):
     def test_learn_needs_the_service(self):
         self.w.learn.setChecked(True)
         self.assertFalse(self.w.learn.isChecked())
-        self.assertIn("needs the background service", self.w.statusBar().currentMessage())
+        self.assertIn("needs the background service", self.w.snackbar.text())
 
     def test_welcome_flow(self):
         from numpadctl_ui import welcome
@@ -467,11 +467,11 @@ class QtWindowTest(unittest.TestCase):
         dialog = dialogs.SettingsDialog(self.w)
         self.addCleanup(dialog.deleteLater)
         dialog.preview_hud()
-        self.assertIn("isn't running", self.w.statusBar().currentMessage())
+        self.assertIn("isn't running", self.w.snackbar.text())
         self.w.link.connected = True
         self.addCleanup(lambda: setattr(self.w.link, "connected", False))
         dialog.preview_hud()
-        self.assertIn("layer key", self.w.statusBar().currentMessage())
+        self.assertIn("layer key", self.w.snackbar.text())
         self.assertEqual(self.w.link.sent, [])
         self.w.cfg["layer_key"] = "."
         dialog.preview_hud()

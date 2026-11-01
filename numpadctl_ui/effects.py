@@ -5,13 +5,15 @@ clipped circle on one button for a few hundred milliseconds, and graphics effect
 as long as an animation (or on the one app bar).
 """
 
-from PySide6.QtCore import QEasingCurve, QEvent, QObject, QPropertyAnimation, QRectF, Qt, QVariantAnimation
+from PySide6.QtCore import QEvent, QObject, QRectF, Qt
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPalette
 from PySide6.QtWidgets import QAbstractButton, QCheckBox, QGraphicsDropShadowEffect, QGraphicsOpacityEffect, QWidget
 
-RIPPLE_MS = 450
+from . import motion
+
+RIPPLE_MS = motion.LONG1
 RIPPLE_ALPHA = 0.16      # a bit above the 10% "pressed" state layer, fading out as it spreads
-FADE_MS = 160
+FADE_MS = motion.SHORT4
 
 
 class Ripple(QWidget):
@@ -23,18 +25,15 @@ class Ripple(QWidget):
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.center = None
         self.progress = 1.0
-        self.animation = QVariantAnimation(self, duration=RIPPLE_MS, startValue=0.0, endValue=1.0)
-        self.animation.setEasingCurve(QEasingCurve.OutCubic)
-        self.animation.valueChanged.connect(self._step)
-        self.animation.finished.connect(self.update)
+        self.animation = motion.Tween(self, RIPPLE_MS, "standard_decelerate", self._step)
+        self.animation.when_done(self.update)
         self.setGeometry(button.rect())
 
     def start(self, point):
         self.center = point
         self.setGeometry(self.button.rect())
         self.raise_()
-        self.animation.stop()
-        self.animation.start()
+        self.animation.go(0.0, 1.0)
 
     def _step(self, value):
         self.progress = value
@@ -50,7 +49,7 @@ class Ripple(QWidget):
         return float(r)
 
     def paintEvent(self, event):
-        if self.center is None or self.animation.state() != QVariantAnimation.Running:
+        if self.center is None or not self.animation.running():
             return
         color_for = getattr(self.button, "ripple_color", None)
         color = QColor(color_for() if color_for else self.button.palette().color(QPalette.ButtonText))
@@ -98,16 +97,11 @@ def fade_in(widget, ms=FADE_MS):
     effect = QGraphicsOpacityEffect(widget)
     effect.setOpacity(0.0)
     widget.setGraphicsEffect(effect)
-    animation = QPropertyAnimation(effect, b"opacity", widget)
-    animation.setDuration(ms)
-    animation.setStartValue(0.0)
-    animation.setEndValue(1.0)
-    animation.setEasingCurve(QEasingCurve.OutCubic)
 
     def done():
         if widget.graphicsEffect() is effect:
             widget.setGraphicsEffect(None)
-    animation.finished.connect(done)
-    animation.start(QPropertyAnimation.DeleteWhenStopped)
-    return animation
-
+    tween = motion.Tween(widget, ms, "standard_decelerate", effect.setOpacity)
+    tween.when_done(done)
+    tween.go(0.0, 1.0)
+    return tween

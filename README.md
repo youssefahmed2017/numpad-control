@@ -564,6 +564,10 @@ system; your user name and home folder taken out) is also kept in
 - `numpadctl/daemon.py`: the background service: key timing (press / hold / double
   tap, repeat, rapid-fire, layer key, `000`), profiles, and the link to the window
 - `numpadctl/keys.py`: key ids and names for the standard keys, learned extra keys and the keys of extra keyboards (`hp:KEY_A`)
+- `numpadctl_ui/motion.py`: Material 3 motion for the whole window: the easing curves, the duration steps and the springs
+  (M3 Expressive), as `Tween` and `Spring`; every animation takes its feel from here
+- `numpadctl_ui/snackbar.py`: the Material 3 snackbar that confirms what you did (arrives with emphasized-decelerate, 4 px
+  corners, inverse surface); `MainWindow.toast()` shows one
 - `numpadctl_ui/hud.py`: the key map overlay, a separate small process the service starts (`Daemon.manage_hud`)
 - `numpadctl/devices.py`: finds the keyboards that can be added as extra pads, and installs the udev rule that lets you read one (Linux)
 - `numpadctl/actions.py`: every action, plus macros and modes logic

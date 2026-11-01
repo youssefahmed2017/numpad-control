@@ -2,7 +2,7 @@
 
 import copy
 
-from PySide6.QtCore import QEvent, QRectF, Qt, QTimer, QVariantAnimation
+from PySide6.QtCore import QEvent, QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLineEdit, QMainWindow, QMessageBox,
@@ -10,13 +10,13 @@ from PySide6.QtWidgets import (
 
 from numpadctl import actions, config, devices, keys, presets, ui_common
 from numpadctl.platform import IS_WINDOWS
-from . import dialogs, effects, egg, secret, theme, tokens, tools, welcome
+from . import dialogs, effects, egg, motion, secret, theme, tokens, tools, welcome
+from .snackbar import Snackbar
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, SpinBox, ToolButton, _Morph
 from .picker import ActionPicker
 from .widgets import Dispatcher, add_param_widgets, card, label
 
 FLASH_MS = 250
-KEY_FADE_MS = 160
 KEY_RADIUS = 20
 KEY_HOVER_RADIUS = 30
 KEY_PRESSED_RADIUS = 10
@@ -50,15 +50,10 @@ class KeyButton(_Morph, QPushButton):
         self.action.setVisible(not compact)
 
     def _animation(self, apply):
-        animation = QVariantAnimation(self, duration=KEY_FADE_MS)
-        animation.valueChanged.connect(lambda value: (apply(value), self.update()))
-        return animation
+        return motion.Spring(self, "default_effects", lambda value: (apply(value), self.update()))
 
-    def _fade(self, animation, current, target):
-        animation.stop()
-        animation.setStartValue(float(current))
-        animation.setEndValue(float(target))
-        animation.start()
+    def _fade(self, spring, current, target):
+        spring.go(current, target)
 
     def _set(self, prop, value):
         if self.property(prop) == value:  # re-styling is slow: only when something changed
@@ -145,6 +140,7 @@ class MainWindow(QMainWindow):
         outer = QVBoxLayout(central)
         outer.setContentsMargins(12, 12, 12, 8)
         outer.setSpacing(12)
+        self.snackbar = Snackbar(self)
         self.appbar = self._build_header()
         outer.addWidget(self.appbar)
         outer.addWidget(self._build_banner())
@@ -972,7 +968,11 @@ class MainWindow(QMainWindow):
 
     # ---------------------------------------------------------------- feedback
     def toast(self, message):
-        self.statusBar().showMessage(message, 4000)
+        self.snackbar.show_message(message)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.snackbar.reposition()
 
     def show_problems(self, problems, ok_message):
         if problems:

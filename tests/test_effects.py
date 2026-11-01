@@ -33,11 +33,11 @@ class EffectsTest(unittest.TestCase):
         QTest.qWait(120)
         ripple = button.findChild(effects.Ripple)
         self.assertIsNotNone(ripple, "a ripple layer was added on first press")
-        self.assertEqual(ripple.animation.state().name, "Running")
+        self.assertTrue(ripple.animation.running())
         self.assertNotEqual(pixels(button), before, "the ripple is visible mid-animation")
         QTest.mouseRelease(button, Qt.LeftButton, Qt.NoModifier, QPoint(20, 20))
         QTest.qWait(effects.RIPPLE_MS + 80)
-        self.assertEqual(ripple.animation.state().name, "Stopped")
+        self.assertFalse(ripple.animation.running())
         self.assertEqual(pixels(button), before, "nothing is left drawn after it ends")
         button.deleteLater()
 

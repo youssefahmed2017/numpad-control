@@ -8,20 +8,15 @@ stylesheet can't animate a corner radius.
 
 import time
 
-from PySide6.QtCore import QEasingCurve, QEvent, QPropertyAnimation, QRectF, Qt, QTimer, QVariantAnimation
+from PySide6.QtCore import QEvent, QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QAbstractScrollArea, QComboBox, QMenu, QPushButton, QScrollArea, QSpinBox, QStyledItemDelegate, QToolButton
 
-from . import theme, tokens
+from . import motion, theme, tokens
 
 REST_RADIUS = 10      # corner radius at rest (px)
 PRESSED_RADIUS = 4    # ...while pressed
-MORPH_MS = 170
-PRESS_MS = 130        # the squeeze while pressed...
-PRESS_HOLD_MS = 150   # ...stays at least this long, so even a quick click is seen over many frames
-RELEASE_MS = 340      # then it springs back with a little overshoot
-REVEAL_MS = 150
-SCROLL_MS = 220
+PRESS_HOLD_MS = 150   # the squeeze stays at least this long, so even a quick click is seen over many frames
 SCROLL_PX_PER_NOTCH = 72
 
 
@@ -31,25 +26,19 @@ class _Morph:
     def _morph_setup(self):  # call once from __init__
         self._hover = 0.0
         self._press = 0.0
-        self._hover_anim = self._anim(lambda v: setattr(self, "_hover", v), MORPH_MS)
-        self._press_anim = self._anim(lambda v: setattr(self, "_press", v), PRESS_MS)
+        self._hover_anim = self._spring(lambda v: setattr(self, "_hover", v), "default_spatial")
+        self._press_anim = self._spring(lambda v: setattr(self, "_press", v), "fast_effects")
         self._press_target = 0.0
         self._press_since = 0.0
         self._watch = QTimer(self, interval=20)
         self._watch.timeout.connect(self._watch_press)
 
-    def _anim(self, apply, ms):
-        animation = QVariantAnimation(self, duration=ms)
-        animation.setEasingCurve(QEasingCurve.OutCubic)
-        animation.valueChanged.connect(lambda value: (apply(value), self.update()))
-        return animation
+    def _spring(self, apply, name):
+        return motion.Spring(self, name, lambda value: (apply(value), self.update()))
 
     @staticmethod
-    def _go(animation, current, target):
-        animation.stop()
-        animation.setStartValue(float(current))
-        animation.setEndValue(float(target))
-        animation.start()
+    def _go(spring, current, target):
+        spring.go(current, target)
 
     def enterEvent(self, event):
         if self.isEnabled():
@@ -69,8 +58,7 @@ class _Morph:
         """Start the squeeze when the button goes down (also true while a tool button's menu is open)."""
         if self.isDown() and self._press_target == 0.0:
             self._press_target, self._press_since = 1.0, time.monotonic()
-            self._press_anim.setEasingCurve(QEasingCurve.OutCubic)
-            self._press_anim.setDuration(PRESS_MS)
+            self._press_anim.set_spring("fast_effects")  # down: quick, no overshoot
             self._go(self._press_anim, self._press, 1)
             self._watch.start()  # the release is decided here, not in paint: nothing may repaint a button after a click
 
@@ -80,8 +68,7 @@ class _Morph:
             return
         self._watch.stop()
         self._press_target = 0.0
-        self._press_anim.setEasingCurve(QEasingCurve.OutBack)
-        self._press_anim.setDuration(RELEASE_MS)
+        self._press_anim.set_spring("fast_spatial")  # up: springs back past rest and settles
         self._go(self._press_anim, self._press, 0)
 
     def current_radius(self):
@@ -149,23 +136,19 @@ class ToolButton(_Morph, QToolButton):
         self._morph_setup()
 
 
-def reveal(popup, ms=REVEAL_MS):
+def reveal(popup, ms=motion.MEDIUM1):
     """Open a popup window with a short grow instead of appearing at once (Wayland has no window opacity)."""
     final = popup.geometry()
     if final.height() < 24:
         return
-    animation = QVariantAnimation(popup, duration=ms, startValue=0.0, endValue=1.0)
-    animation.setEasingCurve(QEasingCurve.OutCubic)
 
     def step(v):
         popup.resize(final.width(), max(12, round(final.height() * (0.55 + 0.45 * v))))
 
-    def done():
-        popup.resize(final.size())
-    animation.valueChanged.connect(step)
-    animation.finished.connect(done)
+    tween = motion.Tween(popup, ms, "emphasized_decelerate", step)
+    tween.when_done(lambda: popup.resize(final.size()))
     step(0.0)
-    animation.start(QVariantAnimation.DeleteWhenStopped)
+    tween.go(0.0, 1.0)
 
 
 def scroll_page(widget, event):
@@ -214,19 +197,16 @@ class SmoothScrollArea(QScrollArea):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._glide = QPropertyAnimation(self.verticalScrollBar(), b"value", self)
-        self._glide.setDuration(SCROLL_MS)
-        self._glide.setEasingCurve(QEasingCurve.OutCubic)
+        bar = self.verticalScrollBar()
+        self._glide = motion.Tween(self, motion.MEDIUM1, "standard_decelerate", lambda v: bar.setValue(round(v)))
+        self._glide_target = 0
 
     def wheelEvent(self, event):
         bar = self.verticalScrollBar()
         if event.pixelDelta().y() or not event.angleDelta().y() or bar.maximum() == 0:
             return super().wheelEvent(event)  # touchpads already scroll smoothly
-        running = self._glide.state() == QPropertyAnimation.Running
-        start = self._glide.endValue() if running else bar.value()
+        start = self._glide_target if self._glide.running() else bar.value()
         target = max(0, min(bar.maximum(), int(start) - round(event.angleDelta().y() / 120 * SCROLL_PX_PER_NOTCH)))
-        self._glide.stop()
-        self._glide.setStartValue(bar.value())
-        self._glide.setEndValue(target)
-        self._glide.start()
+        self._glide_target = target
+        self._glide.go(bar.value(), target)
         event.accept()

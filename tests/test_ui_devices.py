@@ -172,12 +172,12 @@ class DeviceWindowTest(unittest.TestCase):
         status = {"event": "status", "running": True, "connected": True, "devices": ["n"],
                   "extra": {"hp": {"connected": False, "released": True}}}
         self.w.on_service_message({**status, "extra": {"hp": {"connected": True, "released": False}}})
-        self.assertNotIn("typing again", self.w.statusBar().currentMessage())
+        self.assertNotIn("typing again", self.w.snackbar.text())
         self.w.on_service_message(status)
-        self.assertIn("HP keyboard is typing again", self.w.statusBar().currentMessage())
-        self.w.statusBar().clearMessage()
+        self.assertIn("HP keyboard is typing again", self.w.snackbar.text())
+        self.w.snackbar.clear()
         self.w.on_service_message(status)  # the same news again: not repeated
-        self.assertEqual(self.w.statusBar().currentMessage(), "")
+        self.assertEqual(self.w.snackbar.text(), "")
 
     def test_the_picture_has_every_key_once(self):
         names = [n for n, *_ in ui_common.KEYBOARD_LAYOUT]

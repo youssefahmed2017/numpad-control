@@ -7,17 +7,16 @@ a window the window manager doesn't manage floats above everything without being
 
 import sys
 
-from PySide6.QtCore import QRectF, Qt, QVariantAnimation
+from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QCursor, QFont, QFontMetrics, QGuiApplication, QPainter
 from PySide6.QtWidgets import QApplication, QWidget
 
 from numpadctl import config, ui_common
 
-from . import theme, tokens
+from . import motion, theme, tokens
 from .widgets import Dispatcher
 
 CELL_W, CELL_H, GAP, PAD, TITLE_H = 104, 70, 8, 20, 34
-FADE_MS = 140
 GONE_AFTER = 5  # status messages saying the service is gone, 2 s apart, before the overlay quits too
 ROWS, COLUMNS = 5, 4
 
@@ -35,9 +34,8 @@ class Hud(QWidget):
                           PAD * 2 + TITLE_H + ROWS * CELL_H + (ROWS - 1) * GAP)
         self.keys, self.opacity, self.alpha = {}, 0.9, 0.0
         self.gone = 0
-        self.fade = QVariantAnimation(self, duration=FADE_MS)
-        self.fade.valueChanged.connect(self.set_alpha)
-        self.fade.finished.connect(self.faded)
+        self.fade = motion.Spring(self, "default_effects", self.set_alpha)
+        self.fade.when_done(self.faded)
 
     # ---------------------------------------------------------------- showing and hiding
     def set_alpha(self, value):
@@ -45,10 +43,7 @@ class Hud(QWidget):
         self.update()
 
     def fade_to(self, target):
-        self.fade.stop()
-        self.fade.setStartValue(self.alpha)
-        self.fade.setEndValue(target)
-        self.fade.start()
+        self.fade.go(self.alpha, target)
 
     def faded(self):
         if self.alpha <= 0.0:
