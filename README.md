@@ -34,7 +34,8 @@ or download `NumpadPilot-Setup-<version>.exe` from the [Releases](https://github
 page. Its wizard follows Windows' light or dark setting. It carries its own Python, needs no administrator rights, and is removed from
 Settings → Apps. If an older copy from the PowerShell installer is on the PC, the installer
 stops and removes it first (your settings stay). The installer is not code-signed yet, so Windows SmartScreen may warn:
-choose *More info → Run anyway*. Updates come from `winget upgrade` or a newer installer.
+choose *More info → Run anyway*. Updates install themselves (see Updates below), or come from `winget upgrade`
+or a newer installer.
 How it is built: [`packaging/windows/`](packaging/windows/), and the winget manifests in
 [`packaging/winget/`](packaging/winget/).
 
@@ -472,22 +473,27 @@ Keys that already do something are never changed, and you can edit everything af
 NumpadPilot updates itself: once a day the service asks GitHub for the latest
 release, and if it's newer, installs it the way it was installed (git: fast-forward to the
 release; zip: swap the folders, keeping `.venv`), updates the Python packages and restarts,
-with a notification. Only releases are installed, never unfinished work. A copy with local
+with a notification. On Windows (installed with the installer) the app downloads the newer
+installer, checks it against the signature and runs it silently: the installer closes
+NumpadPilot, replaces the files (a plain file swap can't replace ones that are in use) and starts
+it again, and your settings stay. Copies from the AUR are updated by `yay -Syu` instead. Only
+releases are installed, never unfinished work. A copy with local
 changes isn't touched. Settings: `"updates"`: `"auto"` (default), `"notify"` (only tell
 you) or `"off"`; `python -m numpadctl update` checks right away.
 
 **Releases are signed.** The updater installs only releases signed with the author's offline
 key (its public half is in `numpadctl/release_key.py`): the signature names the exact commit
-(git copies) or the exact `source.zip` hash (zip copies) and is checked before anything on
-disk changes. A tag moved after signing, a swapped download or an unsigned release is refused
+(git copies), the exact `source.zip` hash (zip copies) or the exact Windows installer's hash
+and is checked before anything on disk changes or anything is run. A tag moved after signing, a swapped download or an unsigned release is refused
 with the reason. [`SECURITY.md`](SECURITY.md) says what that does and doesn't protect.
 
 To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, push the
 matching tag (`git tag v0.3.0 && git push --tags`; the Release workflow makes the release and
 the Windows installer), then **sign it on your own computer**:
-`tools/sign-release sign v0.3.0 --key <your key file>`. It checks the tag is the same commit on
-GitHub, builds `source.zip` from that commit, shows you what it will sign, and uploads
-`source.zip` and `release.sig` to the release. Until then, installed copies see the release
+`tools/sign-release sign v0.3.0 --key <your key file>`. Wait for the Release workflow to finish first
+(it attaches the Windows installer). The tool checks the tag is the same commit on GitHub, builds
+`source.zip` from that commit, hashes the installer CI built, shows you what it will sign, and
+uploads `source.zip` and `release.sig` to the release. Until then, installed copies see the release
 but refuse to install it.
 
 **0.2.6:** security and profile sets.

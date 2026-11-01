@@ -46,6 +46,8 @@ ZIP_URL = f"https://github.com/{REPO}/releases/download/{{tag}}/source.zip"
 SIGNATURE_URL = f"https://github.com/{REPO}/releases/download/{{tag}}/release.sig"
 MAX_SIGNATURE_BYTES = 8192
 MAX_ZIP_BYTES = 200 * 1024 * 1024
+INSTALLER_URL = f"https://github.com/{REPO}/releases/download/{{tag}}/NumpadPilot-Setup-{{version}}.exe"
+MAX_INSTALLER_BYTES = 300 * 1024 * 1024
 ROOT = Path(__file__).resolve().parent.parent
 TAG = re.compile(r"v([0-9]+)\.([0-9]+)\.([0-9]+)")  # matched whole and ASCII-only: it goes into a git ref and a download URL
 CHECK_EVERY = 24 * 3600
@@ -54,10 +56,16 @@ NO_WINDOW = 0x08000000 if IS_WINDOWS else 0
 
 
 PACKAGED_MARKER = ".packaged"  # put there by a distro package (AUR): its package manager does the updating
+INSTALLER_MARKER = ".installer"  # put there by NumpadPilot-Setup.exe: updates run the newer Setup, not this code
 
 
 def packaged(root=ROOT):
     return (root / PACKAGED_MARKER).exists()
+
+
+def installer_install(root=ROOT):
+    """Whether this copy was put here by the Windows installer (which also does its updating)."""
+    return (root / INSTALLER_MARKER).exists()
 
 
 class UpdateError(Exception):
@@ -153,6 +161,8 @@ def verify_signature(tag, blob, public_key=None):
     if not re.fullmatch(r"[0-9a-f]{40}", str(signed.get("commit"))) or \
             not re.fullmatch(r"[0-9a-f]{64}", str(signed.get("zip_sha256"))):
         raise unsigned
+    if "installer_sha256" in signed and not re.fullmatch(r"[0-9a-f]{64}", str(signed["installer_sha256"])):
+        raise unsigned  # the Windows installer's hash is optional, but if it is there it must be one
     return signed
 
 
@@ -213,6 +223,42 @@ def _update_zip(tag, sha256, root=ROOT):
                 shutil.copy2(item, target)
 
 
+def _download_file(url, destination, limit, sha256, timeout=120):
+    """Save url to destination, but only if it is `limit` bytes or fewer and has this SHA-256.
+    The file is checked as it arrives and deleted if it is wrong, so a bad one is never left to run."""
+    request = urllib.request.Request(url, headers={"User-Agent": f"numpad-control/{__version__}"})
+    digest, size = hashlib.sha256(), 0
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response, open(destination, "wb") as out:
+            while chunk := response.read(1024 * 1024):
+                size += len(chunk)
+                if size > limit:
+                    raise UpdateError(f"{url} is bigger than expected, so it was refused")
+                digest.update(chunk)
+                out.write(chunk)
+        if digest.hexdigest() != sha256:
+            raise UpdateError("the installer isn't the file that was signed, so it wasn't run")
+    except BaseException:
+        Path(destination).unlink(missing_ok=True)
+        raise
+
+
+def _update_installer(tag, sha256):
+    """Windows: download the signed Setup for `tag` and start it silently; it closes this copy, replaces the
+    files (it knows how to replace ones that are in use, which a plain file swap can't) and starts it again."""
+    folder = paths.state_dir() / "updates"
+    folder.mkdir(parents=True, exist_ok=True)
+    for old in folder.glob("NumpadPilot-Setup-*.exe"):
+        old.unlink(missing_ok=True)
+    version = tag[1:]
+    setup = folder / f"NumpadPilot-Setup-{version}.exe"
+    _download_file(INSTALLER_URL.format(tag=tag, version=version), setup, MAX_INSTALLER_BYTES, sha256)
+    flags = 0x00000008 | 0x00000200 if IS_WINDOWS else 0  # detached, own process group: it outlives this copy
+    subprocess.Popen([str(setup), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS",
+                      "/RELAUNCH=1"], creationflags=flags, close_fds=True,
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
 def _update_packages(root=ROOT):
     requirements = root / "requirements.txt"
     if not requirements.exists():
@@ -224,17 +270,27 @@ def _update_packages(root=ROOT):
 
 
 def install(tag, root=ROOT):
-    """Install release `tag` over this copy. Raises UpdateError with a reason the user can act on."""
+    """Install release `tag` over this copy. Raises UpdateError with a reason the user can act on.
+
+    Returns "installer" when the Windows Setup was started (this copy must quit now so it can replace it),
+    otherwise None."""
     if not parse(tag):
         raise UpdateError(f"not a release tag: {tag}")
     if packaged(root):
-        raise UpdateError("NumpadPilot was installed by your package manager: update it with that (for example yay -Syu or winget upgrade)")
+        raise UpdateError("NumpadPilot was installed by your package manager: update it with that (for example yay -Syu)")
     log.info("updating to %s", tag)
     try:
         blob = _download(SIGNATURE_URL.format(tag=tag), MAX_SIGNATURE_BYTES, timeout=30)
     except (OSError, ValueError) as e:  # a release made before signing, or GitHub unreachable
         raise UpdateError(f"{tag} has no signature to check ({e}), so it wasn't installed") from None
     signed = verify_signature(tag, blob)
+    if installer_install(root):
+        if "installer_sha256" not in signed:
+            raise UpdateError(f"{tag} has no signed Windows installer, so it wasn't installed")
+        _update_installer(tag, signed["installer_sha256"])
+        _save_state(installed=tag, installed_at=time.time())
+        log.info("started the installer for %s", tag)
+        return "installer"
     if (root / ".git").exists():
         _update_git(tag, signed["commit"], root)
     else:
@@ -254,10 +310,13 @@ def main():
         return 0
     print(f"Installing {tag}…")
     try:
-        install(tag)
+        result = install(tag)
     except (UpdateError, OSError) as e:
         print(f"Couldn't update: {e}")
         return 1
+    if result == "installer":
+        print(f"The installer for {tag} is running. NumpadPilot closes and starts again by itself in a moment.")
+        return 0
     print(f"Updated to {tag}. Restart NumpadPilot to use it "
           "(Linux: systemctl --user restart numpad-control; Windows: Quit in the tray, then start it).")
     return 0

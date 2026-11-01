@@ -10,8 +10,9 @@ and the details are public afterwards.
 
 - **Updates.** Releases are signed offline with an Ed25519 key (`numpadctl/release_key.py` has the
   public half; `tools/sign-release` signs). The updater checks the signature, then that the commit
-  (git copies) or the `source.zip` hash (zip copies) is exactly what was signed, before it changes
-  anything. A stolen GitHub account, a moved tag or a swapped download is therefore refused. It does
+  (git copies), the `source.zip` hash (zip copies) or the Windows installer's hash (installer copies,
+  which update by running the new Setup silently) is exactly what was signed, before it changes or runs
+  anything. The installer is built by CI and signed after you have looked at the run. A stolen GitHub account, a moved tag or a swapped download is therefore refused. It does
   **not** protect against a stolen *signing key* (keep it offline, with a second copy) or against
   code you sign by mistake. The first signed release is the one that starts this: earlier copies trusted
   GitHub alone.

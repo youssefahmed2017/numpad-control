@@ -12,9 +12,14 @@ updated any more.
 `sign` does, in this order, and stops at the first thing that is wrong:
   1. the tag exists here, is the same commit on GitHub, and numpadctl/__init__.py says that version;
   2. it builds source.zip from that commit with git (so nothing built by CI is ever signed);
-  3. it shows what it will sign and waits for you to type the tag;
-  4. it writes release.sig (commit + source.zip hash, signed) and uploads both files to the
-     release with `gh` (the release must exist: release.yml makes it when the tag is pushed).
+  3. it finds the Windows installer on the release (built by CI once the tag is pushed; wait for the
+     Release workflow to finish) and hashes it, so installed Windows copies can update to it;
+  4. it shows what it will sign and waits for you to type the tag;
+  5. it writes release.sig (commit + source.zip hash + installer hash, signed) and uploads both files
+     to the release with `gh` (the release must exist: release.yml makes it when the tag is pushed).
+The installer is built by CI, not by you, so the tool can only sign the file CI produced; look at the
+Release workflow's run before you sign. `--installer none` signs without it (Windows copies then can't
+auto-update to this release); `--installer PATH` signs a Setup you built yourself.
 """
 
 import argparse
@@ -23,6 +28,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -77,7 +83,36 @@ def public_key_text(private):
         serialization.Encoding.Raw, serialization.PublicFormat.Raw)).decode()
 
 
-def sign(tag, key_path, upload):
+def file_sha256(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def find_installer(tag, choice):
+    """(path, sha256) of the Windows Setup to sign for, or None."""
+    if choice == "none":
+        return None
+    name = f"NumpadPilot-Setup-{tag[1:]}.exe"
+    if choice == "auto":
+        folder = Path(tempfile.mkdtemp(prefix="numpad-installer-"))
+        got = subprocess.run(["gh", "release", "download", tag, "-p", name, "-D", str(folder)], cwd=ROOT,
+                             capture_output=True, text=True) if shutil.which("gh") else None
+        path = folder / name
+        if got is None or got.returncode != 0 or not path.exists():
+            print(f"note: no {name} on the {tag} release yet, so Windows installs won't auto-update to it "
+                  "(wait for the Release workflow, or pass --installer none to skip)", file=sys.stderr)
+            return None
+    else:
+        path = Path(choice)
+        if not path.is_file():
+            fail(f"{path} isn't a file")
+    return path, file_sha256(path)
+
+
+def sign(tag, key_path, upload, installer_choice="auto"):
     if not TAG.fullmatch(tag):
         fail(f"{tag!r} isn't a release tag like v0.2.6")
     private = load_key(key_path)
@@ -105,11 +140,16 @@ def sign(tag, key_path, upload):
     out = Path(tempfile.mkdtemp(prefix="numpad-sign-"))
     archive = out / "source.zip"
     run("git", "archive", "--format=zip", f"--prefix=numpad-pilot-{tag}/", "-o", str(archive), commit)
-    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
-    statement = json.dumps({"app": "numpad-pilot", "tag": tag, "commit": commit, "zip_sha256": digest},
-                           sort_keys=True, separators=(",", ":"))
+    digest = file_sha256(archive)
+    fields = {"app": "numpad-pilot", "tag": tag, "commit": commit, "zip_sha256": digest}
+    installer = find_installer(tag, installer_choice)
+    if installer:
+        fields["installer_sha256"] = installer[1]
+    statement = json.dumps(fields, sort_keys=True, separators=(",", ":"))
 
     print(f"About to sign:\n  release  {tag}\n  commit   {commit}\n  source   {digest}  ({archive})")
+    print("  Windows ", f"{installer[1]}  ({installer[0].name}, {installer[0].stat().st_size // 1024} KB, built by CI)"
+          if installer else "no installer: Windows copies won't auto-update to this release")
     print("  subject ", run("git", "log", "-1", "--format=%s (%an, %ad)", commit))
     if input(f"Type {tag} to sign it: ").strip() != tag:
         fail("not confirmed; nothing signed")
@@ -133,11 +173,13 @@ def main():
     signing.add_argument("tag")
     signing.add_argument("--key", required=True)
     signing.add_argument("--no-upload", action="store_true")
+    signing.add_argument("--installer", default="auto", metavar="auto|none|PATH",
+                         help="the Windows Setup to sign for: found on the release (auto), skipped, or a file")
     args = parser.parse_args()
     if args.command == "keygen":
         keygen(args.keyfile)
     else:
-        sign(args.tag, args.key, not args.no_upload)
+        sign(args.tag, args.key, not args.no_upload, args.installer)
 
 
 if __name__ == "__main__":

@@ -42,9 +42,9 @@ class SignReleaseTest(unittest.TestCase):
         git(self.repo, "tag", "v0.2.6")
         git(self.repo, "push", "-q", "origin", "main", "v0.2.6")
 
-    def sign(self, tag="v0.2.6", answer=None, key=None):
+    def sign(self, tag="v0.2.6", answer=None, key=None, installer=None):
         return subprocess.run([sys.executable, str(self.repo / "tools" / "sign-release"), "sign", tag,
-                               "--key", str(key or self.key), "--no-upload"], cwd=self.repo,
+                               "--key", str(key or self.key), "--no-upload", "--installer", installer or "none"], cwd=self.repo,
                               input=(answer or tag) + "\n", capture_output=True, text=True)
 
     def files(self, done):
@@ -62,6 +62,27 @@ class SignReleaseTest(unittest.TestCase):
         names = zipfile.ZipFile(archive).namelist()
         self.assertIn("numpad-pilot-v0.2.6/numpadctl/__init__.py", names)
         self.assertFalse(any(".git/" in n for n in names))
+
+    def test_the_windows_installer_hash_is_signed_when_there_is_one(self):
+        setup = self.key.with_name("NumpadPilot-Setup-0.2.6.exe")
+        setup.write_bytes(b"MZ the installer CI built")
+        done = self.sign(installer=str(setup))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        _, signature = self.files(done)
+        signed = updater.verify_signature("v0.2.6", signature.read_bytes(), self.public)
+        self.assertEqual(signed["installer_sha256"], hashlib.sha256(setup.read_bytes()).hexdigest())
+        self.assertIn("built by CI", done.stdout)
+
+    def test_without_an_installer_the_signature_says_nothing_about_one(self):
+        done = self.sign()
+        _, signature = self.files(done)
+        self.assertNotIn("installer_sha256", updater.verify_signature("v0.2.6", signature.read_bytes(), self.public))
+        self.assertIn("Windows copies won't auto-update", done.stdout)
+
+    def test_a_missing_installer_file_is_refused(self):
+        done = self.sign(installer="/nonexistent/Setup.exe")
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("isn't a file", done.stderr)
 
     def test_nothing_is_signed_without_typing_the_tag(self):
         done = self.sign(answer="yes")

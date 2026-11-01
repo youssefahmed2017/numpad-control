@@ -41,8 +41,9 @@ foreach ($item in "numpadctl", "numpadctl_ui", "assets", "numpad-control.pyw", "
     Copy-Item -Recurse -Force (Join-Path $Root $item) $App
 }
 Get-ChildItem $App -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
-# Installed by an installer: updates come from winget or a newer installer, not from the app.
-Set-Content (Join-Path $App ".packaged") "" -Encoding ascii
+# Installed by this installer: the app updates itself by downloading the newer, signed installer and running it
+# (a plain file swap can't replace what is in use, and this Python has no pip), so it is marked as such.
+Set-Content (Join-Path $App ".installer") "" -Encoding ascii
 
 Step "Installer"
 $iscc = @("$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1

@@ -21,12 +21,12 @@ if (Test-Path $old) { throw "The old copy in $old wasn't removed." }
 if (Get-ItemProperty -Path $runKey -Name "Numpad Control" -ErrorAction SilentlyContinue) { throw "The old start-at-login entry is still there." }
 if (Test-Path $oldMenu) { throw "The old Start-menu folder is still there." }
 $python = Join-Path $dir "python\python.exe"
-foreach ($path in $python, (Join-Path $dir "numpad-control.pyw"), (Join-Path $dir ".packaged"), (Join-Path $dir "numpadctl\platform\numpadhook.dll")) {
+foreach ($path in $python, (Join-Path $dir "numpad-control.pyw"), (Join-Path $dir ".installer"), (Join-Path $dir "numpadctl\platform\numpadhook.dll")) {
     if (-not (Test-Path $path)) { throw "The installer didn't put $path in place." }
 }
 
 $env:QT_QPA_PLATFORM = "offscreen"
-& $python -c "import numpadctl, numpadctl_ui.window, numpadctl.platform.windows_tray as t, PySide6.QtWidgets, pystray; from numpadctl import updater; assert updater.packaged(); print('installed copy imports fine, version', numpadctl.__version__)"
+& $python -c "import numpadctl, numpadctl_ui.window, numpadctl.platform.windows_tray as t, PySide6.QtWidgets, pystray; from numpadctl import updater; assert updater.installer_install() and not updater.packaged(); print('installed copy imports fine, version', numpadctl.__version__)"
 if ($LASTEXITCODE -ne 0) { throw "The installed copy didn't start." }
 
 $uninstaller = Get-ChildItem $dir -Filter "unins*.exe" | Select-Object -First 1

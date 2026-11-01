@@ -233,6 +233,7 @@ def main():
         service = daemon.Daemon()
         app = TrayApp(service, open_file=lambda path: spawn("notepad.exe", str(path)))
         service.restart = app.restart_after_update
+        service.quit = app.quit  # the Setup an update starts brings the new copy up itself
         app.run()
         log.info("stopped")
     except Exception as e:

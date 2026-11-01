@@ -102,7 +102,7 @@ def _restart_in_place():
 
 
 class Daemon:
-    def __init__(self, run_action=None, restart=None):
+    def __init__(self, run_action=None, restart=None, quit=None):
         self.cfg = config.load()
         self.mtime = config.mtime()
         self.pool = ThreadPoolExecutor(max_workers=4)
@@ -116,6 +116,7 @@ class Daemon:
         self.paused_for = None  # name of the game with anti-cheat the numpad is let go for
         self.missing_notified = False  # told the user the numpad is missing (so say when it's back)
         self.restart = restart or _restart_in_place  # after an update (the Windows tray brings its own)
+        self.quit = quit or self.restart  # after starting the Windows Setup, which starts the new copy itself (the tray brings its own)
         self.clients = set()
         self.capturing = set()
         self.following = set()  # capturing clients that only want keys to select, not to learn new ones
@@ -641,17 +642,22 @@ class Daemon:
                 if tag and mode == "notify" and tag != told:
                     told = tag
                     actions.notify("NumpadPilot update", f"Version {tag[1:]} is out: " + (
-                                       "update it with your package manager (winget upgrade, yay -Syu)." if updater.packaged() else
+                                       "update it with your package manager (yay -Syu)." if updater.packaged() else
                                        "run the installer or `python -m numpadctl update` to get it."))
                 elif tag and mode == "auto":
                     while self.presses or self.layer_held:  # not in the middle of using the numpad
                         await asyncio.sleep(5)
                     try:
-                        await asyncio.to_thread(updater.install, tag)
+                        result = await asyncio.to_thread(updater.install, tag)
                     except (updater.UpdateError, OSError) as e:
                         log.warning("update to %s failed: %s", tag, e)
                         actions.notify("NumpadPilot couldn't update", str(e))
                     else:
+                        if result == "installer":  # the Windows Setup takes over: it closes this copy and starts the new one
+                            actions.notify("NumpadPilot is updating", f"Installing version {tag[1:]}; it starts again by itself.")
+                            self.shutdown()
+                            self.quit()
+                            return
                         actions.notify("NumpadPilot updated", f"Now version {tag[1:]}; restarting.")
                         self.shutdown()
                         self.restart()

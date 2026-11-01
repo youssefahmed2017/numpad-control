@@ -54,6 +54,8 @@ Name: "{autoprograms}\{#AppName} Settings"; Filename: "{app}\python\pythonw.exe"
 [Run]
 Filename: "{app}\python\python.exe"; Parameters: "-c ""from numpadctl.platform.windows_tray import set_autostart; set_autostart(True)"""; WorkingDir: "{app}"; Flags: runhidden; Tasks: autostart
 Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"""; WorkingDir: "{app}"; Flags: nowait skipifsilent
+; An update started by the app (/RELAUNCH=1) is silent but must start NumpadPilot again; other silent installs (winget) don't.
+Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"""; WorkingDir: "{app}"; Flags: nowait; Check: RelaunchRequested
 Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"" gui"; WorkingDir: "{app}"; Description: "Open the NumpadPilot settings"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
@@ -63,6 +65,11 @@ Filename: "{app}\python\python.exe"; Parameters: "-c ""from numpadctl.platform.w
 Type: filesandordirs; Name: "{app}"
 
 [Code]
+function RelaunchRequested: Boolean;
+begin
+  Result := WizardSilent and (ExpandConstant('{param:RELAUNCH|0}') = '1');
+end;
+
 // A copy put here by the old PowerShell installer (setup.ps1) would run next to this one, so find it,
 // stop it and remove it first. Settings stay (they live in %APPDATA%\numpad-control).
 procedure CurStepChanged(CurStep: TSetupStep);

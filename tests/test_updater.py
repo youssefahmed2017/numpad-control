@@ -168,6 +168,82 @@ class SignatureTest(unittest.TestCase):
             updater._download("https://example.com/x", 50)
 
 
+class WindowsInstallerUpdateTest(unittest.TestCase):
+    """Windows copies update by running the newer, signed Setup (a file swap can't replace what is in use)."""
+
+    def setUp(self):
+        self.private, self.public = make_key()
+        self.root = Path(tempfile.mkdtemp())
+        (self.root / updater.INSTALLER_MARKER).write_text("")
+        self.state = Path(tempfile.mkdtemp())
+        for patch in (mock.patch.object(updater.paths, "state_dir", lambda: self.state),
+                      mock.patch.object(updater.release_key, "PUBLIC_KEY", self.public),
+                      mock.patch.object(updater, "_save_state")):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def signature(self, **changes):
+        return sign(self.private, tag="v0.2.7", **changes)
+
+    def test_a_signed_installer_is_downloaded_checked_and_started(self):
+        setup_bytes = b"MZ fake setup"
+        with mock.patch.object(updater, "_download", return_value=self.signature(
+                installer_sha256=hashlib.sha256(setup_bytes).hexdigest())), \
+                mock.patch.object(updater.urllib.request, "urlopen", return_value=Response(setup_bytes)), \
+                mock.patch.object(updater.subprocess, "Popen") as popen, \
+                mock.patch.object(updater, "_update_packages") as pip, mock.patch.object(updater, "_update_zip") as zipped:
+            self.assertEqual(updater.install("v0.2.7", self.root), "installer")
+        argv = popen.call_args.args[0]
+        self.assertEqual(Path(argv[0]).name, "NumpadPilot-Setup-0.2.7.exe")
+        self.assertEqual(Path(argv[0]).read_bytes(), setup_bytes)
+        self.assertEqual(argv[1:], ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/RELAUNCH=1"])
+        pip.assert_not_called()  # the installer carries the packages; this Python has no pip
+        zipped.assert_not_called()
+
+    def test_a_swapped_installer_is_deleted_and_never_run(self):
+        with mock.patch.object(updater, "_download", return_value=self.signature(installer_sha256="a" * 64)), \
+                mock.patch.object(updater.urllib.request, "urlopen", return_value=Response(b"MZ evil")), \
+                mock.patch.object(updater.subprocess, "Popen") as popen, \
+                self.assertRaisesRegex(updater.UpdateError, "isn't the file that was signed"):
+            updater.install("v0.2.7", self.root)
+        popen.assert_not_called()
+        self.assertEqual(list((self.state / "updates").glob("*.exe")), [], "the bad file is not left lying around")
+
+    def test_an_oversized_installer_is_refused_and_deleted(self):
+        destination = self.state / "big.exe"
+        with mock.patch.object(updater.urllib.request, "urlopen", return_value=Response(b"x" * 100)), \
+                self.assertRaisesRegex(updater.UpdateError, "bigger than expected"):
+            updater._download_file("https://example.com/x.exe", destination, 50, "0" * 64)
+        self.assertFalse(destination.exists())
+
+    def test_a_release_signed_without_an_installer_is_not_installed(self):
+        with mock.patch.object(updater, "_download", return_value=self.signature()), \
+                mock.patch.object(updater.subprocess, "Popen") as popen, \
+                self.assertRaisesRegex(updater.UpdateError, "no signed Windows installer"):
+            updater.install("v0.2.7", self.root)
+        popen.assert_not_called()
+
+    def test_the_installer_hash_must_be_a_hash(self):
+        for bad in ("zzz", "A" * 64, "a" * 63, 5, None):
+            with self.assertRaises(updater.UpdateError, msg=repr(bad)):
+                updater.verify_signature("v0.2.7", self.signature(installer_sha256=bad), self.public)
+
+    def test_older_installers_are_cleared_before_a_new_one_is_saved(self):
+        (self.state / "updates").mkdir()
+        old = self.state / "updates" / "NumpadPilot-Setup-0.2.5.exe"
+        old.write_bytes(b"old")
+        with mock.patch.object(updater, "_download_file"), mock.patch.object(updater.subprocess, "Popen"):
+            updater._update_installer("v0.2.7", "a" * 64)
+        self.assertFalse(old.exists())
+
+    def test_a_package_managers_copy_still_updates_only_through_it(self):
+        (self.root / updater.PACKAGED_MARKER).write_text("")
+        with mock.patch.object(updater.subprocess, "Popen") as popen, \
+                self.assertRaisesRegex(updater.UpdateError, "package manager"):
+            updater.install("v0.2.7", self.root)
+        popen.assert_not_called()
+
+
 @unittest.skipIf(shutil.which("git") is None, "needs git")
 class GitUpdateTest(unittest.TestCase):
     def setUp(self):
@@ -259,14 +335,14 @@ class ZipUpdateTest(unittest.TestCase):
 
 
 class ServiceUpdatesTest(unittest.IsolatedAsyncioTestCase):
-    async def run_loop(self, mode, tag="v9.0.0", install_error=None):
-        d = daemon.Daemon(run_action=lambda *a: None, restart=mock.Mock())
+    async def run_loop(self, mode, tag="v9.0.0", install_error=None, install_result=None):
+        d = daemon.Daemon(run_action=lambda *a: None, restart=mock.Mock(), quit=mock.Mock())
         d.cfg = dict(d.cfg, updates=mode)
         with mock.patch.object(daemon, "UPDATE_FIRST_CHECK", 0), \
                 mock.patch.object(daemon, "UPDATE_LOOP_SECONDS", 0.01), \
                 mock.patch.object(daemon.updater, "due", return_value=True), \
                 mock.patch.object(daemon.updater, "check", return_value=tag), \
-                mock.patch.object(daemon.updater, "install", side_effect=install_error) as install, \
+                mock.patch.object(daemon.updater, "install", side_effect=install_error, return_value=install_result) as install, \
                 mock.patch.object(daemon.actions, "notify") as notify, \
                 mock.patch.object(daemon.ipc, "stop_server"):
             task = asyncio.create_task(d.update_loop())
@@ -279,6 +355,12 @@ class ServiceUpdatesTest(unittest.IsolatedAsyncioTestCase):
         install.assert_called_once_with("v9.0.0")
         d.restart.assert_called_once()
         self.assertEqual(notify.call_args.args[0], "NumpadPilot updated")
+
+    async def test_the_windows_installer_takes_over_instead_of_restarting(self):
+        d, install, notify = await self.run_loop("auto", install_result="installer")
+        d.quit.assert_called_once()
+        d.restart.assert_not_called()
+        self.assertEqual(notify.call_args.args[0], "NumpadPilot is updating")
 
     async def test_notify_only_says_so_once(self):
         d, install, notify = await self.run_loop("notify")
