@@ -429,7 +429,9 @@ helpers `open_url(url)` and `notify(title, body)`. eval/exec/compile/open,
 os/sys/subprocess and every other import, `_` names and introspection attributes
 are rejected. Snippets run in a separate process limited to 30 s CPU and 512 MB of
 memory, with no file writes and no process spawning. Opening URLs (http/https only)
-and notifications are carried out by the trusted parent process.
+and notifications are carried out by the trusted parent process, and a snippet that
+prints more than 64 KB, asks for more than 10 actions or sends an oversized request is
+stopped.
 This is a solid guardrail, not a perfect jail. Don't run snippets from people you
 don't trust.
 

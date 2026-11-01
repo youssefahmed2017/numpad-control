@@ -442,10 +442,18 @@ class Daemon:
         if self.hud_showing():  # e.g. the overlay was only just started: it still has to be told
             self.send(writer, self.hud_message(True))
         try:
-            while line := await reader.readline():
+            while True:
+                try:
+                    line = await reader.readline()
+                except ValueError:  # a line longer than the reader allows: not a real client, hang up
+                    break
+                if not line:
+                    break
                 try:
                     message = json.loads(line)
-                except ValueError:
+                except (ValueError, RecursionError):  # not JSON, or nested too deep to read
+                    continue
+                if not isinstance(message, dict):  # valid JSON, but not a command
                     continue
                 command = message.get("cmd")
                 if command == "capture":

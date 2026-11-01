@@ -240,10 +240,22 @@ d = config.load()["device"]; print(d["vendor"], d["product"])' "$DIR")
     note "using the numpad from your settings ($VENDOR:$PRODUCT)"
 elif [ "$DRY_RUN" = 0 ]; then
     note "Press any key on the numpad you want to use (15 seconds)…"
-    # Reading keyboards needs root until the permission rule below exists.
-    spec=$(sudo "$DIR/.venv/bin/python" -c 'import sys; sys.path.insert(0, sys.argv[1])
+    # Reading keyboards needs more than a user has until the permission rule below exists. Root must not run
+    # code from this folder for that (whatever can write here would then become root), so for these few
+    # seconds the keyboards are opened up to you alone, and closed again afterwards (also on Ctrl+C).
+    me=$(id -un)
+    revoke_input() { sudo setfacl -x "u:$me" /dev/input/event* 2> /dev/null || true; }
+    if command -v setfacl > /dev/null && sudo setfacl -m "u:$me:rw" /dev/input/event*; then
+        trap revoke_input EXIT INT TERM
+        spec=$("$DIR/.venv/bin/python" -c 'import sys; sys.path.insert(0, sys.argv[1])
 from numpadctl import daemon
 import json; print(json.dumps(daemon.detect_device()))' "$DIR" || echo null)
+        revoke_input
+        trap - EXIT INT TERM
+    else
+        spec=null
+        warn "can't look for the numpad without the setfacl tool (the acl package)."
+    fi
     if [ "$spec" != "null" ]; then
         read -r VENDOR PRODUCT < <(python3 -c 'import json, sys; d = json.loads(sys.argv[1]); print(d["vendor"], d["product"])' "$spec")
         note "found $VENDOR:$PRODUCT"

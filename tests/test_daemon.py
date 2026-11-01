@@ -1,4 +1,5 @@
 import asyncio
+import json
 import unittest
 from types import SimpleNamespace
 from unittest import mock
@@ -256,6 +257,49 @@ class SocketTest(unittest.IsolatedAsyncioTestCase):
         self.d.key_event("5", False)
         self.assertEqual(await self.message(), {"event": "key", "key": "5", "label": "5", "unknown": False})
         self.assertEqual(self.fired, ["media_play_pause"])
+
+    async def test_garbage_is_ignored_and_the_connection_keeps_working(self):
+        await self.message()
+        for junk in (b"[]\n", b"123\n", b'"text"\n', b"null\n", b"\xff\xfe\n", b"[" * 30000 + b"\n"):
+            self.writer.write(junk)
+        await self.send({"cmd": "status"})
+        self.assertEqual((await self.message())["event"], "status")
+
+    async def test_too_many_clients_are_hung_up_on_and_room_comes_back(self):
+        from numpadctl.platform import ipc
+        await self.message()  # the client from setUp counts as one
+        with mock.patch.object(ipc, "MAX_CLIENTS", 3):
+            kept = [await asyncio.open_connection(sock=ipc.connect()) for _ in range(2)]
+            for reader, _ in kept:
+                self.assertEqual(json.loads(await asyncio.wait_for(reader.readline(), 2))["event"], "status")
+            extra_reader, extra_writer = await asyncio.open_connection(sock=ipc.connect())
+            try:
+                self.assertEqual(await asyncio.wait_for(extra_reader.read(), 2), b"", "the fourth got nothing")
+            except ConnectionResetError:
+                pass  # also how being hung up on looks
+            extra_writer.close()
+            kept[0][1].close()
+            await asyncio.sleep(0.1)
+            again_reader, again_writer = await asyncio.open_connection(sock=ipc.connect())
+            self.assertEqual(json.loads(await asyncio.wait_for(again_reader.readline(), 2))["event"], "status")
+            for _, writer in (kept[1], (None, again_writer)):
+                writer.close()
+
+    async def test_a_huge_line_hangs_up_that_client_only(self):
+        from numpadctl.platform import ipc
+        await self.message()
+        self.writer.write(b"A" * 5_000_000)
+        try:
+            await asyncio.wait_for(self.writer.drain(), 2)
+        except (ConnectionError, asyncio.TimeoutError):
+            pass
+        try:
+            self.assertEqual(await asyncio.wait_for(self.reader.read(), 2), b"", "the service hung up")
+        except ConnectionResetError:
+            pass  # also how a hang-up with unread data looks
+        reader, writer = await asyncio.open_connection(sock=ipc.connect())  # everyone else is fine
+        self.assertEqual(json.loads(await asyncio.wait_for(reader.readline(), 2))["event"], "status")
+        writer.close()
 
     async def test_learn_mode_blocks_actions_until_turned_off(self):
         await self.message()

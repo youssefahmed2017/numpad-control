@@ -68,13 +68,21 @@ def refresh_session():
 
 def notify(title, body=""):
     if shutil.which("notify-send"):
-        subprocess.run(["notify-send", "-a", "NumpadPilot", title, body],
+        subprocess.run(["notify-send", "-a", "NumpadPilot", "--", title, body],
                        check=False, timeout=5)
 
 
 # ---------------------------------------------------------------- opening things
 
+def _not_an_option(target):
+    """xdg-open reads a leading "-" as an option, so a URL or path that starts with one is refused."""
+    if target.startswith("-"):
+        raise SystemActionError(f"{target!r} starts with '-', so it isn't a URL or path")
+    return target
+
+
 def open_url(url):
+    _not_an_option(url)
     # Not webbrowser.open(): it picks a browser once per process and keeps that
     # choice, so a service started before the desktop never finds a browser.
     if shutil.which("xdg-open"):
@@ -94,7 +102,7 @@ def open_default_browser():
 
 
 def open_path(path):
-    spawn("xdg-open", path)
+    spawn("xdg-open", _not_an_option(path))
 
 
 def launch_app(app_id):

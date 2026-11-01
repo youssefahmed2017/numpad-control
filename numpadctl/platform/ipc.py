@@ -7,12 +7,15 @@ and port are in a file only this user can read.
 """
 
 import asyncio
+import hmac
 import json
 import os
 import secrets
 import socket
 
 from . import IS_WINDOWS, paths
+
+MAX_CLIENTS = 16  # the window, overlay, tray and tools need a handful; more is a flood that would use up the service's file handles
 
 SOCKET_NAME = "numpad-control.sock"
 TCP_INFO_NAME = "numpad-control.port"
@@ -30,12 +33,29 @@ def _tcp_info_path():
     return paths.runtime_dir() / TCP_INFO_NAME
 
 
+def _limited(handle_client):
+    """handle_client, but only MAX_CLIENTS at a time: anyone past that is hung up on at once."""
+    open_clients = 0
+
+    async def limited(reader, writer):
+        nonlocal open_clients
+        if open_clients >= MAX_CLIENTS:
+            writer.close()
+            return
+        open_clients += 1
+        try:
+            await handle_client(reader, writer)
+        finally:
+            open_clients -= 1
+    return limited
+
+
 async def start_server(handle_client):
     """Start listening; handle_client(reader, writer) is called per client."""
     if not _use_tcp():
         path = socket_path()
         path.unlink(missing_ok=True)
-        server = await asyncio.start_unix_server(handle_client, path=str(path))
+        server = await asyncio.start_unix_server(_limited(handle_client), path=str(path))
         os.chmod(path, 0o600)
         return server
 
@@ -43,15 +63,15 @@ async def start_server(handle_client):
 
     async def checked(reader, writer):
         try:
-            first = await asyncio.wait_for(reader.readline(), 5)
+            first = await asyncio.wait_for(reader.readline(), 2)
         except (asyncio.TimeoutError, ConnectionError):
             first = b""
-        if first.strip() != key.encode():
+        if not hmac.compare_digest(first.strip(), key.encode()):
             writer.close()
             return
         await handle_client(reader, writer)
 
-    server = await asyncio.start_server(checked, host="127.0.0.1", port=0)
+    server = await asyncio.start_server(_limited(checked), host="127.0.0.1", port=0)  # the limit counts clients that haven't sent the key yet, too
     port = server.sockets[0].getsockname()[1]
     info = _tcp_info_path()
     info.parent.mkdir(parents=True, exist_ok=True)

@@ -38,7 +38,7 @@ REPO = "youssefahmed2017/numpad-pilot"
 LATEST_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
 ZIP_URL = f"https://github.com/{REPO}/archive/refs/tags/{{tag}}.zip"
 ROOT = Path(__file__).resolve().parent.parent
-TAG = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+TAG = re.compile(r"v([0-9]+)\.([0-9]+)\.([0-9]+)")  # matched whole and ASCII-only: it goes into a git ref and a download URL
 CHECK_EVERY = 24 * 3600
 KEEP = {".venv", ".git"}  # never replaced by a zip update
 NO_WINDOW = 0x08000000 if IS_WINDOWS else 0
@@ -57,7 +57,7 @@ class UpdateError(Exception):
 
 def parse(version):
     """(0, 2, 0) from "v0.2.0" or "0.2.0"; None if it isn't a plain version."""
-    match = TAG.match(version if version.startswith("v") else f"v{version}")
+    match = TAG.fullmatch(version if version.startswith("v") else f"v{version}")
     return tuple(int(n) for n in match.groups()) if match else None
 
 

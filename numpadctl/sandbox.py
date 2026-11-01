@@ -21,6 +21,9 @@ import sys
 from types import SimpleNamespace
 
 TIMEOUT_SECONDS = 30
+MAX_OUTPUT = 64 * 1024     # characters a snippet may print before it is stopped
+MAX_REQUESTS = 10          # URLs opened + notifications per run: a loop can't flood the desktop
+MAX_REQUEST_LINE = 4096    # one request is a short line; a longer one would only fill our memory
 
 # module name -> attributes the snippet may use
 ALLOWED_MODULES = {
@@ -199,8 +202,8 @@ def _default_open_url(url):
 
 def _default_notify(title, body):
     import subprocess
-    subprocess.run(["notify-send", "-a", "NumpadPilot", title, body],
-                   check=False, timeout=5)
+    subprocess.run(["notify-send", "-a", "NumpadPilot", "--", title, body],
+                   check=False, timeout=5)  # "--": a title like "--hint=..." is text, not an option
 
 
 def run(code, on_open_url=_default_open_url, on_notify=_default_notify):
@@ -220,24 +223,53 @@ def run(code, on_open_url=_default_open_url, on_notify=_default_notify):
         text=True, pass_fds=(write_fd,), preexec_fn=_limit_resources,
     )
     os.close(write_fd)
+    stopped = []  # why we killed it, if we did
+    output = []
+
+    def stop(reason):
+        if not stopped:
+            stopped.append(reason)
+            proc.kill()
 
     def pump():
+        """Carry out what the snippet asks for, as far as the limits allow."""
+        count = 0
         with open(read_fd) as requests:
-            for line in requests:
+            while line := requests.readline(MAX_REQUEST_LINE + 1):
+                count += 1
+                if count > MAX_REQUESTS:
+                    return stop(f"snippet stopped: it asked for more than {MAX_REQUESTS} actions")
+                if len(line) > MAX_REQUEST_LINE:
+                    return stop("snippet stopped: one of its requests was too large")
                 _handle_request(line, on_open_url, on_notify)
 
-    pumper = threading.Thread(target=pump, daemon=True)
-    pumper.start()
+    def read_output():
+        size = 0
+        while chunk := proc.stdout.read(4096):
+            size += len(chunk)
+            if size > MAX_OUTPUT:
+                return stop(f"snippet stopped: it printed more than {MAX_OUTPUT // 1024} KB")
+            output.append(chunk)
+
+    threads = [threading.Thread(target=pump, daemon=True), threading.Thread(target=read_output, daemon=True)]
+    for thread in threads:
+        thread.start()
     try:
-        output, _ = proc.communicate(json.dumps({"code": code}),
-                                     timeout=TIMEOUT_SECONDS)
+        proc.stdin.write(json.dumps({"code": code}))
+        proc.stdin.close()
+    except OSError:
+        pass  # it already ended (killed by a limit); the reasons below say why
+    try:
+        proc.wait(timeout=TIMEOUT_SECONDS)
     except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.communicate()
-        return False, f"snippet killed after {TIMEOUT_SECONDS}s"
-    finally:
-        pumper.join(timeout=2)
-    return proc.returncode == 0, output.strip()
+        stop(f"snippet killed after {TIMEOUT_SECONDS}s")
+        proc.wait()
+    for thread in threads:
+        thread.join(timeout=2)
+    proc.stdout.close()
+    if stopped:
+        return False, stopped[0]
+    return proc.returncode == 0, "".join(output).strip()
 
 
 if __name__ == "__main__":

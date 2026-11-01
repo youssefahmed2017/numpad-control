@@ -42,6 +42,11 @@ class VersionTest(unittest.TestCase):
         self.assertIsNone(updater.parse("v1.0-beta"))
         self.assertGreater(updater.parse("v0.10.0"), updater.parse("v0.9.9"))
 
+    def test_a_tag_must_be_exactly_a_version(self):
+        # A tag ends up in a git ref and a download URL: nothing extra may ride along.
+        for tag in ("v1.2.3\n", "v1.2.3 ", "v1.2.3/../x", "v١.٢.٣", "v1.2.3;id", "v1.2.3.zip", "../v1.2.3", "v1.2.3-rc1", "vv1.2.3", ""):
+            self.assertIsNone(updater.parse(tag), repr(tag))
+
     def test_only_a_newer_release_is_offered(self):
         with mock.patch.object(updater, "__version__", "0.2.0"):
             for latest, expected in [("v0.3.0", "v0.3.0"), ("v0.2.0", None), ("v0.1.0", None), (None, None)]:

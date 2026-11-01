@@ -54,6 +54,50 @@ class SandboxTest(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("MemoryError", out)
 
+    # Found by attacking the sandbox: a loop could print until the service ran out of
+    # memory, or ask for a million URLs / notifications.
+    def test_endless_output_is_stopped(self):
+        ok, out = sandbox.run("while True:\n    print('x' * 100000)\n")
+        self.assertFalse(ok)
+        self.assertIn("printed more than", out)
+
+    def test_a_loop_cannot_open_more_than_a_few_urls(self):
+        opened = []
+        ok, out = sandbox.run("while True:\n    open_url('https://example.com')\n",
+                              on_open_url=opened.append, on_notify=lambda *a: None)
+        self.assertFalse(ok)
+        self.assertIn("more than", out)
+        self.assertLessEqual(len(opened), sandbox.MAX_REQUESTS)
+
+    def test_a_loop_cannot_flood_notifications(self):
+        notes = []
+        ok, _ = sandbox.run("while True:\n    notify('hi', 'there')\n",
+                            on_open_url=lambda u: None, on_notify=lambda *a: notes.append(a))
+        self.assertFalse(ok)
+        self.assertLessEqual(len(notes), sandbox.MAX_REQUESTS)
+
+    def test_an_oversized_request_is_stopped(self):
+        notes = []
+        ok, out = sandbox.run("notify('a' * 200000, 'b')", on_open_url=lambda u: None,
+                              on_notify=lambda *a: notes.append(a))
+        self.assertFalse(ok)
+        self.assertEqual(notes, [])
+        self.assertIn("too large", out)
+
+    def test_normal_use_still_fits_in_the_limits(self):
+        notes = []
+        ok, out = sandbox.run("for i in range(5):\n    pass\nnotify('done', 'ok')\nprint('hello')",
+                              on_open_url=lambda u: None, on_notify=lambda *a: notes.append(a))
+        self.assertTrue(ok, out)
+        self.assertEqual(out, "hello")
+        self.assertEqual(notes, [("done", "ok")])
+
+    def test_notification_text_is_never_an_option(self):
+        from unittest import mock
+        with mock.patch("subprocess.run") as run:
+            sandbox._default_notify("--hint=string:x:y", "body")
+        self.assertEqual(run.call_args.args[0], ["notify-send", "-a", "NumpadPilot", "--", "--hint=string:x:y", "body"])
+
 
 if __name__ == "__main__":
     unittest.main()

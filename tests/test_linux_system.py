@@ -44,6 +44,20 @@ class LinuxSystemTest(unittest.TestCase):
         self.assertEqual(argv[-2:], ("xdg-open", "https://example.com"))
         self.assertTrue(popen.call_args.kwargs["start_new_session"])
 
+    def test_a_url_or_path_cannot_be_read_as_an_option(self):
+        self.tools()
+        with mock.patch.object(linux_system.subprocess, "Popen") as popen:
+            for call in (linux_system.open_url, linux_system.open_path):
+                with self.assertRaises(linux_system.SystemActionError):
+                    call("--help")
+        popen.assert_not_called()
+
+    def test_notification_text_is_never_an_option(self):
+        self.tools()
+        with mock.patch.object(linux_system.subprocess, "run") as run:
+            linux_system.notify("--hint=string:x:y", "body")
+        self.assertEqual(run.call_args.args[0], ["notify-send", "-a", "NumpadPilot", "--", "--hint=string:x:y", "body"])
+
     def test_volume_uses_swayosd_when_its_server_runs(self):
         fake = self.tools()
         linux_system.change_volume(+5)
