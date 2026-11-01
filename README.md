@@ -490,6 +490,19 @@ GitHub, builds `source.zip` from that commit, shows you what it will sign, and u
 `source.zip` and `release.sig` to the release. Until then, installed copies see the release
 but refuse to install it.
 
+**0.2.6:** security and profile sets.
+- **Signed updates:** installed copies update only to releases signed with the author's offline key, checked
+  before anything changes (see [SECURITY.md](SECURITY.md)). Older copies install this one on trust, then
+  are protected from here on.
+- **Profile sets:** whole separate setups (Coding, Streaming, Gaming) you switch between with the new
+  Switch / Next / Previous profile set actions. Old settings files become one set called "Default".
+- **Hardening found by attacking the project:** Run Python can no longer flood the service with output or
+  actions; the service's connection survives floods and malformed messages; notification text and URLs
+  can't be read as options; release tags are checked strictly.
+- **Installers:** `setup.sh` / `setup.ps1` install the newest release, not unfinished work, and `setup.sh`
+  no longer runs this folder's Python as root.
+- **Extra keyboards:** Allow access asks first, and removing a keyboard offers to take the permission away.
+
 **0.2.5:** a lot of new keys, mostly Linux:
 - **Extra keyboards:** a whole second keyboard can be an extra pad (Ctrl+Alt+Esc gives it back); the settings
   window draws it.
