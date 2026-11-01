@@ -2,7 +2,9 @@ name: Release
 
 # To release: set __version__ in numpadctl/__init__.py (e.g. "0.2.0"), commit, then push
 # the matching tag (git tag v0.2.0 && git push --tags). This publishes the release with
-# notes generated from the commits since the last one, and installed copies update to it.
+# notes generated from the commits since the last one. Installed copies update only to a
+# release that is also signed: run tools/sign-release on your own computer afterwards (the
+# private key never goes in CI), which uploads source.zip and release.sig to it.
 on:
   push:
     tags: ["v*"]

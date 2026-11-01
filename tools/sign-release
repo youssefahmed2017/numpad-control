@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+"""Sign a NumpadPilot release with the offline release key.
+
+    tools/sign-release keygen KEYFILE        make the key pair (once); prints the public key
+    tools/sign-release sign v0.2.6 --key KEYFILE [--no-upload]
+
+Installed copies update only to releases signed by this key (numpadctl/updater.py), so the
+private key is what protects every install. Keep it offline (a USB stick, not this repository,
+CI or a synced folder) and keep a second copy: if it is lost, existing installs can't be
+updated any more.
+
+`sign` does, in this order, and stops at the first thing that is wrong:
+  1. the tag exists here, is the same commit on GitHub, and numpadctl/__init__.py says that version;
+  2. it builds source.zip from that commit with git (so nothing built by CI is ever signed);
+  3. it shows what it will sign and waits for you to type the tag;
+  4. it writes release.sig (commit + source.zip hash, signed) and uploads both files to the
+     release with `gh` (the release must exist: release.yml makes it when the tag is pushed).
+"""
+
+import argparse
+import base64
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+TAG = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+")
+
+
+def fail(message):
+    print(f"error: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
+def run(*argv, **kwargs):
+    done = subprocess.run(argv, cwd=ROOT, capture_output=True, text=True, **kwargs)
+    if done.returncode != 0:
+        fail(f"{' '.join(argv)} failed: {(done.stderr or done.stdout).strip()}")
+    return done.stdout.strip()
+
+
+def keygen(path):
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    path = Path(path)
+    if path.exists():
+        fail(f"{path} already exists; not overwriting a key")
+    private = Ed25519PrivateKey.generate()
+    raw = private.private_bytes(serialization.Encoding.Raw, serialization.PrivateFormat.Raw,
+                                serialization.NoEncryption())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(base64.b64encode(raw).decode() + "\n")
+    public = private.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+    print(f"Private key written to {path} (mode 600). Move it somewhere offline and keep a second copy.")
+    print("Public key (goes in numpadctl/release_key.py):")
+    print(base64.b64encode(public).decode())
+
+
+def load_key(path):
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    try:
+        return Ed25519PrivateKey.from_private_bytes(base64.b64decode(Path(path).read_text().strip(), validate=True))
+    except (OSError, ValueError) as e:
+        fail(f"can't read the key {path}: {e}")
+
+
+def public_key_text(private):
+    from cryptography.hazmat.primitives import serialization
+    return base64.b64encode(private.public_key().public_bytes(
+        serialization.Encoding.Raw, serialization.PublicFormat.Raw)).decode()
+
+
+def sign(tag, key_path, upload):
+    if not TAG.fullmatch(tag):
+        fail(f"{tag!r} isn't a release tag like v0.2.6")
+    private = load_key(key_path)
+    sys.path.insert(0, str(ROOT))
+    from numpadctl import release_key
+    if release_key.PUBLIC_KEY != public_key_text(private):
+        fail("this key isn't the one in numpadctl/release_key.py: releases signed with it would be refused")
+
+    found = subprocess.run(["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{tag}^{{commit}}"],
+                           cwd=ROOT, capture_output=True, text=True)
+    if found.returncode != 0:
+        fail(f"there's no tag {tag} here (git tag {tag} && git push origin {tag} first)")
+    commit = found.stdout.strip()
+    remote = run("git", "ls-remote", "origin", f"refs/tags/{tag}", f"refs/tags/{tag}^{{}}").splitlines()
+    remote_commits = {line.split()[0] for line in remote}
+    peeled = [line.split()[0] for line in remote if line.endswith("^{}")]
+    on_github = peeled[0] if peeled else (next(iter(remote_commits)) if remote_commits else None)
+    if on_github != commit:
+        fail(f"{tag} is {commit[:10]} here but {(on_github or 'missing')[:10]} on GitHub: push the tag first, "
+             "and never sign a tag that was moved")
+    version = re.search(r'__version__\s*=\s*"([^"]+)"', run("git", "show", f"{commit}:numpadctl/__init__.py"))
+    if not version or f"v{version.group(1)}" != tag:
+        fail(f"numpadctl/__init__.py at {tag} says {version.group(1) if version else '?'}, not {tag[1:]}")
+
+    out = Path(tempfile.mkdtemp(prefix="numpad-sign-"))
+    archive = out / "source.zip"
+    run("git", "archive", "--format=zip", f"--prefix=numpad-pilot-{tag}/", "-o", str(archive), commit)
+    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+    statement = json.dumps({"app": "numpad-pilot", "tag": tag, "commit": commit, "zip_sha256": digest},
+                           sort_keys=True, separators=(",", ":"))
+
+    print(f"About to sign:\n  release  {tag}\n  commit   {commit}\n  source   {digest}  ({archive})")
+    print("  subject ", run("git", "log", "-1", "--format=%s (%an, %ad)", commit))
+    if input(f"Type {tag} to sign it: ").strip() != tag:
+        fail("not confirmed; nothing signed")
+
+    signature = base64.b64encode(private.sign(statement.encode())).decode()
+    sig_file = out / "release.sig"
+    sig_file.write_text(json.dumps({"statement": statement, "signature": signature}))
+    print(f"Signed. Files: {archive}, {sig_file}")
+    if upload:
+        run("gh", "release", "upload", tag, str(archive), str(sig_file), "--clobber")
+        print(f"Uploaded to the {tag} release.")
+    else:
+        print("Not uploaded (--no-upload).")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("keygen").add_argument("keyfile")
+    signing = commands.add_parser("sign")
+    signing.add_argument("tag")
+    signing.add_argument("--key", required=True)
+    signing.add_argument("--no-upload", action="store_true")
+    args = parser.parse_args()
+    if args.command == "keygen":
+        keygen(args.keyfile)
+    else:
+        sign(args.tag, args.key, not args.no_upload)
+
+
+if __name__ == "__main__":
+    main()

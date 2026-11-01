@@ -3,6 +3,8 @@
 Phase 0 of the plan asks for code signing from day one: NumpadPilot watches the
 keyboard, so an unsigned download gets "Windows protected your PC" (SmartScreen) and
 antivirus warnings. This page is the decision to make and the steps once it's made.
+(Release signing for the updater is a different thing: see [SECURITY.md](../SECURITY.md). A code-signing
+certificate would also let the keyboard hook DLL be signed, which the per-user install can't otherwise protect.)
 
 ## What gets signed
 

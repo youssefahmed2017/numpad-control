@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLineEdit, QMainWindow, QMessageBox,
     QPushButton, QSizePolicy, QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
-from numpadctl import actions, config, keys, presets, ui_common
+from numpadctl import actions, config, devices, keys, presets, ui_common
 from numpadctl.platform import IS_WINDOWS
 from . import dialogs, effects, egg, secret, theme, tokens, tools, welcome
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, SpinBox, ToolButton, _Morph
@@ -515,6 +515,28 @@ class MainWindow(QMainWindow):
             self.refresh_layer_switch()
         self.mark_dirty()
         self.set_device("")
+        self.offer_to_remove_access(device)
+
+    def offer_to_remove_access(self, device):
+        """The system permission to read this keyboard outlives it in NumpadPilot: offer to take it away."""
+        try:
+            if not devices.has_rule(device["vendor"], device["product"]):
+                return
+        except ValueError:
+            return
+        if QMessageBox.question(self, "Take access away?",
+                                f"Programs you run are still allowed to read {device['name']}. Take that away too? "
+                                "(It asks for your password.)") != QMessageBox.Yes:
+            return
+
+        def done(_output, error):
+            if error:
+                QMessageBox.information(self, "Couldn't do it from here",
+                                        f"{error}\n\nRun this in a terminal instead:\n"
+                                        f"{devices.manual_remove_command(device['vendor'], device['product'])}")
+            else:
+                self.toast("Access taken away.")
+        ui_common.run_in_background(lambda: devices.remove_rule(device["vendor"], device["product"]), done, self.dispatch)
 
     def on_grab_toggled(self, on):
         device = self.device_config()

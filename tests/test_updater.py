@@ -2,6 +2,8 @@
 service doing it by itself (or only saying so)."""
 
 import asyncio
+import base64
+import hashlib
 import io
 import json
 import shutil
@@ -14,6 +16,23 @@ from pathlib import Path
 from unittest import mock
 
 from numpadctl import daemon, updater
+
+
+def make_key():
+    """A throwaway release key: (private key, its public key as release_key.py stores it)."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    private = Ed25519PrivateKey.generate()
+    public = private.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+    return private, base64.b64encode(public).decode()
+
+
+def sign(private, tag="v0.2.0", commit="a" * 40, zip_sha256="b" * 64, **changes):
+    """A release.sig, the way tools/sign-release makes it."""
+    statement = json.dumps({"app": "numpad-pilot", "tag": tag, "commit": commit, "zip_sha256": zip_sha256,
+                            **changes}, sort_keys=True, separators=(",", ":"))
+    return json.dumps({"statement": statement,
+                       "signature": base64.b64encode(private.sign(statement.encode())).decode()}).encode()
 
 
 def git(cwd, *args):
@@ -74,6 +93,81 @@ class VersionTest(unittest.TestCase):
             self.assertIsNone(updater.latest_release())
 
 
+class SignatureTest(unittest.TestCase):
+    def setUp(self):
+        self.private, self.public = make_key()
+
+    def test_a_release_signed_with_the_key_is_accepted(self):
+        signed = updater.verify_signature("v0.2.0", sign(self.private), self.public)
+        self.assertEqual((signed["commit"], signed["zip_sha256"]), ("a" * 40, "b" * 64))
+
+    def test_someone_elses_key_is_refused(self):
+        other, _ = make_key()
+        with self.assertRaisesRegex(updater.UpdateError, "isn't signed"):
+            updater.verify_signature("v0.2.0", sign(other), self.public)
+
+    def test_a_changed_statement_is_refused(self):
+        document = json.loads(sign(self.private))
+        document["statement"] = document["statement"].replace("a" * 40, "c" * 40)  # point at other code
+        with self.assertRaisesRegex(updater.UpdateError, "isn't signed"):
+            updater.verify_signature("v0.2.0", json.dumps(document).encode(), self.public)
+
+    def test_a_signature_for_another_release_cannot_be_replayed(self):
+        with self.assertRaisesRegex(updater.UpdateError, "different release"):
+            updater.verify_signature("v0.3.0", sign(self.private, tag="v0.2.0"), self.public)
+
+    def test_another_app_with_the_same_key_is_refused(self):
+        with self.assertRaisesRegex(updater.UpdateError, "different release"):
+            updater.verify_signature("v0.2.0", sign(self.private, app="something-else"), self.public)
+
+    def test_odd_commits_and_hashes_are_refused(self):
+        for changes in ({"commit": "main"}, {"commit": "A" * 40}, {"zip_sha256": "xyz"}, {"commit": None}):
+            with self.assertRaises(updater.UpdateError, msg=str(changes)):
+                updater.verify_signature("v0.2.0", sign(self.private, **changes), self.public)
+
+    def test_garbage_is_refused(self):
+        for blob in (b"", b"not json", b"[]", b"{}", b'{"statement": 1, "signature": 2}',
+                     b'{"statement": "{}", "signature": "!!!"}'):
+            with self.assertRaises(updater.UpdateError, msg=repr(blob)):
+                updater.verify_signature("v0.2.0", blob, self.public)
+
+    def test_without_a_key_nothing_is_trusted(self):
+        with mock.patch.object(updater.release_key, "PUBLIC_KEY", ""), \
+                self.assertRaisesRegex(updater.UpdateError, "isn't signed"):
+            updater.verify_signature("v0.2.0", sign(self.private))
+
+    def test_an_unsigned_or_unreachable_release_is_never_installed(self):
+        root = Path(tempfile.mkdtemp())
+        with mock.patch.object(updater, "_download", side_effect=urllib.error.HTTPError("u", 404, "Not Found", {}, None)), \
+                mock.patch.object(updater, "_update_git") as by_git, mock.patch.object(updater, "_update_zip") as by_zip, \
+                self.assertRaisesRegex(updater.UpdateError, "no signature"):
+            updater.install("v0.2.0", root)
+        by_git.assert_not_called()
+        by_zip.assert_not_called()
+
+    def test_install_passes_on_only_what_was_signed(self):
+        root = Path(tempfile.mkdtemp())
+        blob = sign(self.private, commit="d" * 40, zip_sha256="e" * 64)
+        with mock.patch.object(updater.release_key, "PUBLIC_KEY", self.public), \
+                mock.patch.object(updater, "_download", return_value=blob), \
+                mock.patch.object(updater, "_update_zip") as by_zip, mock.patch.object(updater, "_update_packages"), \
+                mock.patch.object(updater, "_save_state"):
+            updater.install("v0.2.0", root)
+        by_zip.assert_called_once_with("v0.2.0", "e" * 64, root)
+        (root / ".git").mkdir()
+        with mock.patch.object(updater.release_key, "PUBLIC_KEY", self.public), \
+                mock.patch.object(updater, "_download", return_value=blob), \
+                mock.patch.object(updater, "_update_git") as by_git, mock.patch.object(updater, "_update_packages"), \
+                mock.patch.object(updater, "_save_state"):
+            updater.install("v0.2.0", root)
+        by_git.assert_called_once_with("v0.2.0", "d" * 40, root)
+
+    def test_a_download_bigger_than_the_limit_is_refused(self):
+        with mock.patch.object(updater.urllib.request, "urlopen", return_value=Response(b"x" * 100)), \
+                self.assertRaisesRegex(updater.UpdateError, "bigger than expected"):
+            updater._download("https://example.com/x", 50)
+
+
 @unittest.skipIf(shutil.which("git") is None, "needs git")
 class GitUpdateTest(unittest.TestCase):
     def setUp(self):
@@ -88,17 +182,27 @@ class GitUpdateTest(unittest.TestCase):
         (self.origin / "file.txt").write_text("0.2.0")
         git(self.origin, "commit", "-qam", "0.2.0")
         git(self.origin, "tag", "v0.2.0")
+        self.signed = subprocess.run(["git", "rev-parse", "v0.2.0^{commit}"], cwd=self.origin, check=True,
+                                     capture_output=True, text=True).stdout.strip()
         (self.origin / "file.txt").write_text("unfinished")
         git(self.origin, "commit", "-qam", "work in progress after the release")
+        self.unfinished = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.origin, check=True,
+                                         capture_output=True, text=True).stdout.strip()
 
     def test_moves_to_the_release_not_to_newer_unfinished_work(self):
-        updater._update_git("v0.2.0", self.copy)
+        updater._update_git("v0.2.0", self.signed, self.copy)
         self.assertEqual((self.copy / "file.txt").read_text(), "0.2.0")
+
+    def test_a_tag_that_is_not_the_signed_commit_is_refused(self):
+        # The tag on GitHub was moved to other code after the author signed the release.
+        with self.assertRaisesRegex(updater.UpdateError, "isn't the commit that was signed"):
+            updater._update_git("v0.2.0", self.unfinished, self.copy)
+        self.assertEqual((self.copy / "file.txt").read_text(), "0.1.0", "nothing was merged")
 
     def test_a_copy_with_local_changes_is_left_alone(self):
         (self.copy / "file.txt").write_text("my own change")
         with self.assertRaisesRegex(updater.UpdateError, "local changes"):
-            updater._update_git("v0.2.0", self.copy)
+            updater._update_git("v0.2.0", self.signed, self.copy)
         self.assertEqual((self.copy / "file.txt").read_text(), "my own change")
 
 
@@ -123,7 +227,7 @@ class ZipUpdateTest(unittest.TestCase):
                                  "numpad-control-0.2.0/README.md": "new readme",
                                  "numpad-control-0.2.0/.venv/evil": "x"})
         with mock.patch.object(updater.urllib.request, "urlopen", return_value=Response(release)):
-            updater._update_zip("v0.2.0", self.root)
+            updater._update_zip("v0.2.0", hashlib.sha256(release).hexdigest(), self.root)
         self.assertTrue((self.root / "numpadctl" / "__init__.py").exists())
         self.assertFalse((self.root / "numpadctl" / "old_module.py").exists(), "the folder was replaced whole")
         self.assertEqual((self.root / "README.md").read_text(), "new readme")
@@ -135,14 +239,23 @@ class ZipUpdateTest(unittest.TestCase):
         release = self.make_zip({"numpad-control-0.2.0/numpadctl/x.py": "", "../../escape.txt": "x"})
         with mock.patch.object(updater.urllib.request, "urlopen", return_value=Response(release)), \
                 self.assertRaisesRegex(updater.UpdateError, "unsafe"):
-            updater._update_zip("v0.2.0", self.root)
+            updater._update_zip("v0.2.0", hashlib.sha256(release).hexdigest(), self.root)
         self.assertTrue((self.root / "numpadctl" / "old_module.py").exists(), "nothing was changed")
 
     def test_refuses_something_that_isnt_numpad_control(self):
-        with mock.patch.object(updater.urllib.request, "urlopen",
-                               return_value=Response(self.make_zip({"other-1.0/readme.txt": "hi"}))), \
+        other = self.make_zip({"other-1.0/readme.txt": "hi"})
+        with mock.patch.object(updater.urllib.request, "urlopen", return_value=Response(other)), \
                 self.assertRaisesRegex(updater.UpdateError, "doesn't look like"):
-            updater._update_zip("v0.2.0", self.root)
+            updater._update_zip("v0.2.0", hashlib.sha256(other).hexdigest(), self.root)
+
+    def test_a_swapped_download_is_refused_before_anything_changes(self):
+        signed_file = self.make_zip({"numpad-control-0.2.0/numpadctl/__init__.py": "good"})
+        swapped = self.make_zip({"numpad-control-0.2.0/numpadctl/__init__.py": "evil"})
+        with mock.patch.object(updater.urllib.request, "urlopen", return_value=Response(swapped)), \
+                self.assertRaisesRegex(updater.UpdateError, "isn't the file that was signed"):
+            updater._update_zip("v0.2.0", hashlib.sha256(signed_file).hexdigest(), self.root)
+        self.assertTrue((self.root / "numpadctl" / "old_module.py").exists(), "nothing was changed")
+        self.assertFalse((self.root / "numpadctl" / "__init__.py").exists())
 
 
 class ServiceUpdatesTest(unittest.IsolatedAsyncioTestCase):

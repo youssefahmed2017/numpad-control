@@ -114,3 +114,29 @@ def install_rule(vendor, product):
         raise OSError("timed out waiting for the password")
     if done.returncode != 0:
         raise OSError((done.stderr or "").strip() or "the password was not accepted")
+
+
+def manual_remove_command(vendor, product):
+    """What to paste into a terminal when pkexec isn't available."""
+    _check_ids(vendor, product)
+    return f"sudo rm -f {rule_path(vendor, product)} && {_reload('sudo ')}"
+
+
+def has_rule(vendor, product):
+    """Whether NumpadPilot's rule for this keyboard is installed."""
+    _check_ids(vendor, product)
+    return rule_path(vendor, product).exists()
+
+
+def remove_rule(vendor, product):
+    """Ask for the password (pkexec) and take the permission away again. Raises OSError with a sentence on failure."""
+    _check_ids(vendor, product)
+    if not shutil.which("pkexec"):
+        raise OSError("pkexec isn't installed")
+    script = f"rm -f {rule_path(vendor, product)} && {_reload()}"
+    try:
+        done = subprocess.run(["pkexec", "sh", "-c", script], capture_output=True, text=True, timeout=180)
+    except subprocess.TimeoutExpired:
+        raise OSError("timed out waiting for the password")
+    if done.returncode != 0:
+        raise OSError((done.stderr or "").strip() or "the password was not accepted")

@@ -261,7 +261,8 @@ with the same Press / Hold / Double tap, layers and profiles as the numpad.
   ones that need it, and **Allow access…** installs a small udev rule for that one keyboard
   (through `pkexec`, so it asks for your password). That is the same permission the numpad gets,
   and it means programs you run can read that keyboard's keys, so think twice before allowing a
-  keyboard you type passwords on.
+  keyboard you type passwords on. The app asks you to confirm before it does this, and **Remove this
+  keyboard** offers to take the permission away again (the uninstall removes all of them too).
 - **While a game with anti-cheat runs** (see below), extra keyboards are let go like the numpad.
 - **Not on Windows yet** (the window hides the Device row there).
 
@@ -475,8 +476,19 @@ with a notification. Only releases are installed, never unfinished work. A copy 
 changes isn't touched. Settings: `"updates"`: `"auto"` (default), `"notify"` (only tell
 you) or `"off"`; `python -m numpadctl update` checks right away.
 
-To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, and push the
-matching tag (`git tag v0.3.0 && git push --tags`).
+**Releases are signed.** The updater installs only releases signed with the author's offline
+key (its public half is in `numpadctl/release_key.py`): the signature names the exact commit
+(git copies) or the exact `source.zip` hash (zip copies) and is checked before anything on
+disk changes. A tag moved after signing, a swapped download or an unsigned release is refused
+with the reason. [`SECURITY.md`](SECURITY.md) says what that does and doesn't protect.
+
+To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, push the
+matching tag (`git tag v0.3.0 && git push --tags`; the Release workflow makes the release and
+the Windows installer), then **sign it on your own computer**:
+`tools/sign-release sign v0.3.0 --key <your key file>`. It checks the tag is the same commit on
+GitHub, builds `source.zip` from that commit, shows you what it will sign, and uploads
+`source.zip` and `release.sig` to the release. Until then, installed copies see the release
+but refuse to install it.
 
 **0.2.5:** a lot of new keys, mostly Linux:
 - **Extra keyboards:** a whole second keyboard can be an extra pad (Ctrl+Alt+Esc gives it back); the settings
@@ -543,6 +555,7 @@ system; your user name and home folder taken out) is also kept in
   settings window needs (the link to the service, the key layout, action names): the
   interface the window builds on.
 - `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
+- `numpadctl/release_key.py`: the public key releases must be signed with; `tools/sign-release` makes the key and signs releases
 - `numpadctl/profile_sets.py`: which profile set is active (a small state file, like `modes.py`)
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
 - `numpadctl/platform/`: everything that differs between operating systems, so a

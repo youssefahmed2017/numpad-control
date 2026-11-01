@@ -2,5 +2,6 @@
 evdev>=1.7; sys_platform == "linux"
 obsws-python>=1.7
 PySide6-Essentials>=6.7
+cryptography>=42  # checks the signature on every release before it is installed
 pystray>=0.19; sys_platform == "win32"
 pycaw>=20240210; sys_platform == "win32"

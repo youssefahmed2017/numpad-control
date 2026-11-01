@@ -32,6 +32,20 @@ function Assert-Ok($what) {
     if ($LASTEXITCODE -ne 0) { throw "$what failed (exit code $LASTEXITCODE) - see the messages above." }
 }
 
+function Use-LatestRelease($Dir) {
+    # A fresh install or an update goes to the newest release, never to unfinished work on main (the same
+    # promise the in-app updater makes). A copy with commits of its own is left where it is.
+    git -C $Dir fetch --quiet --tags origin
+    if ($LASTEXITCODE -ne 0) { Warn "couldn't reach GitHub for the newest release"; return }
+    $tag = git -C $Dir tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | Select-Object -First 1
+    if (-not $tag) { Warn "no release published yet; staying on the latest work"; return }
+    git -C $Dir merge-base --is-ancestor HEAD origin/main
+    if ($LASTEXITCODE -ne 0) { Warn "$Dir has commits of its own; not moving it to $tag"; return }
+    git -C $Dir checkout -q -B main $tag
+    Assert-Ok "git checkout"
+    Note "using release $tag"
+}
+
 function Find-Python {
     # The real python.exe (not the Microsoft Store placeholder), version 3.10 or newer.
     foreach ($candidate in @("py", "python")) {
@@ -141,19 +155,23 @@ function Install-NumpadControl {
         Note "using $Dir"
     } elseif (Test-Path (Join-Path $Dir ".git")) {
         if (Get-Command git -ErrorAction SilentlyContinue) {
-            Run "update $Dir (git pull)" { git -C $Dir pull --ff-only; Assert-Ok "git pull" }
+            Run "update $Dir (git, to the newest release)" { Use-LatestRelease $Dir }
         } else { Warn "$Dir is a git copy but git isn't installed; not updating it" }
     } elseif (Get-Command git -ErrorAction SilentlyContinue) {
-        Run "download into $Dir (git clone)" { git clone "$RepoUrl.git" $Dir; Assert-Ok "git clone" }
+        Run "download into $Dir (git clone, then the newest release)" { git clone "$RepoUrl.git" $Dir; Assert-Ok "git clone"; Use-LatestRelease $Dir }
     } else {
         Run "download into $Dir (zip)" {
             $zip = Join-Path $env:TEMP "numpad-control.zip"
-            Invoke-WebRequest "$RepoUrl/archive/refs/heads/main.zip" -OutFile $zip -UseBasicParsing
+            # The newest release's code, never unfinished work on main.
+            $tag = (Invoke-RestMethod "https://api.github.com/repos/youssefahmed2017/numpad-pilot/releases/latest" -UseBasicParsing).tag_name
+            if ($tag -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw "GitHub didn't name a release (got '$tag')." }
+            Invoke-WebRequest "$RepoUrl/archive/refs/tags/$tag.zip" -OutFile $zip -UseBasicParsing
             $unpacked = Join-Path $env:TEMP "numpad-control-zip"
             if (Test-Path $unpacked) { Remove-Item -Recurse -Force $unpacked }
             Expand-Archive $zip $unpacked
             New-Item -ItemType Directory -Force $Dir | Out-Null
-            Copy-Item -Recurse -Force (Join-Path $unpacked "numpad-control-main\*") $Dir
+            $top = Get-ChildItem $unpacked -Directory | Select-Object -First 1
+            Copy-Item -Recurse -Force (Join-Path $top.FullName "*") $Dir
         }
     }
 

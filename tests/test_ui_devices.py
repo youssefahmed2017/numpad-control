@@ -109,12 +109,36 @@ class DeviceWindowTest(unittest.TestCase):
 
     def test_removing_the_keyboard_also_removes_its_bindings(self):
         self.w.set_device("hp")
-        with mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Yes):
+        with mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Yes), \
+                mock.patch.object(devices, "has_rule", return_value=False):
             self.w.remove_device()
         self.assertEqual(self.w.cfg["devices"], [])
         self.assertNotIn("hp:KEY_F1", self.w.cfg["profiles"][0]["bindings"])
         self.assertIn("1", self.w.cfg["profiles"][0]["bindings"], "the numpad's keys stay")
         self.assertEqual(self.w.device, "")
+
+    def test_removing_a_keyboard_offers_to_take_the_system_access_away(self):
+        device = self.w.cfg["devices"][0]
+        calls = []
+        with mock.patch.object(devices, "has_rule", return_value=True), \
+                mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Yes) as ask, \
+                mock.patch.object(devices, "remove_rule", side_effect=lambda v, p: calls.append((v, p))), \
+                mock.patch.object(ui_common, "run_in_background", side_effect=lambda work, done, _d: (work(), done(None, None))):
+            self.w.offer_to_remove_access(device)
+        self.assertEqual(calls, [(device["vendor"], device["product"])])
+        self.assertIn("still allowed to read", ask.call_args.args[2])
+
+    def test_saying_no_keeps_the_access_and_no_rule_means_no_question(self):
+        device = self.w.cfg["devices"][0]
+        with mock.patch.object(devices, "has_rule", return_value=True), \
+                mock.patch.object(QMessageBox, "question", return_value=QMessageBox.No), \
+                mock.patch.object(devices, "remove_rule") as remove:
+            self.w.offer_to_remove_access(device)
+        remove.assert_not_called()
+        with mock.patch.object(devices, "has_rule", return_value=False), \
+                mock.patch.object(QMessageBox, "question") as ask:
+            self.w.offer_to_remove_access(device)
+        ask.assert_not_called()
 
     def test_a_key_pressed_on_the_keyboard_shows_it_while_following(self):
         self.w.learn.setChecked(True)
@@ -172,6 +196,17 @@ class AddDeviceDialogTest(unittest.TestCase):
         self.assertEqual(d.list.count(), 2)
         self.assertEqual(d.list.item(1).text(), "SINO WEALTH Gaming Keyboard  (needs access)")
 
+    def test_allowing_access_warns_first_and_does_nothing_on_no(self):
+        d = self.make()
+        d.list.setCurrentRow(1)  # the one that needs access
+        self.assertIn("every program you run", d.access_text.text())
+        with mock.patch.object(dialogs.QMessageBox, "question", return_value=dialogs.QMessageBox.No) as ask, \
+                mock.patch.object(dialogs.ui_common, "run_in_background") as install:
+            d.allow_access()
+        install.assert_not_called()
+        self.assertIn("passwords", ask.call_args.args[2])
+        self.assertTrue(d.allow.isEnabled())
+
     def test_a_readable_keyboard_can_be_added_with_a_fresh_id(self):
         d = self.make()
         d.list.setCurrentRow(0)
@@ -208,6 +243,20 @@ class DevicesModuleTest(unittest.TestCase):
             devices.manual_command("03f0'; rm -rf ~; '", "344a")
         with self.assertRaises(ValueError):
             devices.install_rule("zzzz", "344a")
+
+    def test_removing_access_checks_ids_and_deletes_only_its_own_rule(self):
+        with self.assertRaises(ValueError):
+            devices.remove_rule("03f0'; rm -rf ~; '", "344a")
+        with self.assertRaises(ValueError):
+            devices.manual_remove_command("zzzz", "344a")
+        command = devices.manual_remove_command("03f0", "344a")
+        self.assertIn("sudo rm -f /etc/udev/rules.d/70-numpad-control-03f0-344a.rules", command)
+        with mock.patch.object(devices.shutil, "which", return_value="/usr/bin/pkexec"), \
+                mock.patch.object(devices.subprocess, "run") as run:
+            run.return_value.returncode = 0
+            devices.remove_rule("03f0", "344a")
+        script = run.call_args.args[0][-1]
+        self.assertTrue(script.startswith("rm -f /etc/udev/rules.d/70-numpad-control-03f0-344a.rules"))
 
     def test_the_manual_command_uses_sudo_for_every_step(self):
         command = devices.manual_command("03f0", "344a")

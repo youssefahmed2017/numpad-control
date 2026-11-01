@@ -205,6 +205,21 @@ fi
 
 # ---------------------------------------------------------------- 2. code
 bold "2/7  Code"
+# A fresh install or an update goes to the newest release, never to unfinished work on main (the same
+# promise the in-app updater makes). A copy with commits of its own is left where it is.
+use_latest_release() {
+    if [ "$DRY_RUN" = 1 ]; then note "[dry-run] would move $DIR to the newest release"; return; fi
+    git -C "$DIR" fetch --quiet --tags origin || { warn "couldn't reach GitHub for the newest release"; return; }
+    local tag
+    tag=$(git -C "$DIR" tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
+    if [ -z "$tag" ]; then warn "no release published yet; staying on the latest work"; return; fi
+    if git -C "$DIR" merge-base --is-ancestor HEAD origin/main; then
+        git -C "$DIR" checkout -q -B main "$tag" && note "using release $tag"
+    else
+        warn "$DIR has commits of its own; not moving it to $tag"
+    fi
+}
+
 here="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || true)"
 if [ -n "$here" ] && [ -d "$here/numpadctl" ] && [ -f "$here/dist/numpad-control.service" ]; then
     DIR="$here"   # running from a clone: install that one
@@ -213,10 +228,11 @@ elif [ -d "$DIR/.git" ]; then
     if [ -n "$(git -C "$DIR" status --porcelain)" ]; then
         warn "$DIR has local changes; not updating it"
     else
-        run git -C "$DIR" pull --ff-only
+        use_latest_release
     fi
 else
     run git clone "$REPO_URL" "$DIR"
+    use_latest_release
 fi
 
 # ---------------------------------------------------------------- 3. python
