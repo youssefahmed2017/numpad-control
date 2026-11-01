@@ -6,7 +6,6 @@ if sys.platform == "win32":
 import asyncio
 import unittest
 from types import SimpleNamespace
-from unittest import mock
 
 from evdev import ecodes
 

@@ -61,7 +61,7 @@ class QtWindowTest(unittest.TestCase):
         self.addCleanup(self.w.deleteLater)
 
     def saved(self):
-        return json.loads(self.config_path.read_text())["profiles"][0]["bindings"]
+        return json.loads(self.config_path.read_text())["sets"][0]["profiles"][0]["bindings"]
 
     def editor(self, kind):
         return self.w.editor_scroll.widget().findChildren(kind)

@@ -1,7 +1,12 @@
 """Loading and saving ~/.config/numpad-control/config.json.
 
 Layout:
-    profiles[0] is "Default" and always applies; later profiles apply while a
+    sets is a list of {"name", "profiles"}: separate setups ("Streaming", "Coding")
+    you switch between by hand. Which one is active is saved in profile_sets.py.
+    load() puts the active set's profiles in cfg["profiles"], so everything else
+    only deals with one list; save() writes them back into their set.
+
+    In a set, profiles[0] is "Default" and always applies; later profiles apply while a
     window whose class is listed in their "match" is focused, and fall back to
     Default for anything they don't set.
 
@@ -13,6 +18,7 @@ Layout:
 import json
 import os
 
+from . import profile_sets
 from .platform import paths
 
 CONFIG_DIR = paths.config_dir()
@@ -50,17 +56,47 @@ DEFAULT_CONFIG = {
 }
 
 
+def _clean_sets(data):
+    """The "sets" list, repaired if hand-edited: named, unique, each with profiles."""
+    sets, seen = [], set()
+    for item in data.get("sets") if isinstance(data.get("sets"), list) else []:
+        if not isinstance(item, dict) or not isinstance(item.get("name"), str):
+            continue
+        name = item["name"].strip()
+        if not name or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        profiles = item.get("profiles") if isinstance(item.get("profiles"), list) else []
+        sets.append({"name": name, "profiles": profiles})
+    if not sets:
+        sets = [{"name": "Default", "profiles": []}]
+    for item in sets:
+        if not item["profiles"]:
+            item["profiles"].append({"name": "Default", "match": "", "bindings": {}, "layer_bindings": {}})
+        for profile in item["profiles"]:
+            for kind in ("bindings", "layer_bindings"):
+                keys = profile.setdefault(kind, {})
+                for key, value in list(keys.items()):
+                    if "action" in value:  # old single-action binding
+                        keys[key] = {"tap": value}
+    return sets
+
+
 def _migrate(data):
-    """Upgrade older config files in place."""
-    if "profiles" not in data:
-        data["profiles"] = [{"name": "Default", "match": "",
-                             "bindings": data.pop("bindings", {}), "layer_bindings": {}}]
-    for profile in data["profiles"]:
-        for kind in ("bindings", "layer_bindings"):
-            keys = profile.setdefault(kind, {})
-            for key, value in list(keys.items()):
-                if "action" in value:  # old single-action binding
-                    keys[key] = {"tap": value}
+    """Upgrade older config files in place.
+
+    Files from before profile sets have a "profiles" list: it becomes the one set,
+    "Default", so nothing changes for anyone who never makes a second set."""
+    if "sets" not in data:
+        if "profiles" not in data:
+            data["profiles"] = [{"name": "Default", "match": "",
+                                 "bindings": data.pop("bindings", {}), "layer_bindings": {}}]
+        data["sets"] = [{"name": "Default", "profiles": data["profiles"]}]
+    data.pop("profiles", None)  # the sets are the truth; "profiles" is rebuilt below
+    data["sets"] = _clean_sets(data)
+    active = profile_sets.pick(data["sets"], profile_sets.active_name())
+    data["active_set"] = active["name"]
+    data["profiles"] = active["profiles"]  # the same list, so edits reach the set
     return data
 
 
@@ -69,14 +105,27 @@ def load():
         with open(CONFIG_PATH) as f:
             data = json.load(f)
     except FileNotFoundError:
-        return json.loads(json.dumps(DEFAULT_CONFIG))
+        return _migrate(json.loads(json.dumps(DEFAULT_CONFIG)))
     _migrate(data)  # before defaults, or the default profile would hide old bindings
     for key, value in DEFAULT_CONFIG.items():
         data.setdefault(key, json.loads(json.dumps(value)))
     return data
 
 
+def _for_disk(data):
+    """The config as saved: the working "profiles" go back into their set."""
+    out = {k: v for k, v in data.items() if k not in ("profiles", "active_set")}
+    sets = [dict(item) for item in data.get("sets") or []]
+    if not sets:
+        sets = [{"name": "Default", "profiles": data.get("profiles", [])}]
+    mine = profile_sets.pick(sets, data.get("active_set"))
+    mine["profiles"] = data.get("profiles", mine["profiles"])
+    out["sets"] = sets
+    return out
+
+
 def save(data):
+    data = _for_disk(data)
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     tmp = CONFIG_PATH.with_suffix(".tmp")
     # 0600: the file may contain the OBS websocket password.
@@ -87,10 +136,12 @@ def save(data):
 
 
 def mtime():
+    """(config file time, active-set file time): differs after either changes, and the service reloads then."""
     try:
-        return CONFIG_PATH.stat().st_mtime
+        config_time = CONFIG_PATH.stat().st_mtime
     except FileNotFoundError:
-        return 0.0
+        config_time = 0.0
+    return (config_time, profile_sets.mtime())
 
 
 def profile_matches(profile, window_class):

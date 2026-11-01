@@ -122,6 +122,7 @@ uses that desktop's own tools:
 | Per-app audio | App volume up / down · Set app volume to N% · Mute / unmute an app (e.g. Spotify, Firefox) |
 | Audio output | Switch audio output to a device · Next audio output (cycles through devices) |
 | System | Do not disturb on / off · Lock screen · Privacy panic · Undo privacy panic · Sleep · Shut down · Restart |
+| Profile set | Switch to a profile set · Next / previous profile set |
 | Mode | Toggle a mode · Turn a mode on · Turn a mode off · If a mode is on… (if / otherwise) |
 | Advanced | Macro · Run Python (sandboxed) |
 
@@ -282,6 +283,15 @@ keyboard in the window also removes the actions set on its keys.
   leaves unset uses Default.
   The profile menu can create, **duplicate** (copies every key, slot and layer key
   to start from), edit and delete profiles.
+- **Profile sets.** A set is a whole separate setup (its own Default and its own
+  per-app profiles), for example "Coding", "Streaming" and "Gaming". Only the active set
+  does anything, and a set never borrows keys from another one. Put **Switch to a profile
+  set**, **Next profile set** or **Previous profile set** on any key (a layer key slot
+  works well) and press it to swap; the name pops up as a confirmation. One active set
+  covers every pad and extra keyboard, and the choice is remembered across restarts.
+  Settings files from before sets work as they were: your profiles become one set called
+  "Default". In `config.json` they are the `sets` list (`"sets": [{"name": "Coding",
+  "profiles": [...]}]`); which one is active is saved next to the modes state.
 - **Key map overlay (the "Ghost HUD").** Hold the layer key and a see-through copy of your numpad
   fades onto the middle of the screen, showing what each key does in the layer (for the app you are
   in: its profile first, Default for the rest; a key with more than one action shows "+1"); let go
@@ -531,6 +541,7 @@ system; your user name and home folder taken out) is also kept in
   settings window needs (the link to the service, the key layout, action names): the
   interface the window builds on.
 - `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
+- `numpadctl/profile_sets.py`: which profile set is active (a small state file, like `modes.py`)
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
 - `numpadctl/platform/`: everything that differs between operating systems, so a
   future Windows version only has to add its own versions of these:

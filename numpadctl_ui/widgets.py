@@ -2,8 +2,9 @@
 edits (no separate "collect the fields before saving" step)."""
 
 from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QCompleter, QFrame, QHBoxLayout, QLabel, QLineEdit, QMenu,
-                               QPlainTextEdit, QPushButton, QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QCheckBox, QComboBox, QCompleter, QFrame, QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit, QToolButton,
+    QVBoxLayout, QWidget)
 
 from numpadctl import actions, sandbox, ui_common
 from . import theme

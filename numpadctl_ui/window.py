@@ -4,9 +4,9 @@ import copy
 
 from PySide6.QtCore import QEvent, QRectF, Qt, QTimer, QVariantAnimation
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
-from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QComboBox, QFrame, QGridLayout, QHBoxLayout,
-                               QLineEdit, QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea, QSizePolicy,
-                               QStackedWidget, QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QApplication, QButtonGroup, QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLineEdit, QMainWindow, QMessageBox,
+    QPushButton, QSizePolicy, QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
 from numpadctl import actions, config, keys, presets, ui_common
 from numpadctl.platform import IS_WINDOWS

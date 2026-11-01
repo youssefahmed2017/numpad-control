@@ -13,7 +13,7 @@ import subprocess
 import sys
 
 import shiboken6
-from PySide6.QtCore import QEasingCurve, QPoint, QRect, Qt, QTimer, QVariantAnimation
+from PySide6.QtCore import QPoint, QRect, Qt, QTimer, QVariantAnimation
 from PySide6.QtGui import QColor, QCursor, QFont, QPainter, QPixmap, QRadialGradient
 from PySide6.QtWidgets import (QApplication, QDialog, QLabel, QLineEdit, QMessageBox, QPlainTextEdit, QProgressBar,
                                QPushButton, QStackedWidget, QTabWidget, QVBoxLayout, QWidget)

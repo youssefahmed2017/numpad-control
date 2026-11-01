@@ -77,7 +77,7 @@ class WindowTest(unittest.TestCase):
         self.assertTrue(self.w.save())
         saved = json.loads(self.path.read_text())
         self.assertEqual(saved["extra_keys"], [{"id": "KEY_F13", "label": "Next track"}])
-        self.assertEqual(saved["profiles"][0]["bindings"]["KEY_F13"]["tap"]["action"], "media_next")
+        self.assertEqual(saved["sets"][0]["profiles"][0]["bindings"]["KEY_F13"]["tap"]["action"], "media_next")
         self.w.remove_extra_key("KEY_F13")
         self.assertNotIn("KEY_F13", self.w.key_buttons)
         self.assertEqual(self.w.selected, "1")

@@ -94,7 +94,7 @@ class DeviceWindowTest(unittest.TestCase):
         self.w.keymap().setdefault("hp:KEY_F2", {})["tap"] = {"action": "volume_mute", "params": {}}
         self.assertTrue(self.w.save())
         saved = json.loads(self.path.read_text())
-        self.assertIn("hp:KEY_F2", saved["profiles"][0]["bindings"])
+        self.assertIn("hp:KEY_F2", saved["sets"][0]["profiles"][0]["bindings"])
 
     def test_the_grab_switch_changes_the_config(self):
         self.w.set_device("hp")

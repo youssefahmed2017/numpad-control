@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import desktop, modes, obs, sandbox, voice
+from . import desktop, modes, obs, profile_sets, sandbox, voice
 from .platform import IS_WINDOWS, paths, system
 
 if IS_WINDOWS:  # per-app audio: Core Audio on Windows, PipeWire on Linux
@@ -454,8 +454,8 @@ def binding_problems(binding, cfg=None):
         for branch in ("then", "otherwise"):
             label = "if on" if branch == "then" else "otherwise"
             problems += [f"{label}, {p}" for p in macro_problems(given.get(branch, []), cfg, allow_empty=True)]
-        return _mode_problems(action, given, cfg) + problems
-    problems = _mode_problems(action, given, cfg)
+        return _name_problems(action, given, cfg) + problems
+    problems = _name_problems(action, given, cfg)
     if action.check:
         try:
             action.check(**{p.name: given.get(p.name, p.default) for p in action.params})
@@ -464,13 +464,18 @@ def binding_problems(binding, cfg=None):
     return problems
 
 
-def _mode_problems(action, given, cfg):
+def _name_problems(action, given, cfg):
+    """Mode and profile-set names that don't exist in the config."""
     if cfg is None:
         return []
     try:
         for p in action.params:
             if p.suggest == "modes":
                 mode_name(cfg, given.get(p.name, p.default))
+            if p.suggest == "sets":
+                known = [n.lower() for n in _set_names(cfg)]
+                if (given.get(p.name) or "").strip().lower() not in known:
+                    raise ActionError(f"there's no set called {given.get(p.name)!r}")
     except ActionError as e:
         return [str(e)]
     return []
@@ -517,6 +522,32 @@ def mode_name(cfg, value):
         if name.lower() == wanted.lower():
             return name
     raise ActionError(f"there's no mode called {wanted!r} (add it in Settings → Modes)")
+
+
+def _set_names(cfg):
+    return [item["name"] for item in cfg.get("sets") or []]
+
+
+def _set_switch(cfg, name):
+    names = _set_names(cfg)
+    wanted = (name or "").strip().lower()
+    if not wanted:
+        raise ActionError("no set chosen")
+    for known in names:
+        if known.lower() == wanted:
+            profile_sets.set_active(known)
+            return f"Set: {known}"
+    raise ActionError(f"there's no set called {name!r} (sets are listed in config.json under 'sets')")
+
+
+def _set_step(step):
+    def run(cfg):
+        names = _set_names(cfg)
+        if len(names) < 2:
+            raise ActionError("there's only one set (add one to 'sets' in config.json)")
+        now = profile_sets.pick(cfg["sets"], profile_sets.active_name())["name"]
+        return _set_switch(cfg, names[(names.index(now) + step) % len(names)])
+    return run
 
 
 def _mode_toggle(cfg, mode):
@@ -730,6 +761,14 @@ ACTIONS = [
             Param("otherwise", "Otherwise, run these steps", kind="macro", default=[])],
            group="Mode"),
 
+    Action("set_switch", "Switch to a profile set", _set_switch,
+           [Param("name", "Set", suggest="sets")], group="Profile set",
+           osd_icon="view-grid-symbolic"),
+    Action("set_next", "Next profile set", _set_step(1), group="Profile set",
+           osd_icon="view-grid-symbolic"),
+    Action("set_previous", "Previous profile set", _set_step(-1), group="Profile set",
+           osd_icon="view-grid-symbolic"),
+
     Action("macro", "Macro", _macro,
            [Param("steps", "Steps", kind="macro", default=[])], group="Advanced"),
     Action("run_python", "Run Python (sandboxed)", _run_python,
@@ -766,6 +805,7 @@ SUGGESTIONS = {
     "obs_filters": lambda cfg, p: obs.list_filters(cfg["obs"], p.get("source", "").strip()),
     "audio_apps": lambda cfg, p: audio.playing_apps(),
     "modes": lambda cfg, p: list(cfg.get("modes", [])),
+    "sets": lambda cfg, p: _set_names(cfg),
     "audio_outputs": lambda cfg, p: audio.outputs(),
     "voice_presets": lambda cfg, p: voice.presets("input"),
 }

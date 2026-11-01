@@ -7,8 +7,6 @@ and Wait for window) is its program's name without ".exe", e.g. "obs64",
 """
 
 import ctypes
-import subprocess
-import time
 from pathlib import Path
 
 from ..desktop import DesktopError

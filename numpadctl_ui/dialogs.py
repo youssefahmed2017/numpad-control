@@ -2,12 +2,13 @@
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QLineEdit,
-                               QListWidget, QListWidgetItem, QPushButton, QScrollArea, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QCheckBox, QDialog, QDialogButtonBox, QHBoxLayout, QLineEdit, QListWidget, QListWidgetItem, QVBoxLayout,
+    QWidget)
 
 from numpadctl import config, desktop, devices, keys, modes, obs, presets, ui_common
 from . import tokens
-from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, SpinBox, ToolButton
+from .buttons import ComboBox, PushButton, SmoothScrollArea, SpinBox
 from .widgets import card, label
 
 APPEARANCES = [("auto", "Follow the system"), ("light", "Light"), ("dark", "Dark")]
