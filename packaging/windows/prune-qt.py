@@ -73,7 +73,8 @@ def prune(site_packages):
     if missing:
         raise SystemExit(f"PySide6 has no {', '.join(sorted(missing))} here: refusing to prune.")
     plugins = kept_plugins(package)
-    dlls = wanted_dlls(package, modules | plugins | {p for p in package.glob("pyside6.abi3.dll")}  # not pyside6qml: that one drags Qt6Qml in)
+    # pyside6.abi3.dll only: pyside6qml.abi3.dll would drag Qt6Qml in.
+    dlls = wanted_dlls(package, modules | plugins | set(package.glob("pyside6.abi3.dll")))
     keep_files = modules | plugins | dlls | {p for p in package.iterdir() if p.suffix == ".py"}
 
     before, removed, unknown = size(package), [], []
