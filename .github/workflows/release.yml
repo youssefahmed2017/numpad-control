@@ -42,7 +42,7 @@ jobs:
           $setup = (Get-ChildItem build\windows -Filter "NumpadControl-Setup-*.exe").FullName
           powershell -ExecutionPolicy Bypass -File packaging\windows\smoke-test.ps1 $setup
           gh release upload "$env:GITHUB_REF_NAME" $setup
-          # Copies older than 0.2.8 look for the Setup under its old name; same file, same hash, so their update still works.
+          # Copies older than 0.3.0 look for the Setup under its old name; same file, same hash, so their update still works.
           $legacy = Join-Path (Split-Path $setup) (Split-Path $setup -Leaf).Replace("NumpadControl-Setup", "NumpadPilot-Setup")
           Copy-Item $setup $legacy
           gh release upload "$env:GITHUB_REF_NAME" $legacy

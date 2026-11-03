@@ -504,6 +504,20 @@ the Windows installer), then **sign it on your own computer**:
 uploads `source.zip` and `release.sig` to the release. Until then, installed copies see the release
 but refuse to install it.
 
+**0.3.0:** NumpadControl again, and a much smaller install.
+- **Name:** NumpadPilot (the name from 0.2.0 to 0.2.7) is NumpadControl again, because another project already used
+  NumpadPilot. The service, the `numpad-control` command and your settings never changed, so nothing moves. Installed
+  copies update as usual (releases are still signed under the old id, and the Windows Setup is also attached under its old
+  file name, so copies older than 0.3.0 can still update). On Windows the Start-menu entries and start-at-login entry
+  take the new name; on Arch the package is `numpad-control` and replaces `numpad-pilot`. The GitHub address is now
+  `youssefahmed2017/numpad-control` (old links redirect; the old website address no longer works).
+- **Smaller install:** Qt is cut down to the parts the window uses: about 94 MB on Linux and 45 MB on Windows (it
+  was about 250 MB), and the Windows installer is 32 MB instead of 69 MB. `setup.sh` and `setup.ps1` do it after pip,
+  check that the window still opens, and put the full Qt back if it doesn't; `--no-prune` / `-NoPrune` keep all of it.
+- **Checkboxes** draw their tick (the box fills, then the tick is traced; un-ticking rubs it out faster).
+- **Windows taskbar:** the settings window shows NumpadControl's icon, not Python's.
+- New banner pictures with the new name.
+
 **0.2.7:** smoother motion, Windows updates and a nicer installer start.
 - **Motion:** every animation now uses Material 3's easing curves, durations and springs (buttons squeeze and bounce
   back, popups, fades and scrolling follow the same tokens), and messages appear in a real Material 3 snackbar.

@@ -141,7 +141,7 @@ def sign(tag, key_path, upload, installer_choice="auto"):
     archive = out / "source.zip"
     run("git", "archive", "--format=zip", f"--prefix=numpad-control-{tag}/", "-o", str(archive), commit)
     digest = file_sha256(archive)
-    # "numpad-pilot" is the program's id from before the rename: copies older than 0.2.8 refuse any other.
+    # "numpad-pilot" is the program's id from before the rename: copies older than 0.3.0 refuse any other.
     fields = {"app": "numpad-pilot", "tag": tag, "commit": commit, "zip_sha256": digest}
     installer = find_installer(tag, installer_choice)
     if installer:
