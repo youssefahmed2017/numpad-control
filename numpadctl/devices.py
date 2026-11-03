@@ -123,7 +123,7 @@ def manual_remove_command(vendor, product):
 
 
 def has_rule(vendor, product):
-    """Whether NumpadPilot's rule for this keyboard is installed."""
+    """Whether NumpadControl's rule for this keyboard is installed."""
     _check_ids(vendor, product)
     return rule_path(vendor, product).exists()
 

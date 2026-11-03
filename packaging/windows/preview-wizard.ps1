@@ -11,7 +11,7 @@ function Shot($name) {
 }
 function Keys($keys, $name) { [System.Windows.Forms.SendKeys]::SendWait($keys); Start-Sleep -Seconds 3; Shot $name }
 
-$dir = Join-Path $env:RUNNER_TEMP "NumpadPilot-preview"
+$dir = Join-Path $env:RUNNER_TEMP "NumpadControl-preview"
 Start-Process $Setup -ArgumentList "/DIR=`"$dir`""
 Start-Sleep -Seconds 8; Shot "1-welcome"
 Keys "%n" "2-license"
@@ -23,7 +23,7 @@ Keys "%i" "6-installing"
 Start-Sleep -Seconds 45; Shot "7-finish"
 
 # The same wizard in Windows' dark mode (Setup follows the system theme).
-Get-Process | Where-Object { $_.ProcessName -like "NumpadPilot-Setup*" -or $_.ProcessName -like "*.tmp" } | Stop-Process -Force -ErrorAction SilentlyContinue
+Get-Process | Where-Object { $_.ProcessName -like "NumpadControl-Setup*" -or $_.ProcessName -like "*.tmp" } | Stop-Process -Force -ErrorAction SilentlyContinue
 $theme = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
 Set-ItemProperty $theme -Name AppsUseLightTheme -Value 0
 Set-ItemProperty $theme -Name SystemUsesLightTheme -Value 0

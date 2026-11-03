@@ -38,7 +38,10 @@ from .platform import IS_WINDOWS, paths
 
 log = logging.getLogger("numpadctl")
 
-REPO = "youssefahmed2017/numpad-pilot"
+# What release.sig calls this program. Copies from before the rename (0.2.7 and older) insist on the first one,
+# so releases are still signed with it; the second is accepted for a later release that drops it.
+APP_IDS = ("numpad-pilot", "numpad-control")
+REPO = "youssefahmed2017/numpad-control"
 LATEST_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
 # What tools/sign-release attaches to every release: the source (built from the signed commit) and
 # the signature over that commit and that file's hash. Nothing else is ever installed.
@@ -46,7 +49,7 @@ ZIP_URL = f"https://github.com/{REPO}/releases/download/{{tag}}/source.zip"
 SIGNATURE_URL = f"https://github.com/{REPO}/releases/download/{{tag}}/release.sig"
 MAX_SIGNATURE_BYTES = 8192
 MAX_ZIP_BYTES = 200 * 1024 * 1024
-INSTALLER_URL = f"https://github.com/{REPO}/releases/download/{{tag}}/NumpadPilot-Setup-{{version}}.exe"
+INSTALLER_URL = f"https://github.com/{REPO}/releases/download/{{tag}}/NumpadControl-Setup-{{version}}.exe"
 MAX_INSTALLER_BYTES = 300 * 1024 * 1024
 ROOT = Path(__file__).resolve().parent.parent
 TAG = re.compile(r"v([0-9]+)\.([0-9]+)\.([0-9]+)")  # matched whole and ASCII-only: it goes into a git ref and a download URL
@@ -56,7 +59,7 @@ NO_WINDOW = 0x08000000 if IS_WINDOWS else 0
 
 
 PACKAGED_MARKER = ".packaged"  # put there by a distro package (AUR): its package manager does the updating
-INSTALLER_MARKER = ".installer"  # put there by NumpadPilot-Setup.exe: updates run the newer Setup, not this code
+INSTALLER_MARKER = ".installer"  # put there by NumpadControl-Setup.exe: updates run the newer Setup, not this code
 
 
 def packaged(root=ROOT):
@@ -147,7 +150,7 @@ def verify_signature(tag, blob, public_key=None):
         raise UpdateError("the 'cryptography' package is missing, so the release's signature can't be "
                           "checked (run the installer once to add it)") from None
     key = release_key.PUBLIC_KEY if public_key is None else public_key
-    unsigned = UpdateError(f"{tag} isn't signed with the NumpadPilot release key, so it wasn't installed")
+    unsigned = UpdateError(f"{tag} isn't signed with the NumpadControl release key, so it wasn't installed")
     try:
         document = json.loads(blob)
         statement = document["statement"]
@@ -156,7 +159,7 @@ def verify_signature(tag, blob, public_key=None):
         signed = json.loads(statement)
     except (ValueError, KeyError, TypeError, InvalidSignature):  # also an empty key: nothing is trusted yet
         raise unsigned from None
-    if not isinstance(signed, dict) or signed.get("app") != "numpad-pilot" or signed.get("tag") != tag:
+    if not isinstance(signed, dict) or signed.get("app") not in APP_IDS or signed.get("tag") != tag:
         raise UpdateError(f"the signature is for a different release than {tag}, so it wasn't installed")
     if not re.fullmatch(r"[0-9a-f]{40}", str(signed.get("commit"))) or \
             not re.fullmatch(r"[0-9a-f]{64}", str(signed.get("zip_sha256"))):
@@ -204,7 +207,7 @@ def _update_zip(tag, sha256, root=ROOT):
             z.extractall(temp)
         unpacked = [p for p in Path(temp).iterdir() if p.is_dir()]
         if len(unpacked) != 1 or not (unpacked[0] / "numpadctl").is_dir():
-            raise UpdateError("the download doesn't look like NumpadPilot")
+            raise UpdateError("the download doesn't look like NumpadControl")
         new = unpacked[0]
         for item in new.iterdir():
             if item.name in KEEP:
@@ -248,10 +251,11 @@ def _update_installer(tag, sha256):
     files (it knows how to replace ones that are in use, which a plain file swap can't) and starts it again."""
     folder = paths.state_dir() / "updates"
     folder.mkdir(parents=True, exist_ok=True)
-    for old in folder.glob("NumpadPilot-Setup-*.exe"):
-        old.unlink(missing_ok=True)
+    for pattern in ("NumpadControl-Setup-*.exe", "NumpadPilot-Setup-*.exe"):
+        for old in folder.glob(pattern):
+            old.unlink(missing_ok=True)
     version = tag[1:]
-    setup = folder / f"NumpadPilot-Setup-{version}.exe"
+    setup = folder / f"NumpadControl-Setup-{version}.exe"
     _download_file(INSTALLER_URL.format(tag=tag, version=version), setup, MAX_INSTALLER_BYTES, sha256)
     flags = 0x00000008 | 0x00000200 if IS_WINDOWS else 0  # detached, own process group: it outlives this copy
     subprocess.Popen([str(setup), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS",
@@ -277,7 +281,7 @@ def install(tag, root=ROOT):
     if not parse(tag):
         raise UpdateError(f"not a release tag: {tag}")
     if packaged(root):
-        raise UpdateError("NumpadPilot was installed by your package manager: update it with that (for example yay -Syu)")
+        raise UpdateError("NumpadControl was installed by your package manager: update it with that (for example yay -Syu)")
     log.info("updating to %s", tag)
     try:
         blob = _download(SIGNATURE_URL.format(tag=tag), MAX_SIGNATURE_BYTES, timeout=30)
@@ -315,8 +319,8 @@ def main():
         print(f"Couldn't update: {e}")
         return 1
     if result == "installer":
-        print(f"The installer for {tag} is running. NumpadPilot closes and starts again by itself in a moment.")
+        print(f"The installer for {tag} is running. NumpadControl closes and starts again by itself in a moment.")
         return 0
-    print(f"Updated to {tag}. Restart NumpadPilot to use it "
+    print(f"Updated to {tag}. Restart NumpadControl to use it "
           "(Linux: systemctl --user restart numpad-control; Windows: Quit in the tray, then start it).")
     return 0

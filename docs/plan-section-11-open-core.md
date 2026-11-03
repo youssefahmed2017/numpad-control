@@ -1,6 +1,6 @@
 # 11. Open-core model: what is open, what is closed
 
-> **Replaced on Oct 28, 2026:** NumpadPilot is now entirely free and open source under the
+> **Replaced on Oct 28, 2026:** NumpadControl is now entirely free and open source under the
 > GPL-3.0, the settings app included (it lives in `numpadctl_ui/`). There is no paid
 > edition. This section is kept as a record of the earlier plan.
 
@@ -15,7 +15,7 @@ services. The engine and the backend are open; the user interface is closed.
 
 ## 11.1 The two editions
 
-| | Open edition (free, GitHub) | NumpadPilot app (paid, closed) |
+| | Open edition (free, GitHub) | NumpadControl app (paid, closed) |
 |---|---|---|
 | Who it's for | Developers, Linux enthusiasts, people who audit what reads their keyboard | Streamers, editors and everyone else who wants it to just work |
 | How you get it | Clone the repository and run it from source | Signed installer (website, Steam, Microsoft Store), automatic updates |

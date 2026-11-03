@@ -1,7 +1,7 @@
-# The NumpadPilot website
+# The NumpadControl website
 
 Plain HTML, CSS and JavaScript: no build step, no libraries. GitHub publishes it at
-<https://youssefahmed2017.github.io/numpad-pilot/> whenever `site/` changes on `main`
+<https://youssefahmed2017.github.io/numpad-control/> whenever `site/` changes on `main`
 (`.github/workflows/pages.yml`; enable it once under Settings → Pages → Source: GitHub Actions).
 
 ## Pages

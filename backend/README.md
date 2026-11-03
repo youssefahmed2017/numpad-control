@@ -1,6 +1,6 @@
-# NumpadPilot backend
+# NumpadControl backend
 
-The cloud side of NumpadPilot: the shared profile library and profile sync between
+The cloud side of NumpadControl: the shared profile library and profile sync between
 computers. Like the rest of the repository it is open source under the
 [GNU General Public License v3.0](../LICENSE) (GPL-3.0).
 

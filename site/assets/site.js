@@ -1,9 +1,9 @@
-// NumpadPilot website: everything shared by the pages (one source for the header, footer and form).
+// NumpadControl website: everything shared by the pages (one source for the header, footer and form).
 (function () {
   // ---- settings: the accounts this site reports to ----
-  const FORM_ENDPOINT = "https://formspree.io/f/mgaakpzq";  // waitlist sign-ups (Formspree: "NumpadPilot waitlist")
+  const FORM_ENDPOINT = "https://formspree.io/f/mgaakpzq";  // waitlist sign-ups (Formspree: "NumpadControl waitlist")
   const GOATCOUNTER = "youssefahmedstartscodingat2017";     // visit counts: https://youssefahmedstartscodingat2017.goatcounter.com
-  const GITHUB = "https://github.com/youssefahmed2017/numpad-pilot";
+  const GITHUB = "https://github.com/youssefahmed2017/numpad-control";
 
   const PAGES = [
     ["index.html", "Home"], ["features.html", "Features"], ["pricing.html", "Why free"],
@@ -61,7 +61,7 @@
     header.innerHTML = `
       <div class="wrap">
         <button class="icon-btn menu-btn" id="menu" aria-label="Open the menu">${icon("menu")}</button>
-        <a class="brand" href="index.html">${LOGO}NumpadPilot</a>
+        <a class="brand" href="index.html">${LOGO}NumpadControl</a>
         <nav class="nav" aria-label="Pages">${PAGES.map(([h, t]) => `<a href="${h}"${current(h)}>${t}</a>`).join("")}</nav>
         <button class="icon-btn" id="theme" aria-label="Colours and dark mode" aria-expanded="false">${icon("palette")}</button>
         <a class="btn filled small" href="index.html#waitlist" data-track="nav-waitlist">Join the waitlist</a>
@@ -78,7 +78,7 @@
     document.body.insertAdjacentHTML("beforeend", `
       <div class="drawer-scrim" id="scrim"></div>
       <nav class="drawer" aria-label="Pages">
-        <a class="brand" href="index.html" style="padding:6px 16px 18px">${LOGO}NumpadPilot</a>
+        <a class="brand" href="index.html" style="padding:6px 16px 18px">${LOGO}NumpadControl</a>
         ${PAGES.map(([h, t]) => `<a href="${h}"${current(h)}>${t}</a>`).join("")}
         <a href="privacy.html"${current("privacy.html")}>Privacy</a>
         <a href="${GITHUB}">GitHub</a>
@@ -88,13 +88,13 @@
     footer.innerHTML = `
       <div class="wrap">
         <div class="cols">
-          <div><a class="brand" href="index.html">${LOGO}NumpadPilot</a>
+          <div><a class="brand" href="index.html">${LOGO}NumpadControl</a>
             <p class="muted" style="max-width:360px">Turn any cheap USB numpad into a control deck. Windows and Linux, no driver, no telemetry.</p></div>
           <div><h4>Product</h4><a href="features.html">Features</a><a href="pricing.html">Why free</a><a href="download.html">Get started</a></div>
           <div><h4>Help</h4><a href="faq.html">FAQ</a><a href="${GITHUB}/blob/main/docs/compatibility.md">Tested numpads</a><a href="${GITHUB}/issues">Report a problem</a></div>
           <div><h4>Open source</h4><a href="${GITHUB}">GitHub</a><a href="privacy.html">Privacy</a><a href="${GITHUB}/blob/main/LICENSE">GPL-3.0</a></div>
         </div>
-        <p class="fine">Stream Deck is a trademark of Corsair / Elgato; NumpadPilot isn't affiliated with them.
+        <p class="fine">Stream Deck is a trademark of Corsair / Elgato; NumpadControl isn't affiliated with them.
           This site counts visits without cookies and keeps nothing about you.</p>
       </div>`;
   }
@@ -273,7 +273,7 @@
         <input type="hidden" name="page" value="${here}">
         <p style="margin:26px 0 0"><button class="btn filled" type="submit">${icon("mail")}Join the waitlist</button></p>
         <div class="form-done">${icon("check")}<span>You're on the list. We'll email you when there's news.</span></div>
-        <p class="form-note">Only used for NumpadPilot news. No spam; unsubscribe any time. <a href="privacy.html">Privacy</a></p>
+        <p class="form-note">Only used for NumpadControl news. No spam; unsubscribe any time. <a href="privacy.html">Privacy</a></p>
       </form>`;
   }
   function wireWaitlist() {

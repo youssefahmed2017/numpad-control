@@ -1,4 +1,4 @@
-"""End-to-end: NumpadPilot's OBS actions against a real (private, headless) OBS. Not part of the normal test run.
+"""End-to-end: NumpadControl's OBS actions against a real (private, headless) OBS. Not part of the normal test run.
 
     .venv/bin/python -m unittest tests.e2e_obs -v
 
@@ -181,7 +181,7 @@ class ObsActionsTest(unittest.TestCase):
 @unittest.skipIf(PROBLEM, PROBLEM)
 class ObsDefaultRecordingTest(unittest.TestCase):
     """OBS as most people have it (recording quality "Same as stream", Hybrid MP4): it takes a pause request and keeps
-    recording. NumpadPilot must say so instead of showing "Recording paused"."""
+    recording. NumpadControl must say so instead of showing "Recording paused"."""
 
     def test_pausing_a_recording_that_cannot_pause_says_so(self):
         with ObsTestbed(record_quality="Stream", record_format="hybrid_mp4") as bed:

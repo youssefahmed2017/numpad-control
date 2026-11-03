@@ -24,7 +24,7 @@ ROWS, COLUMNS = 5, 4
 class Hud(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("NumpadPilot key map")
+        self.setWindowTitle("NumpadControl key map")
         self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.WindowTransparentForInput
                             | Qt.WindowDoesNotAcceptFocus | Qt.X11BypassWindowManagerHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
@@ -126,7 +126,7 @@ class Hud(QWidget):
 
 def run():
     app = QApplication(sys.argv[:1])
-    app.setApplicationName("NumpadPilot key map")
+    app.setApplicationName("NumpadControl key map")
     app.setQuitOnLastWindowClosed(False)
     cfg = config.load()
     theme.apply(app, cfg.get("appearance", "auto"), cfg.get("accent", tokens.DEFAULT_ACCENT),

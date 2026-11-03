@@ -2,7 +2,7 @@
 
     .venv/bin/python -m unittest tests.e2e_voice -v
 
-A silent virtual microphone plays a 440 Hz tone; EasyEffects (started by the test) runs NumpadPilot's voice actions on it; a
+A silent virtual microphone plays a 440 Hz tone; EasyEffects (started by the test) runs NumpadControl's voice actions on it; a
 private headless OBS records the result; the pitch of the recording is measured. Your real microphone is never used, nothing
 is audible, and the test puts back what it changed (your default microphone, EasyEffects, its preset file) even if it fails.
 It refuses to run while EasyEffects is already running (it would disturb your session)."""
@@ -90,7 +90,7 @@ class VoiceChangerEndToEnd(unittest.TestCase):
             w.writeframes(b"".join(struct.pack("<h", int(9000 * math.sin(2 * math.pi * TONE_HZ * i / 48000))) for i in range(48000 * 90)))
         folder = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "easyeffects/input"
         folder.mkdir(parents=True, exist_ok=True)
-        cls.preset_file = folder / "NumpadPilotE2E.json"
+        cls.preset_file = folder / "NumpadControlE2E.json"
         cls.preset_file.write_text(json.dumps({"input": {"blocklist": [], "plugins_order": ["pitch#0"], "pitch#0": {
             "bypass": False, "input-gain": 0.0, "output-gain": 0.0, "semitones": SEMITONES, "cents": 0.0, "octaves": 0}}}))
         cls.module = sh("pactl", "load-module", "module-null-sink", f"sink_name={SINK}",
@@ -145,7 +145,7 @@ class VoiceChangerEndToEnd(unittest.TestCase):
         self.assertGreater(level, 0.01, "the tone reached OBS")
         self.assertAlmostEqual(hz, TONE_HZ, delta=6, msg="normal voice: the tone as it was")
 
-        self.assertEqual(self.do("voice_on", preset="NumpadPilotE2E"), "Voice: NumpadPilotE2E")
+        self.assertEqual(self.do("voice_on", preset="NumpadControlE2E"), "Voice: NumpadControlE2E")
         time.sleep(1.5)
         hz, level = self.record_pitch()
         self.assertGreater(level, 0.01)
@@ -158,21 +158,21 @@ class VoiceChangerEndToEnd(unittest.TestCase):
 
     def test_the_toggle_key_goes_on_and_off(self):
         self.do("voice_off")
-        self.assertEqual(self.do("voice_toggle", preset="NumpadPilotE2E", normal=""), "Voice: NumpadPilotE2E")
+        self.assertEqual(self.do("voice_toggle", preset="NumpadControlE2E", normal=""), "Voice: NumpadControlE2E")
         time.sleep(1.5)
         on, _ = self.record_pitch()
-        self.assertEqual(self.do("voice_toggle", preset="NumpadPilotE2E", normal=""), "Voice: normal")
+        self.assertEqual(self.do("voice_toggle", preset="NumpadControlE2E", normal=""), "Voice: normal")
         time.sleep(1.5)
         off, _ = self.record_pitch()
         self.assertLess(on, off - 50, "on is lower than off")
 
     def test_the_pick_list_offers_the_preset_before_anything_runs(self):
-        self.assertIn("NumpadPilotE2E", voice.presets("input"))
+        self.assertIn("NumpadControlE2E", voice.presets("input"))
 
     def test_a_voice_that_does_not_exist_says_what_does(self):
         with self.assertRaises(actions.ActionError) as caught:
             self.do("voice_on", preset="Chipmunk")
-        self.assertIn("NumpadPilotE2E", str(caught.exception))
+        self.assertIn("NumpadControlE2E", str(caught.exception))
 
 
 if __name__ == "__main__":

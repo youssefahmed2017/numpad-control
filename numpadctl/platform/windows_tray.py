@@ -1,4 +1,4 @@
-"""NumpadPilot on Windows: the service in the background, with a tray icon.
+"""NumpadControl on Windows: the service in the background, with a tray icon.
 
 Start it with numpad-control.pyw (double-click it, or "Start at login" in the
 tray menu), which runs without a console window. Logs go to
@@ -19,9 +19,9 @@ from . import paths
 
 log = logging.getLogger("numpadctl")
 
-APP_NAME = "NumpadPilot"
-AUTOSTART_NAME = "NumpadPilot"
-OLD_AUTOSTART_NAMES = ("Numpad Control",)  # before the rename: moved to AUTOSTART_NAME, never left behind
+APP_NAME = "NumpadControl"
+AUTOSTART_NAME = "NumpadControl"
+OLD_AUTOSTART_NAMES = ("NumpadPilot", "Numpad Control")  # earlier names: moved to AUTOSTART_NAME, never left behind
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 LAUNCHER = Path(__file__).resolve().parents[2] / "numpad-control.pyw"
 STATUS_REFRESH_SECONDS = 2
@@ -74,7 +74,7 @@ def set_autostart(on, winreg=None):
 # ---------------------------------------------------------------- the icon
 
 def draw_icon(size=64):
-    """The NumpadPilot icon (assets/icon-512.png), scaled to `size`."""
+    """The NumpadControl icon (assets/icon-512.png), scaled to `size`."""
     from PIL import Image
     image = Image.open(Path(__file__).resolve().parents[2] / "assets" / "icon-512.png").convert("RGBA")
     return image.resize((size, size), Image.LANCZOS)
@@ -199,7 +199,7 @@ def config_path():
 
 
 def _already_running():
-    """A named mutex: only one NumpadPilot per user session."""
+    """A named mutex: only one NumpadControl per user session."""
     import ctypes
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel32.CreateMutexW.restype = ctypes.c_void_p
@@ -221,7 +221,7 @@ def main():
         from .. import crash
         crash.install("tray")
         if _already_running():
-            _message_box("NumpadPilot is already running - look for its icon in the system tray.")
+            _message_box("NumpadControl is already running - look for its icon in the system tray.")
             return
         if autostart_enabled():
             set_autostart(True)  # also moves a start-at-login entry from before the rename
@@ -240,4 +240,4 @@ def main():
         log.exception("couldn't start")
         from .. import crash
         crash.report("tray")
-        _message_box(f"NumpadPilot couldn't start:\n\n{e}\n\nDetails are in {log_path()}")
+        _message_box(f"NumpadControl couldn't start:\n\n{e}\n\nDetails are in {log_path()}")

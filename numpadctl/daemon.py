@@ -582,7 +582,7 @@ class Daemon:
         name = self.extra[dev_id]["spec"].get("name") or dev_id
         actions.notify("Keyboard given back",
                        f"{name} types normally again. To use it as a pad again, remove it and add it again in the "
-                       "settings window, or restart NumpadPilot.")
+                       "settings window, or restart NumpadControl.")
 
     def reset_device(self, dev_id):
         """Forget the presses of a device that went away (so no key stays down)."""
@@ -641,7 +641,7 @@ class Daemon:
                 tag = await asyncio.to_thread(updater.check)
                 if tag and mode == "notify" and tag != told:
                     told = tag
-                    actions.notify("NumpadPilot update", f"Version {tag[1:]} is out: " + (
+                    actions.notify("NumpadControl update", f"Version {tag[1:]} is out: " + (
                                        "update it with your package manager (yay -Syu)." if updater.packaged() else
                                        "run the installer or `python -m numpadctl update` to get it."))
                 elif tag and mode == "auto":
@@ -651,14 +651,14 @@ class Daemon:
                         result = await asyncio.to_thread(updater.install, tag)
                     except (updater.UpdateError, OSError) as e:
                         log.warning("update to %s failed: %s", tag, e)
-                        actions.notify("NumpadPilot couldn't update", str(e))
+                        actions.notify("NumpadControl couldn't update", str(e))
                     else:
                         if result == "installer":  # the Windows Setup takes over: it closes this copy and starts the new one
-                            actions.notify("NumpadPilot is updating", f"Installing version {tag[1:]}; it starts again by itself.")
+                            actions.notify("NumpadControl is updating", f"Installing version {tag[1:]}; it starts again by itself.")
                             self.shutdown()
                             self.quit()
                             return
-                        actions.notify("NumpadPilot updated", f"Now version {tag[1:]}; restarting.")
+                        actions.notify("NumpadControl updated", f"Now version {tag[1:]}; restarting.")
                         self.shutdown()
                         self.restart()
                         return
@@ -693,7 +693,7 @@ class Daemon:
         """Say once that the numpad is missing (after MISSING_NOTICE seconds of it being gone)."""
         if not self.missing_notified and time.monotonic() - since >= MISSING_NOTICE:
             self.missing_notified = True
-            actions.notify("Numpad not found", "Plug your numpad in; NumpadPilot picks it up by itself.")
+            actions.notify("Numpad not found", "Plug your numpad in; NumpadControl picks it up by itself.")
 
     def numpad_found(self):
         if self.missing_notified:

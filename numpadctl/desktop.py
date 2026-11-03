@@ -214,7 +214,7 @@ def toggle_dnd():
             call("UnInhibit", GLib.Variant("(u)", (_dnd["cookie"],)), "()")
             _dnd["cookie"] = None
             return False
-        reply = call("Inhibit", GLib.Variant("(ssa{sv})", ("numpad-control", "Do not disturb (NumpadPilot)", {})), "(u)")
+        reply = call("Inhibit", GLib.Variant("(ssa{sv})", ("numpad-control", "Do not disturb (NumpadControl)", {})), "(u)")
         _dnd["cookie"] = reply.unpack()[0]
         return True
     out = _run(["dunstctl", "set-paused", "toggle"])
@@ -247,7 +247,7 @@ def lock_screen():
         _run(["loginctl", "lock-session"])  # KDE's (and most desktops') screen locker listens
 
 
-# Never force-killed, whatever is focused: the desktop itself and NumpadPilot.
+# Never force-killed, whatever is focused: the desktop itself and NumpadControl.
 PROTECTED = {"hyprland", "plasmashell", "kwin_wayland", "kwin_x11", "krunner", "sddm", "waybar", "hyprpaper",
              "dev.numpadctl.numpadcontrol", "explorer", "dwm", "winlogon", "csrss", "python", "pythonw"}
 

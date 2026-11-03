@@ -169,7 +169,7 @@ ${B}I am soda.${Z}
 
   - a package manager that installs nothing
   - written in bash, mostly for fun
-  - the fizz in NumpadPilot's admin console
+  - the fizz in NumpadControl's admin console
   - always three seconds from a dramatic exit
 
 ${D}I know seven pieces of a secret. I will never tell you. (ask nicely, maybe.)${Z}

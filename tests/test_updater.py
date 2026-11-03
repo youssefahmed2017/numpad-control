@@ -120,6 +120,12 @@ class SignatureTest(unittest.TestCase):
         with self.assertRaisesRegex(updater.UpdateError, "different release"):
             updater.verify_signature("v0.2.0", sign(self.private, app="something-else"), self.public)
 
+    def test_a_release_signed_under_the_old_or_the_new_program_id_is_accepted(self):
+        # 0.2.7 and older insist on "numpad-pilot" (what sign-release still writes); "numpad-control" is accepted too.
+        for app in ("numpad-pilot", "numpad-control"):
+            signed = updater.verify_signature("v0.2.0", sign(self.private, app=app), self.public)
+            self.assertEqual(signed["tag"], "v0.2.0", app)
+
     def test_odd_commits_and_hashes_are_refused(self):
         for changes in ({"commit": "main"}, {"commit": "A" * 40}, {"zip_sha256": "xyz"}, {"commit": None}):
             with self.assertRaises(updater.UpdateError, msg=str(changes)):
@@ -194,7 +200,7 @@ class WindowsInstallerUpdateTest(unittest.TestCase):
                 mock.patch.object(updater, "_update_packages") as pip, mock.patch.object(updater, "_update_zip") as zipped:
             self.assertEqual(updater.install("v0.2.7", self.root), "installer")
         argv = popen.call_args.args[0]
-        self.assertEqual(Path(argv[0]).name, "NumpadPilot-Setup-0.2.7.exe")
+        self.assertEqual(Path(argv[0]).name, "NumpadControl-Setup-0.2.7.exe")
         self.assertEqual(Path(argv[0]).read_bytes(), setup_bytes)
         self.assertEqual(argv[1:], ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/RELAUNCH=1"])
         pip.assert_not_called()  # the installer carries the packages; this Python has no pip
@@ -230,7 +236,7 @@ class WindowsInstallerUpdateTest(unittest.TestCase):
 
     def test_older_installers_are_cleared_before_a_new_one_is_saved(self):
         (self.state / "updates").mkdir()
-        old = self.state / "updates" / "NumpadPilot-Setup-0.2.5.exe"
+        old = self.state / "updates" / "NumpadControl-Setup-0.2.5.exe"
         old.write_bytes(b"old")
         with mock.patch.object(updater, "_download_file"), mock.patch.object(updater.subprocess, "Popen"):
             updater._update_installer("v0.2.7", "a" * 64)
@@ -354,13 +360,13 @@ class ServiceUpdatesTest(unittest.IsolatedAsyncioTestCase):
         d, install, notify = await self.run_loop("auto")
         install.assert_called_once_with("v9.0.0")
         d.restart.assert_called_once()
-        self.assertEqual(notify.call_args.args[0], "NumpadPilot updated")
+        self.assertEqual(notify.call_args.args[0], "NumpadControl updated")
 
     async def test_the_windows_installer_takes_over_instead_of_restarting(self):
         d, install, notify = await self.run_loop("auto", install_result="installer")
         d.quit.assert_called_once()
         d.restart.assert_not_called()
-        self.assertEqual(notify.call_args.args[0], "NumpadPilot is updating")
+        self.assertEqual(notify.call_args.args[0], "NumpadControl is updating")
 
     async def test_notify_only_says_so_once(self):
         d, install, notify = await self.run_loop("notify")
@@ -390,7 +396,7 @@ class ServiceUpdatesTest(unittest.IsolatedAsyncioTestCase):
     async def test_a_failed_update_keeps_running(self):
         d, install, notify = await self.run_loop("auto", install_error=updater.UpdateError("local changes"))
         d.restart.assert_not_called()
-        self.assertEqual(notify.call_args.args, ("NumpadPilot couldn't update", "local changes"))
+        self.assertEqual(notify.call_args.args, ("NumpadControl couldn't update", "local changes"))
 
     async def test_waits_while_a_key_is_held(self):
         d = daemon.Daemon(run_action=lambda *a: None, restart=mock.Mock())

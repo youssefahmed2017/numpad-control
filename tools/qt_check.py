@@ -1,4 +1,4 @@
-"""Proves the (pruned) Qt in an installed NumpadPilot still does what the settings window needs.
+"""Proves the (pruned) Qt in an installed NumpadControl still does what the settings window needs.
 
     python qt_check.py [offscreen|windows]
 
@@ -40,7 +40,7 @@ class QuietLink:
 def main():
     app = QApplication([])
     assert app.platformName() == platform, f"Qt started the {app.platformName()!r} platform, not {platform!r}"
-    for name in ("icon-64.png", "numpad-pilot.ico"):
+    for name in ("icon-64.png", "numpad-control.ico"):
         assert not QPixmap(str(ASSETS / name)).isNull(), f"{name} didn't load (is an image plugin missing?)"
     assert not QIcon(str(ASSETS / "icon-32.png")).isNull()
 

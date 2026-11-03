@@ -1,4 +1,4 @@
-"""Opening the settings: the NumpadPilot app if it can run, otherwise the settings file.
+"""Opening the settings: the NumpadControl app if it can run, otherwise the settings file.
 
 The app (settings window and dialogs) is the numpadctl_ui package next to this one. It
 needs Qt for Python (PySide6); without it, the service still works, set up through

@@ -74,7 +74,7 @@ FORTUNES = [
 HACK = ["connecting to the mainframe...", "bypassing the firewall (it was a sticky note)...",
         "decrypting 0x4E554D504144...", "downloading more RAM...", "injecting jokes into kernel...",
         "access granted. (to nothing in particular)", "FRAGMENT:1"]
-CREDITS = ["NUMPADPILOT", "a cheap numpad, a lot of ideas", "", "directed by you", "written with a very patient robot",
+CREDITS = ["NUMPADCONTROL", "a cheap numpad, a lot of ideas", "", "directed by you", "written with a very patient robot",
            "tested on one (1) numpad", "", "special thanks to the key that does nothing", "FRAGMENT:3", "",
            "no keys were harmed", "THE END"]
 
@@ -516,7 +516,7 @@ class SecretPanel(QDialog):
             ("Danger", [
                 ("Restart the service", "saves your work first", self.restart_service, False),
                 ("Restart this app", "saves your work first", self.restart_app, False),
-                ("Quit NumpadPilot", "saves your work first", self.quit_app, False),
+                ("Quit NumpadControl", "saves your work first", self.quit_app, False),
                 ("Wipe every key", "backs the config up, clears this profile (Discard brings it back)", self.wipe, False),
                 ("Self-destruct", "5 second countdown. or is it.", self.self_destruct, False),
             ]),
@@ -687,7 +687,7 @@ class SecretPanel(QDialog):
                 lambda _result, _error: self.say("service restarted."), self.window.dispatch)
 
     def restart_app(self):
-        if not self.sure("Restart NumpadPilot's window? Your work is saved first.") or not self.saved():
+        if not self.sure("Restart NumpadControl's window? Your work is saved first.") or not self.saved():
             return
         # The new copy waits a moment, so the old one has let go of its one-copy-at-a-time lock.
         subprocess.Popen([sys.executable, "-c", "import subprocess, sys, time; time.sleep(1.5); subprocess.Popen(sys.argv[1:])",
@@ -696,7 +696,7 @@ class SecretPanel(QDialog):
         QTimer.singleShot(200, self.app.quit)
 
     def quit_app(self):
-        if self.sure("Quit NumpadPilot's window? Your work is saved first.") and self.saved():
+        if self.sure("Quit NumpadControl's window? Your work is saved first.") and self.saved():
             self.reset()
             QTimer.singleShot(200, self.app.quit)
 

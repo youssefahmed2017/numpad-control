@@ -1,4 +1,4 @@
-# Builds NumpadPilot-Setup-<version>.exe (what winget installs). Needs Windows, Python 3.12 and Inno Setup 6.
+# Builds NumpadControl-Setup-<version>.exe (what winget installs). Needs Windows, Python 3.12 and Inno Setup 6.
 #
 #   powershell -ExecutionPolicy Bypass -File packaging\windows\build-installer.ps1
 #
@@ -49,7 +49,7 @@ python (Join-Path $Root "tools\prune-qt.py") $site
 Assert-Ok "prune-qt.py"
 Show-Sizes "Biggest packages after pruning:"
 
-Step "NumpadPilot's code"
+Step "NumpadControl's code"
 foreach ($item in "numpadctl", "numpadctl_ui", "assets", "numpad-control.pyw", "LICENSE", "README.md") {
     Copy-Item -Recurse -Force (Join-Path $Root $item) $App
 }
@@ -63,10 +63,10 @@ $iscc = @("$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inn
 if (-not $iscc) { $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source }
 if (-not $iscc) { throw "Inno Setup 6 wasn't found (winget install JRSoftware.InnoSetup)." }
 Write-Host "Inno Setup $((Get-Item $iscc).VersionInfo.ProductVersion)"
-& $iscc "/DAppVersion=$Version" "/DBuildDir=$Build" (Join-Path $PSScriptRoot "numpad-pilot.iss")
+& $iscc "/DAppVersion=$Version" "/DBuildDir=$Build" (Join-Path $PSScriptRoot "numpad-control.iss")
 Assert-Ok "Inno Setup"
 
-$setup = Join-Path $Build "NumpadPilot-Setup-$Version.exe"
+$setup = Join-Path $Build "NumpadControl-Setup-$Version.exe"
 $hash = (Get-FileHash $setup -Algorithm SHA256).Hash
 Write-Host ""
 Write-Host "Built $setup"

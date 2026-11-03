@@ -1,5 +1,5 @@
 [Unit]
-Description=NumpadPilot (turns a USB numpad into a control pad)
+Description=NumpadControl (turns a USB numpad into a control pad)
 
 [Service]
 ExecStart=@DIR@/.venv/bin/python -m numpadctl run

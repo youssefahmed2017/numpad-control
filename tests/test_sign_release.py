@@ -60,11 +60,11 @@ class SignReleaseTest(unittest.TestCase):
         self.assertEqual(signed["commit"], git(self.repo, "rev-parse", "v0.2.6^{commit}"))
         self.assertEqual(signed["zip_sha256"], hashlib.sha256(archive.read_bytes()).hexdigest())
         names = zipfile.ZipFile(archive).namelist()
-        self.assertIn("numpad-pilot-v0.2.6/numpadctl/__init__.py", names)
+        self.assertIn("numpad-control-v0.2.6/numpadctl/__init__.py", names)
         self.assertFalse(any(".git/" in n for n in names))
 
     def test_the_windows_installer_hash_is_signed_when_there_is_one(self):
-        setup = self.key.with_name("NumpadPilot-Setup-0.2.6.exe")
+        setup = self.key.with_name("NumpadControl-Setup-0.2.6.exe")
         setup.write_bytes(b"MZ the installer CI built")
         done = self.sign(installer=str(setup))
         self.assertEqual(done.returncode, 0, done.stderr)

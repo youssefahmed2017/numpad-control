@@ -1,15 +1,15 @@
-; Inno Setup script for NumpadPilot (built by build-installer.ps1, which passes AppVersion and BuildDir).
+; Inno Setup script for NumpadControl (built by build-installer.ps1, which passes AppVersion and BuildDir).
 ; A per-user install: no administrator prompt, uninstall from Settings -> Apps.
 
-#define AppName "NumpadPilot"
+#define AppName "NumpadControl"
 
 [Setup]
 AppId={{276E655D-0D17-4786-99FA-B4F2C232FEFB}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher=Youssef Ahmed
-AppPublisherURL=https://github.com/youssefahmed2017/numpad-pilot
-AppSupportURL=https://github.com/youssefahmed2017/numpad-pilot/issues
+AppPublisherURL=https://github.com/youssefahmed2017/numpad-control
+AppSupportURL=https://github.com/youssefahmed2017/numpad-control/issues
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
@@ -19,10 +19,10 @@ ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
 RestartApplications=no
 LicenseFile={#BuildDir}\app\LICENSE
-SetupIconFile={#BuildDir}\app\assets\numpad-pilot.ico
-UninstallDisplayIcon={app}\assets\numpad-pilot.ico
+SetupIconFile={#BuildDir}\app\assets\numpad-control.ico
+UninstallDisplayIcon={app}\assets\numpad-control.ico
 OutputDir={#BuildDir}
-OutputBaseFilename=NumpadPilot-Setup-{#AppVersion}
+OutputBaseFilename=NumpadControl-Setup-{#AppVersion}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern dynamic
@@ -34,29 +34,34 @@ WizardImageFileDynamicDark=wizard\side-dark-164.bmp,wizard\side-dark-246.bmp,wiz
 WizardSmallImageFileDynamicDark=wizard\small-dark-55.bmp,wizard\small-dark-83.bmp,wizard\small-dark-110.bmp
 
 [Messages]
-WelcomeLabel1=Welcome to NumpadPilot
-WelcomeLabel2=This sets up NumpadPilot, which turns a cheap USB numpad into a control deck for OBS, apps, media and macros.%n%nIt needs no administrator rights, and your settings stay when you update or remove it.
+WelcomeLabel1=Welcome to NumpadControl
+WelcomeLabel2=This sets up NumpadControl, which turns a cheap USB numpad into a control deck for OBS, apps, media and macros.%n%nIt needs no administrator rights, and your settings stay when you update or remove it.
 FinishedHeadingLabel=You're all set
-FinishedLabel=NumpadPilot is installed. Plug in your numpad, open the settings and choose what each key does.
-FinishedLabelNoIcons=NumpadPilot is installed. Plug in your numpad, open the settings and choose what each key does.
+FinishedLabel=NumpadControl is installed. Plug in your numpad, open the settings and choose what each key does.
+FinishedLabelNoIcons=NumpadControl is installed. Plug in your numpad, open the settings and choose what each key does.
 
 [Files]
 Source: "remove-old.ps1"; Flags: dontcopy
 Source: "{#BuildDir}\app\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
+[InstallDelete]
+; Updating from before the rename: the Start-menu shortcuts had the old name; without this both would stay.
+Type: files; Name: "{autoprograms}\NumpadPilot.lnk"
+Type: files; Name: "{autoprograms}\NumpadPilot Settings.lnk"
+
 [Tasks]
-Name: "autostart"; Description: "Start NumpadPilot when I sign in"
+Name: "autostart"; Description: "Start NumpadControl when I sign in"
 
 [Icons]
-Name: "{autoprograms}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\numpad-pilot.ico"
-Name: "{autoprograms}\{#AppName} Settings"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"" gui"; WorkingDir: "{app}"; IconFilename: "{app}\assets\numpad-pilot.ico"; AppUserModelID: "NumpadPilot.Settings"
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\numpad-control.ico"
+Name: "{autoprograms}\{#AppName} Settings"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"" gui"; WorkingDir: "{app}"; IconFilename: "{app}\assets\numpad-control.ico"; AppUserModelID: "NumpadControl.Settings"
 
 [Run]
 Filename: "{app}\python\python.exe"; Parameters: "-c ""from numpadctl.platform.windows_tray import set_autostart; set_autostart(True)"""; WorkingDir: "{app}"; Flags: runhidden; Tasks: autostart
 Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"""; WorkingDir: "{app}"; Flags: nowait skipifsilent
-; An update started by the app (/RELAUNCH=1) is silent but must start NumpadPilot again; other silent installs (winget) don't.
+; An update started by the app (/RELAUNCH=1) is silent but must start NumpadControl again; other silent installs (winget) don't.
 Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"""; WorkingDir: "{app}"; Flags: nowait; Check: RelaunchRequested
-Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"" gui"; WorkingDir: "{app}"; Description: "Open the NumpadPilot settings"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"" gui"; WorkingDir: "{app}"; Description: "Open the NumpadControl settings"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
 Filename: "{app}\python\python.exe"; Parameters: "-c ""from numpadctl.platform.windows_tray import set_autostart; set_autostart(False)"""; WorkingDir: "{app}"; Flags: runhidden; RunOnceId: "NoAutostart"

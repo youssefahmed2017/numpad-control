@@ -68,7 +68,7 @@ def refresh_session():
 
 def notify(title, body=""):
     if shutil.which("notify-send"):
-        subprocess.run(["notify-send", "-a", "NumpadPilot", "--", title, body],
+        subprocess.run(["notify-send", "-a", "NumpadControl", "--", title, body],
                        check=False, timeout=5)
 
 

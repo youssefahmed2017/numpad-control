@@ -1,6 +1,6 @@
 """Games with anti-cheat: while one runs, the service lets go of the numpad completely.
 
-NumpadPilot reads the numpad without a driver (Windows: Raw Input, plus a keyboard
+NumpadControl reads the numpad without a driver (Windows: Raw Input, plus a keyboard
 hook DLL that Windows loads into apps to stop the numpad's keys from typing). Games
 with anti-cheat dislike DLLs loaded into them, so while such a game runs nothing is
 hooked at all: the numpad types like a normal keyboard, and it comes back by itself

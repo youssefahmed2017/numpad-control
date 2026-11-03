@@ -1,4 +1,4 @@
-"""Removes the parts of the PySide6 folder NumpadPilot never loads, so an install carries less.
+"""Removes the parts of the PySide6 folder NumpadControl never loads, so an install carries less.
 
     python prune-qt.py SITE_PACKAGES_FOLDER
 

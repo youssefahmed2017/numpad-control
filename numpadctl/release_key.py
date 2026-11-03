@@ -1,4 +1,4 @@
-"""The public half of the key that signs NumpadPilot releases.
+"""The public half of the key that signs NumpadControl releases.
 
 Every release is signed offline by the author (tools/sign-release). The updater installs
 nothing the key hasn't signed, so a stolen GitHub account or a swapped download can't push

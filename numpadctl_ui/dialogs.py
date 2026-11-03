@@ -379,9 +379,9 @@ class AddDeviceDialog(QDialog):
         self.access = QWidget()
         box = QVBoxLayout(self.access)
         box.setContentsMargins(0, 0, 0, 0)
-        self.access_text = label("NumpadPilot may only read the keyboards you allow. This one isn't allowed yet. "
+        self.access_text = label("NumpadControl may only read the keyboards you allow. This one isn't allowed yet. "
                                  "Allowing it lets every program you run read what you type on it, not only "
-                                 "NumpadPilot, so don't allow a keyboard you type passwords on.", wrap=True)
+                                 "NumpadControl, so don't allow a keyboard you type passwords on.", wrap=True)
         box.addWidget(self.access_text)
         self.allow = PushButton("Allow access…")
         self.allow.clicked.connect(self.allow_access)
@@ -430,7 +430,7 @@ class AddDeviceDialog(QDialog):
         device = self.current()
         if QMessageBox.question(self, "Allow access", f"Let programs you run read the keys of {device['name']}?\n\n"
                                 "That includes anything typed on it, such as passwords. You can take it away again "
-                                "by removing the keyboard in NumpadPilot.") != QMessageBox.Yes:
+                                "by removing the keyboard in NumpadControl.") != QMessageBox.Yes:
             return
         self.allow.setEnabled(False)
         self.access_text.setText("Waiting for your password…")

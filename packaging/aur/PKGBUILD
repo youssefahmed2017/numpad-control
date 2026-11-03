@@ -1,18 +1,20 @@
 # Maintainer: Youssef Ahmed <245279337+youssefahmed2017@users.noreply.github.com>
-pkgname=numpad-pilot
+pkgname=numpad-control
 pkgver=0.2.7
 pkgrel=1
 pkgdesc='Turn a cheap USB numpad into a control deck: OBS, apps, media, macros'
 arch=('any')
-url='https://github.com/youssefahmed2017/numpad-pilot'
+url='https://github.com/youssefahmed2017/numpad-control'
 license=('GPL-3.0-only')
+replaces=('numpad-pilot')    # the name before the rename
+conflicts=('numpad-pilot')
 depends=('python' 'python-evdev' 'pyside6' 'systemd')
 optdepends=('python-obsws: the OBS actions'
             'python-pillow: the Windows-style tray icon helpers'
             'ydotool: the Type text and Press keys actions'
             'libnotify: notifications')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-install=numpad-pilot.install
+install=numpad-control.install
 sha256sums=('ce2fa67bfce6fecee555c753f0aaf5b00f2a0554df1669eb7f2b3f1980d36d83')
 
 package() {
@@ -29,14 +31,14 @@ package() {
 
   install -Dm755 /dev/stdin "$pkgdir/usr/bin/$pkgname" <<EOF
 #!/bin/sh
-# NumpadPilot: opens the settings window (or: $pkgname run | detect | list | update | …).
+# NumpadControl: opens the settings window (or: $pkgname run | detect | list | update | …).
 cd /usr/lib/$pkgname && exec python -m numpadctl "\$@"
 EOF
 
   # The background service (the app starts it by this name, so it keeps the name numpad-control).
   install -Dm644 /dev/stdin "$pkgdir/usr/lib/systemd/user/numpad-control.service" <<EOF
 [Unit]
-Description=NumpadPilot (turns a USB numpad into a control pad)
+Description=NumpadControl (turns a USB numpad into a control pad)
 
 [Service]
 ExecStart=/usr/bin/$pkgname run

@@ -1,19 +1,19 @@
-"""Crash reports: when NumpadPilot crashes, ask the user whether to report it, every time.
+"""Crash reports: when NumpadControl crashes, ask the user whether to report it, every time.
 
 This is not telemetry. Nothing is ever sent by itself, and nothing is collected while
-things work. Only when a part of NumpadPilot crashes:
+things work. Only when a part of NumpadControl crashes:
 
   1. the crash (what failed and where in the code, the version, the OS) is saved to
      <state folder>/crashes/, with your user name and home folder taken out;
   2. a plain system dialog, not Qt (which may be what broke), asks
-     "NumpadPilot crashed. Do you want to report it?  [Yes] [No]";
+     "NumpadControl crashed. Do you want to report it?  [Yes] [No]";
   3. Yes opens a pre-filled GitHub issue in the browser, so you read every word before
      choosing to send it; No sends nothing (the file stays, for you to look at).
 
 Each step falls back to the next, so even a crash handler in trouble can't hide a crash:
 the dialog runs in its own process (python -m numpadctl.crash FILE); if that can't
 start, the crashing process shows it itself; if no dialog can be shown at all (no
-desktop, say), the report waits and is asked about when NumpadPilot next starts.
+desktop, say), the report waits and is asked about when NumpadControl next starts.
 The same crash repeating (a service restarted again and again) is asked about once.
 
 Only the standard library is used here, so this still loads when the rest doesn't.
@@ -37,13 +37,13 @@ from pathlib import Path
 from .platform import IS_WINDOWS, paths
 
 ROOT = Path(__file__).resolve().parent.parent
-ISSUE_URL = "https://github.com/youssefahmed2017/numpad-pilot/issues/new"
+ISSUE_URL = "https://github.com/youssefahmed2017/numpad-control/issues/new"
 KEEP_REPORTS = 20          # older crash files are deleted
 REPEAT_WINDOW = 3600       # the same crash again within an hour isn't asked about again
 ASKING_TIMEOUT = 3600      # a dialog that never answered (its process died) is asked again after this
 MAX_ATTEMPTS = 3           # ...but not forever
 MAX_TRACEBACK = 5000       # characters of traceback in the issue (browsers cap URL length)
-TITLE = "NumpadPilot crashed"
+TITLE = "NumpadControl crashed"
 
 _installed = set()
 
@@ -168,7 +168,7 @@ def _spawn_dialog(path):
 
 
 def _message(report):
-    return (f"NumpadPilot's {report.get('component', 'program')} crashed:\n\n"
+    return (f"NumpadControl's {report.get('component', 'program')} crashed:\n\n"
             f"{report.get('error', '')}\n\n"
             "Do you want to report it?\n\n"
             "Yes opens a GitHub issue in your browser with the details, for you to read "

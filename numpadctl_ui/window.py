@@ -118,7 +118,7 @@ class KeyButton(_Morph, QPushButton):
 class MainWindow(QMainWindow):
     def __init__(self, keep_running=False):
         super().__init__()
-        self.setWindowTitle("NumpadPilot")
+        self.setWindowTitle("NumpadControl")
         self.resize(1120, 760)
         self.keep_running = keep_running  # closing only hides the window
         self.dispatch = Dispatcher()
@@ -178,7 +178,7 @@ class MainWindow(QMainWindow):
         row = QHBoxLayout(bar)
         row.setContentsMargins(20, 8, 12, 8)
         row.setSpacing(8)
-        row.addWidget(label("NumpadPilot", "appname"))
+        row.addWidget(label("NumpadControl", "appname"))
         self.status = label("Connecting…", "dim")
         self.status.setContentsMargins(10, 4, 10, 4)  # the chip's padding (a stylesheet padding doesn't size a label)
         row.addWidget(self.status)
@@ -515,7 +515,7 @@ class MainWindow(QMainWindow):
         self.offer_to_remove_access(device)
 
     def offer_to_remove_access(self, device):
-        """The system permission to read this keyboard outlives it in NumpadPilot: offer to take it away."""
+        """The system permission to read this keyboard outlives it in NumpadControl: offer to take it away."""
         try:
             if not devices.has_rule(device["vendor"], device["product"]):
                 return

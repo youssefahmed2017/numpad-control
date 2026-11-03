@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# NumpadPilot setup: install, uninstall, or reinstall/update. Run it and pick from the menu.
+# NumpadControl setup: install, uninstall, or reinstall/update. Run it and pick from the menu.
 #
-#   curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/setup.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/setup.sh | bash
 #   ./setup.sh                    # from a clone
 #
 # Options (skip the menu):
@@ -13,9 +13,9 @@
 #   --dry-run     only print what would be changed
 set -euo pipefail
 
-REPO_URL="${NUMPAD_CONTROL_REPO:-https://github.com/youssefahmed2017/numpad-pilot.git}"
+REPO_URL="${NUMPAD_CONTROL_REPO:-https://github.com/youssefahmed2017/numpad-control.git}"
 DIR="${NUMPAD_CONTROL_DIR:-$HOME/numpad-control}"
-RAW_URL="https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main"
+RAW_URL="https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main"
 ANIMATE=0 PRUNE=1 DEPS=1 ASSUME_YES=0 DRY_RUN=0 ACTION=
 DEFAULT_VENDOR=c0f4 DEFAULT_PRODUCT=05f5   # the numpad this was built with
 
@@ -143,7 +143,7 @@ banner() {
         draw_art -999 0
     fi
     echo
-    echo "  ${ACCENT}NumpadPilot${RST}${DIM}  your \$10 numpad, now a control deck${RST}"
+    echo "  ${ACCENT}NumpadControl${RST}${DIM}  your \$10 numpad, now a control deck${RST}"
     echo
 }
 
@@ -169,7 +169,7 @@ menu() {
 
 # ---------------------------------------------------------------- uninstall
 do_uninstall() {  # do_uninstall [keep]: "keep" never asks about deleting your settings
-    bold "Removing NumpadPilot"
+    bold "Removing NumpadControl"
     run systemctl --user disable --now numpad-control 2> /dev/null || true
     run rm -f "$HOME/.config/systemd/user/numpad-control.service"
     if [ "${1:-}" != keep ]; then  # an update rewrites these in place: deleting them makes launchers forget the app
@@ -392,7 +392,7 @@ if ask "Install the automatic re-detect fix (needs sudo)?"; then
 fi
 
 bold "Done"
-note "Open \"NumpadPilot\" from your app menu to choose what each key does."
+note "Open \"NumpadControl\" from your app menu to choose what each key does."
 has_desktop Hyprland && note "Hyprland: to start it hidden at login, add to your Hyprland autostart:  $HOME/.local/bin/numpad-control --hidden"
 note "Service log: journalctl --user -u numpad-control -f"
 }

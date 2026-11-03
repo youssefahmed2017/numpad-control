@@ -1,9 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=NumpadPilot
+Name=NumpadControl
 Comment=Choose what each numpad key does
-GenericName=Numpad Pilot
-Keywords=Numpad Pilot;NumpadPilot;numpad;pilot;numpad control;macro pad;
+GenericName=Numpad Control
+Keywords=Numpad Control;NumpadControl;NumpadPilot;Numpad Pilot;numpad;pilot;numpad control;macro pad;
 Exec=@HOME@/.local/bin/numpad-control
 Path=@DIR@
 Icon=numpad-control

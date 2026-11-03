@@ -80,7 +80,7 @@ def main():
     module = player = recorder = our_easyeffects = None
     try:
         module = run("pactl", "load-module", "module-null-sink", f"sink_name={SINK}",
-                     f"sink_properties=device.description=NumpadPilotVoiceDemo")  # a silent virtual microphone
+                     f"sink_properties=device.description=NumpadControlVoiceDemo")  # a silent virtual microphone
         run("pactl", "set-default-source", f"{SINK}.monitor")
         if not was_running:
             our_easyeffects = subprocess.Popen(["easyeffects", "--service-mode"], stdin=subprocess.DEVNULL,

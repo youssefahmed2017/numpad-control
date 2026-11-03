@@ -63,7 +63,7 @@ class WelcomeDialog(QDialog):
         self.window = window
         self.chosen = DEFAULT_CHOICE
         self.test_key = None
-        self.setWindowTitle("Welcome to NumpadPilot")
+        self.setWindowTitle("Welcome to NumpadControl")
         self.resize(560, 520)
 
         layout = QVBoxLayout(self)
@@ -157,7 +157,7 @@ class WelcomeDialog(QDialog):
         if index < 0:
             return
         self.pages.setCurrentIndex(index)
-        titles = (("Welcome to NumpadPilot", "Turn a cheap numpad into a control deck. This takes about a minute."),
+        titles = (("Welcome to NumpadControl", "Turn a cheap numpad into a control deck. This takes about a minute."),
                   ("Pick a starting point", "You can change every key later. Nothing here is permanent."),
                   ("Try it", "Press a key and see it register."))
         self.title.setText(titles[index][0])

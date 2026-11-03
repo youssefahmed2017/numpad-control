@@ -1,8 +1,8 @@
 # Installs the built installer silently, checks the installed copy starts, then uninstalls it.
 param([Parameter(Mandatory)][string]$Setup)
 $ErrorActionPreference = "Stop"
-$dir = Join-Path $env:RUNNER_TEMP "NumpadPilot-smoke"
-if (-not $env:RUNNER_TEMP) { $dir = Join-Path $env:TEMP "NumpadPilot-smoke" }
+$dir = Join-Path $env:RUNNER_TEMP "NumpadControl-smoke"
+if (-not $env:RUNNER_TEMP) { $dir = Join-Path $env:TEMP "NumpadControl-smoke" }
 
 # An old copy from the PowerShell installer: it must be gone after the install.
 $old = Join-Path $env:USERPROFILE "numpad-control"
@@ -15,7 +15,7 @@ $oldMenu = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Numpad 
 New-Item -ItemType Directory -Force $oldMenu | Out-Null
 
 Start-Process $Setup -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/TASKS=", "/DIR=`"$dir`"" -Wait
-$cleanupLog = Join-Path $env:TEMP "numpadpilot-cleanup.log"
+$cleanupLog = Join-Path $env:TEMP "numpadcontrol-cleanup.log"
 if (Test-Path $cleanupLog) { Get-Content $cleanupLog } else { Write-Host "(no cleanup log: the cleanup script never ran)" }
 if (Test-Path $old) { throw "The old copy in $old wasn't removed." }
 if (Get-ItemProperty -Path $runKey -Name "Numpad Control" -ErrorAction SilentlyContinue) { throw "The old start-at-login entry is still there." }

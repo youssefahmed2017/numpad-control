@@ -1,7 +1,7 @@
-"""Windows: double-click to start NumpadPilot in the system tray (no console window).
+"""Windows: double-click to start NumpadControl in the system tray (no console window).
 
 With "gui" as argument it opens the settings instead (the tray menu does that): the
-NumpadPilot app if it's installed, otherwise the settings file.
+NumpadControl app if it's installed, otherwise the settings file.
 """
 
 import sys

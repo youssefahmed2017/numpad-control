@@ -13,7 +13,7 @@ from .platform import IS_WINDOWS, ipc
 APP_ID = "dev.numpadctl.NumpadControl"
 # Windows groups taskbar buttons by this name. Without one the settings window is filed under pythonw.exe
 # and wears Python's icon; with it the taskbar uses the window's own icon.
-WINDOWS_APP_ID = "NumpadPilot.Settings"
+WINDOWS_APP_ID = "NumpadControl.Settings"
 
 LAYOUT = [  # (key, row, column, rowspan)
     ("NumLock", 0, 0, 1), ("/", 0, 1, 1), ("*", 0, 2, 1), ("Backspace", 0, 3, 1),
@@ -110,7 +110,7 @@ ACTION_HINTS = {
     "stop_sounds": "Stops every sound the soundboard is playing.",
     "privacy_panic": "One press: mutes the microphone and speakers, pauses the music, hides every window (and an OBS camera if you name it). Pick what it does below.",
     "privacy_restore": "Puts back what the last Privacy panic changed: un-mutes, brings the windows back, resumes the music. Only what it changed.",
-    "force_quit": "Press twice: kills the focused program at once, no saving. Can open a page afterwards. Never touches the desktop itself or NumpadPilot.",
+    "force_quit": "Press twice: kills the focused program at once, no saving. Can open a page afterwards. Never touches the desktop itself or NumpadControl.",
     "suspend": "Puts the computer to sleep (press twice to confirm).",
     "shutdown": "Turns the computer off (press twice to confirm).",
     "reboot": "Restarts the computer (press twice to confirm).",

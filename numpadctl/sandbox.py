@@ -202,7 +202,7 @@ def _default_open_url(url):
 
 def _default_notify(title, body):
     import subprocess
-    subprocess.run(["notify-send", "-a", "NumpadPilot", "--", title, body],
+    subprocess.run(["notify-send", "-a", "NumpadControl", "--", title, body],
                    check=False, timeout=5)  # "--": a title like "--hint=..." is text, not an option
 
 

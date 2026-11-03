@@ -1,4 +1,4 @@
-"""NumpadPilot - Windows proof of concept.
+"""NumpadControl - Windows proof of concept.
 
 Answers one question before the real Windows version is built: can Windows
 tell an external numpad apart from the main keyboard, and stop only the

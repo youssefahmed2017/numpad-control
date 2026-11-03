@@ -1,18 +1,18 @@
-# NumpadPilot setup for Windows (Windows PowerShell 5.1 or PowerShell 7): install, uninstall or
+# NumpadControl setup for Windows (Windows PowerShell 5.1 or PowerShell 7): install, uninstall or
 # reinstall/update, from a menu. (The installer .exe from the Releases page does the same without PowerShell.)
 #
-#   irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/setup.ps1 | iex
+#   irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/setup.ps1 | iex
 #
 # or, from a copy of the project:  powershell -ExecutionPolicy Bypass -File setup.ps1 [options]
 #
 # It installs Python if needed (winget), gets the code (git, or a zip download),
-# creates the Python environment, adds Start-menu entries and starts NumpadPilot
+# creates the Python environment, adds Start-menu entries and starts NumpadControl
 # at login. No driver and no administrator rights are needed. Running it again
 # updates everything.
 #
 # Options: -Install | -Uninstall | -Update   skip the menu (-Update = reinstall, keeping your settings)
 #          -Dir PATH     where to put it (default: your user folder\numpad-control)
-#          -NoAutostart  don't start NumpadPilot at login
+#          -NoAutostart  don't start NumpadControl at login
 #          -NoPrune      keep all of Qt (by default only the parts the window uses are kept: about 45 MB, not 210 MB)
 #          -DryRun       only show what it would do
 #          -Uninstall    remove the shortcuts and autostart (keeps your settings)
@@ -21,7 +21,7 @@
 # "irm | iex" can't pass options; set them first instead, e.g.
 #   $env:NUMPAD_DRYRUN = "1"; irm ... | iex      (or $env:NUMPAD_ACTION = "install" | "uninstall" | "update")
 
-$RepoUrl = "https://github.com/youssefahmed2017/numpad-pilot"
+$RepoUrl = "https://github.com/youssefahmed2017/numpad-control"
 $InterceptionZip = "https://github.com/oblitum/Interception/releases/download/v1.0.1/Interception.zip"
 
 function Step($text) { Write-Host ""; Write-Host $text -ForegroundColor Cyan }
@@ -108,8 +108,8 @@ function Install-NumpadControl {
 
     $programs = [Environment]::GetFolderPath("Programs")
     if (-not $programs) { $programs = Join-Path $HOME "Start Menu" }  # (only when testing outside Windows)
-    $StartMenu = Join-Path $programs "NumpadPilot"
-    $OldStartMenu = Join-Path $programs "Numpad Control"  # before the rename to NumpadPilot
+    $StartMenu = Join-Path $programs "NumpadControl"
+    $OldStartMenu = Join-Path $programs "Numpad Control"  # before the rename to NumpadControl
 
     # A copy of the project next to this script is used as it is.
     if ($ScriptRoot -and (Test-Path (Join-Path $ScriptRoot "numpadctl"))) { $Dir = $ScriptRoot; $here = $true } else { $here = $false }
@@ -120,8 +120,8 @@ function Install-NumpadControl {
 
     # ---------------------------------------------------------------- uninstall
     if ($Uninstall) {
-        Step "Removing NumpadPilot's shortcuts and autostart"
-        Run "stop NumpadPilot" { Stop-NumpadControl $Launcher }
+        Step "Removing NumpadControl's shortcuts and autostart"
+        Run "stop NumpadControl" { Stop-NumpadControl $Launcher }
         if (Test-Path $VenvPython) {
             Run "turn off start at login" { & $VenvPython -c ($InDir + "from numpadctl.platform.windows_tray import set_autostart; set_autostart(False)") }
         }
@@ -165,7 +165,7 @@ function Install-NumpadControl {
         Run "download into $Dir (zip)" {
             $zip = Join-Path $env:TEMP "numpad-control.zip"
             # The newest release's code, never unfinished work on main.
-            $tag = (Invoke-RestMethod "https://api.github.com/repos/youssefahmed2017/numpad-pilot/releases/latest" -UseBasicParsing).tag_name
+            $tag = (Invoke-RestMethod "https://api.github.com/repos/youssefahmed2017/numpad-control/releases/latest" -UseBasicParsing).tag_name
             if ($tag -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw "GitHub didn't name a release (got '$tag')." }
             Invoke-WebRequest "$RepoUrl/archive/refs/tags/$tag.zip" -OutFile $zip -UseBasicParsing
             $unpacked = Join-Path $env:TEMP "numpad-control-zip"
@@ -179,7 +179,7 @@ function Install-NumpadControl {
 
     # ---------------------------------------------------------------- 3. Python environment
     Step "3/6  Python environment (downloads Qt for the settings window, then keeps only the parts it uses)"
-    Run "stop a running NumpadPilot (it restarts at the end)" { Stop-NumpadControl $Launcher }
+    Run "stop a running NumpadControl (it restarts at the end)" { Stop-NumpadControl $Launcher }
     if (-not (Test-Path $VenvPython)) {
         Run "create the environment in $Dir\.venv" { & $Python -m venv (Join-Path $Dir ".venv"); Assert-Ok "Creating the Python environment" }
     }
@@ -271,16 +271,16 @@ function Install-NumpadControl {
     if (Test-Path $OldStartMenu) {
         Run "remove the old 'Numpad Control' Start-menu entries" { Remove-Item -Recurse -Force $OldStartMenu }
     }
-    Run "add 'NumpadPilot' and 'NumpadPilot Settings' to the Start menu" {
+    Run "add 'NumpadControl' and 'NumpadControl Settings' to the Start menu" {
         New-Item -ItemType Directory -Force $StartMenu | Out-Null
-        New-Shortcut (Join-Path $StartMenu "NumpadPilot.lnk") $VenvPythonw "`"$Launcher`"" $Dir $Icon
-        New-Shortcut (Join-Path $StartMenu "NumpadPilot Settings.lnk") $VenvPythonw "`"$Launcher`" gui" $Dir $Icon
+        New-Shortcut (Join-Path $StartMenu "NumpadControl.lnk") $VenvPythonw "`"$Launcher`"" $Dir $Icon
+        New-Shortcut (Join-Path $StartMenu "NumpadControl Settings.lnk") $VenvPythonw "`"$Launcher`" gui" $Dir $Icon
     }
 
     # ---------------------------------------------------------------- 6. start
     Step "6/6  Starting"
     if (-not $NoAutostart) {
-        Run "start NumpadPilot at login" {
+        Run "start NumpadControl at login" {
             & $VenvPython -c ($InDir + "from numpadctl.platform.windows_tray import set_autostart; set_autostart(True)")
             Assert-Ok "Turning on start at login"
         }
@@ -288,13 +288,13 @@ function Install-NumpadControl {
     if ($NeedsRestart) {
         Write-Host ""
         Warn "Restart the PC to finish installing the Interception driver."
-        Note "After the restart NumpadPilot starts by itself (tray icon, bottom right)."
+        Note "After the restart NumpadControl starts by itself (tray icon, bottom right)."
     } else {
-        Run "start NumpadPilot now (look for its icon in the tray)" {
+        Run "start NumpadControl now (look for its icon in the tray)" {
             Start-Process $VenvPythonw -ArgumentList "`"$Launcher`"" -WorkingDirectory $Dir
         }
         Write-Host ""
-        Note "Done. Right-click the tray icon, or open 'NumpadPilot Settings' from the Start menu."
+        Note "Done. Right-click the tray icon, or open 'NumpadControl Settings' from the Start menu."
     }
 }
 
@@ -305,14 +305,14 @@ function Enable-Colors {
     # Windows PowerShell 5.1's console needs ANSI turned on; Windows Terminal and PowerShell 7 already have it.
     if ($env:NO_COLOR -or [Console]::IsOutputRedirected) { return $false }
     try {
-        Add-Type -Namespace NumpadPilot -Name Console -MemberDefinition @"
+        Add-Type -Namespace NumpadControl -Name Console -MemberDefinition @"
 [DllImport("kernel32.dll")] public static extern IntPtr GetStdHandle(int n);
 [DllImport("kernel32.dll")] public static extern bool GetConsoleMode(IntPtr h, out int mode);
 [DllImport("kernel32.dll")] public static extern bool SetConsoleMode(IntPtr h, int mode);
 "@ -ErrorAction Stop
-        $handle = [NumpadPilot.Console]::GetStdHandle(-11)
+        $handle = [NumpadControl.Console]::GetStdHandle(-11)
         $mode = 0
-        if ([NumpadPilot.Console]::GetConsoleMode($handle, [ref]$mode)) { [void][NumpadPilot.Console]::SetConsoleMode($handle, $mode -bor 4) }
+        if ([NumpadControl.Console]::GetConsoleMode($handle, [ref]$mode)) { [void][NumpadControl.Console]::SetConsoleMode($handle, $mode -bor 4) }
         try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
         return $true
     } catch { return $false }
@@ -394,7 +394,7 @@ function Show-Banner {
         Write-Host (Get-BannerFrame $art $width $sparkle -999 0) -NoNewline
     }
     Write-Host ""
-    Write-Host "  ${accent}NumpadPilot${rst}${dim}  your `$10 numpad, now a control deck${rst}"
+    Write-Host "  ${accent}NumpadControl${rst}${dim}  your `$10 numpad, now a control deck${rst}"
     Write-Host ""
     return @{ Accent = $accent; Rst = $rst; Dim = $dim }
 }

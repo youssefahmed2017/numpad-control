@@ -22,7 +22,7 @@ ICON_SIZES = (16, 24, 32, 48, 64, 128, 256, 512)
 
 
 def draw_icon():
-    """The NumpadPilot icon, from assets/ (one PNG per size so every spot gets a sharp one)."""
+    """The NumpadControl icon, from assets/ (one PNG per size so every spot gets a sharp one)."""
     icon = QIcon()
     for size in ICON_SIZES:
         icon.addFile(str(ASSETS / f"icon-{size}.png"))
@@ -37,7 +37,7 @@ def run(args=()):
     hidden = "--hidden" in args
     ui_common.set_windows_app_id()
     app = QApplication(sys.argv[:1])
-    app.setApplicationName("NumpadPilot")
+    app.setApplicationName("NumpadControl")
     app.setDesktopFileName(ui_common.APP_ID)  # the window's class on Wayland
     app.setQuitOnLastWindowClosed(False)
 
@@ -89,7 +89,7 @@ def run(args=()):
     # Hyprland lists hidden apps in the bar instead (PID file); Windows has the service's own tray.
     if not IS_WINDOWS and desktop.current() != desktop.HYPRLAND and QSystemTrayIcon.isSystemTrayAvailable():
         tray = QSystemTrayIcon(icon, app)
-        tray.setToolTip("NumpadPilot")
+        tray.setToolTip("NumpadControl")
         menu = QMenu()
         menu.addAction("Open settings", show)
         menu.addAction("Quit", request_quit)

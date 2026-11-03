@@ -346,7 +346,7 @@ class _Listener:
 
     def _install_hook(self):
         if not DLL_PATH.exists():
-            raise OSError(f"{DLL_PATH.name} is missing next to {Path(__file__).name} (reinstall NumpadPilot)")
+            raise OSError(f"{DLL_PATH.name} is missing next to {Path(__file__).name} (reinstall NumpadControl)")
         if struct.calcsize("P") != 8:
             raise OSError("this needs 64-bit Python")
         dll = ctypes.WinDLL(str(DLL_PATH))

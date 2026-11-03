@@ -56,7 +56,7 @@ class LinuxSystemTest(unittest.TestCase):
         self.tools()
         with mock.patch.object(linux_system.subprocess, "run") as run:
             linux_system.notify("--hint=string:x:y", "body")
-        self.assertEqual(run.call_args.args[0], ["notify-send", "-a", "NumpadPilot", "--", "--hint=string:x:y", "body"])
+        self.assertEqual(run.call_args.args[0], ["notify-send", "-a", "NumpadControl", "--", "--hint=string:x:y", "body"])
 
     def test_volume_uses_swayosd_when_its_server_runs(self):
         fake = self.tools()

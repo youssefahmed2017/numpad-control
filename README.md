@@ -1,15 +1,15 @@
-<p align="center"><img src="assets/banner.png" alt="NumpadPilot: your $10 numpad, now a control deck"></p>
+<p align="center"><img src="assets/banner.png" alt="NumpadControl: your $10 numpad, now a control deck"></p>
 
-# NumpadPilot
+# NumpadControl
 
-[![Tests](https://github.com/youssefahmed2017/numpad-pilot/actions/workflows/tests.yml/badge.svg)](https://github.com/youssefahmed2017/numpad-pilot/actions/workflows/tests.yml)
+[![Tests](https://github.com/youssefahmed2017/numpad-control/actions/workflows/tests.yml/badge.svg)](https://github.com/youssefahmed2017/numpad-control/actions/workflows/tests.yml)
 
 Turns a cheap USB numpad into a control pad (like a Stream Deck) on Linux and Windows.
-Website: **[youssefahmed2017.github.io/numpad-pilot](https://youssefahmed2017.github.io/numpad-pilot/)**.
+Website: **[youssefahmed2017.github.io/numpad-control](https://youssefahmed2017.github.io/numpad-control/)**.
 Each key runs an action: open apps and websites, control OBS, media and volume,
 manage windows and desktops, type text, run multi-step macros, and more.
 Everything is set up in the settings window (the same on Linux and Windows; no code
-needed). NumpadPilot is free and open source: the service, the settings window and
+needed). NumpadControl is free and open source: the service, the settings window and
 everything else are in this repository, under the GPL-3.0.
 
 Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland), and on
@@ -20,17 +20,17 @@ Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland),
 ## Install
 **Linux** (in a terminal, as your normal user):
 
-    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/setup.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/setup.sh | bash
 
 **Windows** (in PowerShell, as your normal user):
 
-    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/setup.ps1 | iex
+    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/setup.ps1 | iex
 
 **Windows installer** (no PowerShell needed; once it is in winget):
 
-    winget install YoussefAhmed.NumpadPilot
+    winget install YoussefAhmed.NumpadControl
 
-or download `NumpadPilot-Setup-<version>.exe` from the [Releases](https://github.com/youssefahmed2017/numpad-pilot/releases)
+or download `NumpadControl-Setup-<version>.exe` from the [Releases](https://github.com/youssefahmed2017/numpad-control/releases)
 page. Its wizard follows Windows' light or dark setting. It carries its own Python, needs no administrator rights, and is removed from
 Settings → Apps. If an older copy from the PowerShell installer is on the PC, the installer
 stops and removes it first (your settings stay). The installer is not code-signed yet, so Windows SmartScreen may warn:
@@ -41,7 +41,7 @@ How it is built: [`packaging/windows/`](packaging/windows/), and the winget mani
 
 **Arch Linux** (AUR):
 
-    yay -S numpad-pilot
+    yay -S numpad-control
     systemctl --user enable --now numpad-control
 
 (the package's permission rule covers the numpad `c0f4:05f5`; for another model copy
@@ -49,7 +49,7 @@ How it is built: [`packaging/windows/`](packaging/windows/), and the winget mani
 ids. The OBS actions need `python-obsws` from the AUR. Updates come from your AUR helper,
 not from the app. The recipe is in [`packaging/aur/`](packaging/aur/).)
 
-Then open **NumpadPilot** from your app menu / Start menu, click a key, pick an
+Then open **NumpadControl** from your app menu / Start menu, click a key, pick an
 action, Save. What the installers do, and their options:
 [Install in detail](#install-in-detail).
 
@@ -72,7 +72,7 @@ action, Save. What the installers do, and their options:
 - **First launch tour.** A new install opens a 3-step welcome: it finds your numpad, lets you
   pick a starting point (streaming, media, everyday shortcuts or empty) and has you press a
   key to see it register. Open it again from *Tools ▾ → Welcome tour*.
-- **Find it in your launcher.** The menu entry answers to "NumpadPilot", "Numpad Pilot" and "numpad". Its icon is installed in
+- **Find it in your launcher.** The menu entry answers to "NumpadControl", "Numpad Control", its old name "NumpadPilot", and "numpad". Its icon is installed in
   your icon theme (`~/.local/share/icons/hicolor`), so launchers that ignore file paths show it too. (The
   setup also adds the theme's `index.theme` there if missing: hyprlauncher skips icon folders without one.)
 - **Secrets.** With the settings window in front, the Konami code on the numpad (`8 8 2 2 4 6 4 6`)
@@ -152,13 +152,13 @@ Only these exact names are replaced; other text in braces stays as written.
 **Voice changer** (Linux, needs [EasyEffects](https://github.com/wwmm/easyeffects); Arch: `sudo pacman -S easyeffects`)
 switches the effects EasyEffects puts on your microphone, with one key. In EasyEffects' window, on the
 **Microphone** tab, add effects (a *Pitch* effect for a deep or high voice, *Echo*, *Reverb*…) and save the
-result as a preset (a "voice"). Then in NumpadPilot: *Voice changer on / off* flips one voice on and off
+result as a preset (a "voice"). Then in NumpadControl: *Voice changer on / off* flips one voice on and off
 (pressing the key of another voice switches to it); *Use a voice* always selects that voice; *Back to normal*
 switches the effects off (or loads a "normal" preset, if you name one, so effects you want to keep stay on). The
 voice name has a pick list of your presets. Apps hear the effect when they record from **Easy Effects Source**
 (choose it as the microphone in OBS or Discord), or when EasyEffects is set to process all inputs. Notes:
 "back to normal" uses EasyEffects' global switch, which also bypasses effects on your speakers unless you use the
-"normal" preset; and if EasyEffects isn't running yet NumpadPilot starts it in the background, which takes a few
+"normal" preset; and if EasyEffects isn't running yet NumpadControl starts it in the background, which takes a few
 seconds the first time (about 0.6 s afterwards), so let EasyEffects start at login if you want the first press to
 be instant. A preset name that doesn't exist says so and lists the ones that do.
 
@@ -196,7 +196,7 @@ say whether something was playing. Bind it next to the panic key, for example on
 **Force-quit the focused window** (press twice, like Sleep) kills the focused program at once,
 with no chance to save: use it on a frozen or raging app, not on work you want to keep. It
 ends the whole program, so every window of a browser goes together. It never touches the
-desktop itself (Hyprland, Plasma, the Windows desktop) or NumpadPilot. Optionally it opens a
+desktop itself (Hyprland, Plasma, the Windows desktop) or NumpadControl. Optionally it opens a
 page afterwards (your "funny video"). Like Sleep, it can't be used in macros or from the Test
 button.
 
@@ -230,7 +230,7 @@ The standard numpad keys have fixed names: `0`-`9`, `.`, `+`, `-`, `*`, `/`, `En
 `Backspace`, `NumLock`, plus `000` (three `0`s in a burst). A numpad with more keys (a `(`, a
 Tab, a macro key, a `00`) works too. Any other key the numpad sends is reported by its code:
 `KEY_TAB` on Linux (evdev), `SC_0F` (scan code; `SC_E0_1D` with the E0 prefix) on Windows.
-The NumpadPilot app adds such a key to the pad when you turn on **Learn** and press it. With
+The NumpadControl app adds such a key to the pad when you turn on **Learn** and press it. With
 only the settings file:
 
 1. Find the key's id: on Linux the service log says `extra key KEY_TAB` when you press it
@@ -256,8 +256,8 @@ with the same Press / Hold / Double tap, layers and profiles as the numpad.
   drawing doesn't have (media keys…) are added with **Learn**, below the picture.
 - **Stop this keyboard typing** is on by default: its keys only run actions. **Hold Ctrl+Alt+Esc on
   it to give it back** to the system (it types normally again; remove it and add it again, or
-  restart NumpadPilot, to use it as a pad again). Try that on a spare keyboard first, never on
-  the only one you have. If NumpadPilot stops, the keyboard is given back by itself.
+  restart NumpadControl, to use it as a pad again). Try that on a spare keyboard first, never on
+  the only one you have. If NumpadControl stops, the keyboard is given back by itself.
 - **Access:** Linux only lets you read keyboards you're allowed to. The add dialog marks the
   ones that need it, and **Allow access…** installs a small udev rule for that one keyboard
   (through `pkexec`, so it asks for your password). That is the same permission the numpad gets,
@@ -360,7 +360,7 @@ Window steps use `hyprctl` on Hyprland and kdotool on KDE Plasma.
 
 **Install size.** pip installs all of Qt (about 250 MB), but the settings window uses four of its modules.
 After installing, `setup.sh` and `setup.ps1` delete the rest (QML, translations, developer tools, plugins for
-things NumpadPilot never does) with `tools/prune-qt.py`, then open the real window offscreen
+things NumpadControl never does) with `tools/prune-qt.py`, then open the real window offscreen
 (`tools/qt_check.py`) to prove it still works; if that fails they put the full Qt back. Qt ends up around
 90 MB on Linux and 45 MB on Windows. `--no-prune` (`setup.sh`) or `-NoPrune` (`setup.ps1`) keeps all of it, and
 the Windows installer is slimmed the same way (it is 32 MB instead of 69 MB). Don't run the test suite in a pruned
@@ -368,9 +368,9 @@ copy: a few tests use Qt's test module, which the app doesn't need.
 ### Linux
 One command (as your normal user; it asks for your password when it needs sudo):
 
-    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/setup.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/setup.sh | bash
 
-It shows the NumpadPilot logo and a menu: **[1] Install, [2] Uninstall, [3] Reinstall /
+It shows the NumpadControl logo and a menu: **[1] Install, [2] Uninstall, [3] Reinstall /
 Update, [0] Quit**. (`--install`, `--uninstall` and `--update` skip the menu.) Install:
 1. installs the system packages (pacman, apt or dnf): Python, python-gobject, git, ydotool, playerctl, PipeWire tools, wl-clipboard, plus the
    extras for each desktop it finds (Hyprland: SwayOSD, grim, slurp, dunst, hyprlock;
@@ -391,18 +391,18 @@ before deleting your settings. Options:
 `--dir PATH` (install somewhere else), `--no-deps` (skip system packages),
 `--yes` (no questions), `--dry-run` (only show what it would change).
 
-Then open **NumpadPilot** from your launcher, click a key, pick an action, Save.
+Then open **NumpadControl** from your launcher, click a key, pick an action, Save.
 On Hyprland, add `~/.local/bin/numpad-control --hidden` to your autostart to have the
 settings window start hidden at login.
 
 ### Windows
 Paste this into PowerShell (as your normal user):
 
-    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main/setup.ps1 | iex
+    irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/setup.ps1 | iex
 
-It installs Python if needed (winget), downloads NumpadPilot (git, or a zip if git
-isn't installed), creates the Python environment, adds **NumpadPilot** and
-**NumpadPilot Settings** to the Start menu, and starts it at login with a tray
+It installs Python if needed (winget), downloads NumpadControl (git, or a zip if git
+isn't installed), creates the Python environment, adds **NumpadControl** and
+**NumpadControl Settings** to the Start menu, and starts it at login with a tray
 icon. No driver, no administrator rights and no restart are needed. It shows the same
 menu (**[1] Install, [2] Uninstall, [3] Reinstall / Update, [0] Quit**); choose Update
 to update everything.
@@ -478,12 +478,12 @@ Keys that already do something are never changed, and you can edit everything af
   contains passwords.
 
 ## Updates
-NumpadPilot updates itself: once a day the service asks GitHub for the latest
+NumpadControl updates itself: once a day the service asks GitHub for the latest
 release, and if it's newer, installs it the way it was installed (git: fast-forward to the
 release; zip: swap the folders, keeping `.venv`), updates the Python packages and restarts,
 with a notification. On Windows (installed with the installer) the app downloads the newer
 installer, checks it against the signature and runs it silently: the installer closes
-NumpadPilot, replaces the files (a plain file swap can't replace ones that are in use) and starts
+NumpadControl, replaces the files (a plain file swap can't replace ones that are in use) and starts
 it again, and your settings stay. Copies from the AUR are updated by `yay -Syu` instead. Only
 releases are installed, never unfinished work. A copy with local
 changes isn't touched. Settings: `"updates"`: `"auto"` (default), `"notify"` (only tell
@@ -508,7 +508,7 @@ but refuse to install it.
 - **Motion:** every animation now uses Material 3's easing curves, durations and springs (buttons squeeze and bounce
   back, popups, fades and scrolling follow the same tokens), and messages appear in a real Material 3 snackbar.
 - **Windows updates:** installed Windows copies update themselves again. They download the newer Setup, check its
-  SHA-256 against the signed release, run it silently, and NumpadPilot starts again with your settings. Copies
+  SHA-256 against the signed release, run it silently, and NumpadControl starts again with your settings. Copies
   installed before this release need one manual install first.
 - **Installers:** `setup.sh` and `setup.ps1` draw the logo from `assets/banner.txt` with a light sweep and sparkles
   (`NUMPAD_NO_ANIM=1` turns the effect off).
@@ -541,7 +541,7 @@ but refuse to install it.
   update no longer deletes the launcher entry.
 
 **0.2.4:** a welcome tour on first launch (find the numpad, pick a starting point, press a key to
-see it register), also in Tools → Welcome tour; the Linux launcher entry now matches "Numpad Pilot"
+see it register), also in Tools → Welcome tour; the Linux launcher entry now matches "Numpad Control"
 and shows its logo (including in hyprlauncher); updating with `setup.sh` no longer asks for sudo.
 
 **0.2.3:** the settings window ships its own fonts (Google Sans for text, JetBrains Mono for
@@ -560,14 +560,14 @@ the standard numpad); a Key tester and Diagnostics; starter presets; Windows fix
 ## Games with anti-cheat
 On Windows, while a game with anti-cheat runs (Valorant, Fortnite, Call of Duty,
 Battlefield, Apex Legends and others, or any game using Easy Anti-Cheat, BattlEye or EA
-Javelin), NumpadPilot lets go of the numpad completely, so nothing is hooked, and
+Javelin), NumpadControl lets go of the numpad completely, so nothing is hooked, and
 takes it back when the game closes. The tray shows "Paused while … runs". Settings:
 `"pause_for_games"` (`"auto"`: Windows only, `true`, `false`) and `"protected_games"`
 for more program names. Tested games and numpad models: [docs/compatibility.md](docs/compatibility.md);
 test a numpad with `python -m numpadctl check`.
 
 ## Privacy and crash reports
-NumpadPilot collects nothing: no telemetry, no usage statistics, no account. If a part
+NumpadControl collects nothing: no telemetry, no usage statistics, no account. If a part
 of it crashes, a plain system dialog asks whether to report that crash; **Yes** opens a
 pre-filled GitHub issue in your browser, so you read everything before sending it, and
 **No** sends nothing. The report (the error and where it happened, the version, the
@@ -637,7 +637,7 @@ release with generated notes (`release.yml`).
 WebSocket port (4466), so your OBS, its scenes and settings are never touched and nothing appears on screen.
 It switches scenes, shows and hides sources, mutes, toggles a filter, records, pauses, resumes and stops (and
 checks the video file with `ffprobe`), saves a replay clip, and runs Privacy panic's OBS step. `e2e_voice` plays
-a 440 Hz tone into a silent virtual microphone, lets EasyEffects change it with NumpadPilot's voice keys,
+a 440 Hz tone into a silent virtual microphone, lets EasyEffects change it with NumpadControl's voice keys,
 records the result in OBS and measures the pitch (440 Hz normal, 349 Hz with a voice four semitones down). It
 never uses your real microphone, refuses to run while EasyEffects is running, and puts back your default
 microphone, EasyEffects and its preset file even if it fails. They need `obs`, `cage`, `ffmpeg`, `pw-play`,
@@ -664,7 +664,7 @@ microphone, EasyEffects and its preset file even if it fails. They need `obs`, `
   `setup.ps1` (see Install → Windows).
 
 ## License
-NumpadPilot is free software under the [GNU General Public License v3.0](LICENSE)
+NumpadControl is free software under the [GNU General Public License v3.0](LICENSE)
 (GPL-3.0): the service, the settings window (`numpadctl_ui/`), the future cloud backend in
 [`backend/`](backend/) and everything else in this repository. You can use, study, change
 and share it; if you share a changed version, it stays under the GPL-3.0 with its source.
@@ -678,7 +678,7 @@ The old `install.sh` and `install.ps1` names still work: they just start these.
 
 ## Logo and brand files
 The icon and banner are in [`assets/`](assets/): `icon.svg`, PNGs from 16 to 512 px
-(used by the settings window, the tray and the Linux launcher), `numpad-pilot.ico`
+(used by the settings window, the tray and the Linux launcher), `numpad-control.ico`
 (Windows), `banner.png` and `social-preview.png` (1280x640, for GitHub's link preview).
 `banner.txt` is the picture `setup.sh` and `setup.ps1` draw when they start (plain letters: `p` tile, `w` key,
 `l` lettering; the header in the file says so), so the installers' logo can be edited as text.

@@ -222,7 +222,7 @@ class ForceCloseWindowTest(unittest.TestCase):
             self.assertEqual(desktop.force_close_window(), "firefox")
         kill.assert_called_once_with(4242, signal.SIGKILL)
 
-    def test_the_desktop_and_numpadpilot_itself_are_protected(self):
+    def test_the_desktop_and_numpadcontrol_itself_are_protected(self):
         for cls in ("Hyprland", "plasmashell", "dev.numpadctl.NumpadControl", "waybar"):
             with self.window(cls, 4242), mock.patch.object(desktop.os, "kill") as kill:
                 with self.assertRaises(desktop.DesktopError):

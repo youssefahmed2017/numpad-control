@@ -25,21 +25,21 @@ and the details are public afterwards.
   that needs a random key kept in a file only your user can read. It accepts at most 16 clients
   and ignores or drops anything malformed. It can't run actions or change settings; only report keys.
 - **Crash reports.** Nothing is sent by itself. You read the pre-filled GitHub issue before sending it.
-- **Commands.** Every program NumpadPilot starts gets its arguments as a list (never through a shell),
+- **Commands.** Every program NumpadControl starts gets its arguments as a list (never through a shell),
   with text kept apart from options.
 
 ## Limits you should know about
 
-- **Anything running as you can do what you can do.** NumpadPilot doesn't try to protect itself from
+- **Anything running as you can do what you can do.** NumpadControl doesn't try to protect itself from
   other programs running as the same user: they can edit `config.json`, whose actions run as you.
   Treat a settings file from someone else like a script from someone else.
 - **The Windows keyboard hook DLL** (`numpadhook.dll`) is loaded into other programs and sits in the
-  per-user install folder (`%LOCALAPPDATA%\Programs\NumpadPilot`), which your account can write. So
+  per-user install folder (`%LOCALAPPDATA%\Programs\NumpadControl`), which your account can write. So
   malware already running as you could replace it, and the same malware could equally replace
-  NumpadPilot's own files; a per-user install can't prevent either. What would: installing for all
+  NumpadControl's own files; a per-user install can't prevent either. What would: installing for all
   users (so the files need administrator rights to change) and signing the DLL with a code-signing
   certificate (see [docs/code-signing.md](docs/code-signing.md)). Neither is done yet.
-- **Extra keyboards (Linux).** Letting NumpadPilot use a whole keyboard as a pad installs a udev rule
+- **Extra keyboards (Linux).** Letting NumpadControl use a whole keyboard as a pad installs a udev rule
   that lets every program you run read that keyboard. The app asks before it does so, **Remove this
   keyboard** offers to take it away, and the uninstall removes them all. Don't allow a keyboard you
   type passwords on.

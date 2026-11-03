@@ -1,7 +1,7 @@
 name: Website
 
-# Publishes site/ (the NumpadPilot landing page) to GitHub Pages:
-# https://youssefahmed2017.github.io/numpad-pilot/
+# Publishes site/ (the NumpadControl landing page) to GitHub Pages:
+# https://youssefahmed2017.github.io/numpad-control/
 # One-time setup: repository Settings -> Pages -> Source: "GitHub Actions".
 on:
   push:

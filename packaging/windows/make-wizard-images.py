@@ -1,4 +1,4 @@
-"""Draws the installer's side images (wizard/*.bmp) in the NumpadPilot look; commit the result.
+"""Draws the installer's side images (wizard/*.bmp) in the NumpadControl look; commit the result.
 
     python make-wizard-images.py        (needs Pillow; run it again after changing the artwork)
 """

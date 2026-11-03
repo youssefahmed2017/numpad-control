@@ -1,6 +1,6 @@
-# The service's API (for the NumpadPilot app and other clients)
+# The service's API (for the NumpadControl app and other clients)
 
-The background service and any settings app (NumpadPilot's own app in `numpadctl_ui/`,
+The background service and any settings app (NumpadControl's own app in `numpadctl_ui/`,
 or one you write) talk only through two things: the **settings file** and a **local
 connection**. Nothing else is shared, so another app (a web page, a phone remote, a
 different toolkit) can drive the service the same way. Changes here are made only by

@@ -96,7 +96,7 @@ class SandboxTest(unittest.TestCase):
         from unittest import mock
         with mock.patch("subprocess.run") as run:
             sandbox._default_notify("--hint=string:x:y", "body")
-        self.assertEqual(run.call_args.args[0], ["notify-send", "-a", "NumpadPilot", "--", "--hint=string:x:y", "body"])
+        self.assertEqual(run.call_args.args[0], ["notify-send", "-a", "NumpadControl", "--", "--hint=string:x:y", "body"])
 
 
 if __name__ == "__main__":
