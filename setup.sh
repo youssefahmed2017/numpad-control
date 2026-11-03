@@ -14,7 +14,8 @@ set -euo pipefail
 
 REPO_URL="${NUMPAD_CONTROL_REPO:-https://github.com/youssefahmed2017/numpad-pilot.git}"
 DIR="${NUMPAD_CONTROL_DIR:-$HOME/numpad-control}"
-DEPS=1 ASSUME_YES=0 DRY_RUN=0 ACTION=
+RAW_URL="https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main"
+ANIMATE=0 DEPS=1 ASSUME_YES=0 DRY_RUN=0 ACTION=
 DEFAULT_VENDOR=c0f4 DEFAULT_PRODUCT=05f5   # the numpad this was built with
 
 while [ $# -gt 0 ]; do
@@ -74,43 +75,73 @@ if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != dumb ]; then
         TILE=$'\e[48;5;96m' KEY=$'\e[48;5;255m' INK=$'\e[38;5;219m' ACCENT=$'\e[1;38;5;219m'
     fi
     DIM=$'\e[2m' RST=$'\e[0m' COLOR=1
+    [ -z "${NUMPAD_NO_ANIM:-}" ] && ANIMATE=1
 else
     TILE="" KEY="" INK="" ACCENT="" DIM="" RST="" COLOR=0
 fi
 
-banner() {
-    # The logo (a rounded tile with the numpad's keys) in coloured cells, and SETUP next to it.
-    local logo=("............." ".###.###.###." ".###.###.###." "............." ".###.###.###."
-                ".###.###.###." ".........###." ".#######.###." ".#######.###." ".............")
-    local S=(" ####" "#    " " ### " "    #" "#### ") E=("#####" "#    " "#### " "#    " "#####")
-    local T=("#####" "  #  " "  #  " "  #  " "  #  ") U=("#   #" "#   #" "#   #" "#   #" " ### ")
-    local P=("#### " "#   #" "#### " "#    " "#    ")
-    local r c ch text line
-    echo
-    for r in 0 1 2 3 4 5 6 7 8 9; do
+# Draws the banner once from the ART rows (letters from assets/banner.txt). POS is where the light sweep
+# is (a far-off number = no sweep), FRAME makes the sparkles twinkle.
+draw_art() {
+    local pos=$1 frame=$2 r c ch d out="" line fg bg glyph
+    local glyphs=(" " " " "·" "+" "✦" "+" "·" " ")
+    for ((r = 0; r < ${#ART[@]}; r++)); do
         line="  "
-        for ((c = 0; c < 13; c++)); do
-            ch="${logo[r]:c:1}"
-            if [ "$ch" = "#" ]; then
-                if [ "$COLOR" = 1 ]; then line+="${KEY}  ${RST}"; else line+="██"; fi
-            else
-                if [ "$COLOR" = 1 ]; then line+="${TILE}  ${RST}"; else line+="░░"; fi
-            fi
+        for ((c = 0; c < ART_WIDTH; c++)); do
+            ch="${ART[r]:c:1}"
+            d=$((c + 2 * r - pos)); d=${d#-}   # distance from the sweep
+            case "$ch" in
+                p) bg="124;78;127"; [ "$d" -le 4 ] && bg="170;120;175"; line+=$'\e[48;2;'"${bg}m "$'\e[0m' ;;
+                w) line+=$'\e[48;2;255;255;255m '$'\e[0m' ;;
+                l) fg="236;190;255"; [ "$d" -le 6 ] && fg="248;225;255"; [ "$d" -le 2 ] && fg="255;255;255"
+                   line+=$'\e[38;2;'"${fg}m█"$'\e[0m' ;;
+                *) if [ -n "${SPARKLE[$r,$c]:-}" ] && [ "$pos" -gt -900 ]; then
+                       glyph=${glyphs[(frame + SPARKLE[$r,$c]) % 8]}
+                       line+=$'\e[38;2;255;240;190m'"${glyph}"$'\e[0m'
+                   else line+=" "; fi ;;
+            esac
         done
-        text=""
-        if [ "$r" -ge 2 ] && [ "$r" -le 6 ]; then
-            local k=$((r - 2))
-            for letter in S E T U P; do
-                local -n glyph=$letter
-                text+="${glyph[k]} "
-            done
-            text="${text//#/█}"
-            line+="    ${INK}${text}${RST}"
-        elif [ "$r" = 8 ]; then
-            line+="    ${ACCENT}NumpadPilot${RST}${DIM}  your \$10 numpad, now a control deck${RST}"
-        fi
-        printf '%s\n' "$line"
+        out+="$line"$'\n'
     done
+    printf '%s' "$out"
+}
+
+banner() {
+    # The picture is assets/banner.txt (plain letters, see its header). From a clone we read that file;
+    # run through "curl | bash" there is none, so fetch it, or skip the picture.
+    local art="" r c pos frame
+    if [ -f "${here:-.}/assets/banner.txt" ]; then
+        art=$(cat "${here:-.}/assets/banner.txt")
+    else
+        art=$(curl -fsSL "$RAW_URL/assets/banner.txt" 2> /dev/null || true)
+    fi
+    mapfile -t ART < <(printf '%s\n' "$art" | grep -v '^//' || true)
+    echo
+    if [ "$COLOR" != 1 ]; then
+        # no colour: the purple tile becomes light blocks, the keys and letters solid ones
+        printf '%s\n' "${ART[@]}" | sed 's/p/░/g; s/w/█/g; s/l/█/g; s/^/  /'
+    else
+        ART_WIDTH=0   # the widest row, plus room for sparkles past the end of the letters
+        for r in "${!ART[@]}"; do [ "${#ART[r]}" -gt "$ART_WIDTH" ] && ART_WIDTH=${#ART[r]}; done
+        ART_WIDTH=$((ART_WIDTH + 6))
+        declare -gA SPARKLE=()
+        for _ in 1 2 3 4 5 6 7 8 9; do   # nine sparkles on empty cells right of the logo
+            r=$((RANDOM % ${#ART[@]})); c=$((28 + RANDOM % (ART_WIDTH - 28)))
+            [ "${ART[r]:c:1}" = "l" ] || SPARKLE[$r,$c]=$((RANDOM % 8))
+        done
+        if [ "$ANIMATE" = 1 ]; then
+            printf '\e[?25l'   # hide the cursor while the light sweeps across, then draw the final picture over it
+            for ((frame = 0, pos = -8; pos < ART_WIDTH + 2 * ${#ART[@]} + 8; frame++, pos += 4)); do
+                draw_art "$pos" "$frame"
+                printf '\e[%dA' "${#ART[@]}"
+                sleep 0.02
+            done
+            printf '\e[?25h'
+        fi
+        draw_art -999 0
+    fi
+    echo
+    echo "  ${ACCENT}NumpadPilot${RST}${DIM}  your \$10 numpad, now a control deck${RST}"
     echo
 }
 

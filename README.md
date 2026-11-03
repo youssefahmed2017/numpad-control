@@ -663,5 +663,7 @@ The old `install.sh` and `install.ps1` names still work: they just start these.
 The icon and banner are in [`assets/`](assets/): `icon.svg`, PNGs from 16 to 512 px
 (used by the settings window, the tray and the Linux launcher), `numpad-pilot.ico`
 (Windows), `banner.png` and `social-preview.png` (1280x640, for GitHub's link preview).
+`banner.txt` is the picture `setup.sh` and `setup.ps1` draw when they start (plain letters: `p` tile, `w` key,
+`l` lettering; the header in the file says so), so the installers' logo can be edited as text.
 The UI fonts (Google Sans, JetBrains Mono) is in `assets/fonts/`.
 The website uses the same icon as its favicon and `site/img/og.png` as its link preview.

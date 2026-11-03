@@ -1,0 +1,13 @@
+// The logo and the word SETUP shown by setup.sh. Lines starting with // are ignored.
+// Each character is one terminal column:  p = purple tile   w = white key   l = lilac letter
+// (without colour support p, w and l are drawn as light and solid blocks instead)
+pppppppppppppppppppppppppp
+ppwwwwwwppwwwwwwppwwwwwwpp
+ppwwwwwwppwwwwwwppwwwwwwpp    lllll lllll lllll l   l lllll
+pppppppppppppppppppppppppp    l     l       l   l   l l   l
+ppwwwwwwppwwwwwwppwwwwwwpp    lllll lllll   l   l   l lllll
+ppwwwwwwppwwwwwwppwwwwwwpp        l l       l   l   l l
+ppppppppppppppppppwwwwwwpp    lllll lllll   l   lllll l
+ppwwwwwwwwwwwwwwppwwwwwwpp
+ppwwwwwwwwwwwwwwppwwwwwwpp
+pppppppppppppppppppppppppp
