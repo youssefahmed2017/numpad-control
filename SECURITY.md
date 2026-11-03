@@ -38,7 +38,8 @@ and the details are public afterwards.
   malware already running as you could replace it, and the same malware could equally replace
   NumpadControl's own files; a per-user install can't prevent either. What would: installing for all
   users (so the files need administrator rights to change) and signing the DLL with a code-signing
-  certificate (see [docs/code-signing.md](docs/code-signing.md)). Neither is done yet.
+  certificate (see [docs/code-signing.md](docs/code-signing.md)). Neither is done yet. The DLL in the Windows installer is
+  compiled from `numpadhook.c` in the CI build (not the copy committed to git, which is for installs from source).
 - **Extra keyboards (Linux).** Letting NumpadControl use a whole keyboard as a pad installs a udev rule
   that lets every program you run read that keyboard. The app asks before it does so, **Remove this
   keyboard** offers to take it away, and the uninstall removes them all. Don't allow a keyboard you

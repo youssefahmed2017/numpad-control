@@ -58,6 +58,18 @@ Get-ChildItem $App -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recu
 # (a plain file swap can't replace what is in use, and this Python has no pip), so it is marked as such.
 Set-Content (Join-Path $App ".installer") "" -Encoding ascii
 
+Step "Keyboard hook DLL (built here from numpadhook.c)"
+# The DLL in the installer is compiled in this build, from the source in the repository, so it can be verified. (The
+# copy committed to git is only there for installs from source, which have no compiler.)
+$gcc = @("x86_64-w64-mingw32-gcc", "gcc") | ForEach-Object { (Get-Command $_ -ErrorAction SilentlyContinue).Source } | Where-Object { $_ } | Select-Object -First 1
+if (-not $gcc) { throw "A MinGW-w64 C compiler (gcc) wasn't found; the keyboard hook DLL is built from source here (choco install mingw)." }
+$dll = Join-Path $App "numpadctl\platform\numpadhook.dll"
+Remove-Item $dll -ErrorAction SilentlyContinue
+& $gcc -O2 -Wall -Wextra -shared -s -static-libgcc -o $dll (Join-Path $Root "numpadctl\platform\numpadhook\numpadhook.c") -luser32
+Assert-Ok "compiling numpadhook.dll"
+if (-not (Test-Path $dll)) { throw "numpadhook.dll wasn't built." }
+Write-Host "Built $dll ($([math]::Round((Get-Item $dll).Length / 1KB)) KB, SHA256 $((Get-FileHash $dll -Algorithm SHA256).Hash))"
+
 Step "Installer"
 $iscc = @("$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $iscc) { $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source }

@@ -8,6 +8,12 @@ AppId={{276E655D-0D17-4786-99FA-B4F2C232FEFB}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher=Youssef Ahmed
+; The product name in the Setup's file properties (also what code-signing services check).
+VersionInfoProductName={#AppName}
+VersionInfoDescription={#AppName} Setup
+VersionInfoCompany=Youssef Ahmed
+VersionInfoVersion={#AppVersion}.0
+VersionInfoProductVersion={#AppVersion}
 AppPublisherURL=https://github.com/youssefahmed2017/numpad-control
 AppSupportURL=https://github.com/youssefahmed2017/numpad-control/issues
 DefaultDirName={autopf}\{#AppName}

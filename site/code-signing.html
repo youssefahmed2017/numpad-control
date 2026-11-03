@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code signing policy · NumpadControl</title>
+<meta name="description" content="How NumpadControl's Windows installer is signed: who builds it, who approves it, and what it does.">
+<meta name="theme-color" content="#fff7fa">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="preload" href="assets/fonts/roboto-flex-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/palettes.js"></script>
+<script src="assets/theme.js"></script>
+<script src="assets/site.js" defer></script>
+</head>
+<body>
+<header class="appbar"></header>
+<main>
+
+<section class="page-head">
+  <div class="blob one" aria-hidden="true"></div>
+  <div class="wrap">
+    <span class="label">Code signing policy</span>
+    <h1 class="display-m" style="margin-top:10px">Who signs what, and how</h1>
+    <p>Last updated November 3, 2026.</p>
+  </div>
+</section>
+
+<section style="padding-top:20px">
+  <div class="wrap prose reveal">
+    <p><b>Free code signing provided by <a href="https://signpath.io">SignPath.io</a>, certificate by <a href="https://signpath.org">SignPath Foundation</a>.</b></p>
+    <p><b>Status:</b> the Windows installer is not signed yet, so Windows may show "Windows protected your PC". NumpadControl
+      plans to use free code signing from SignPath Foundation. This page describes how that will work, and it will be
+      updated when it starts.</p>
+
+    <h2>What is signed</h2>
+    <ul>
+      <li>The Windows installer, <code>NumpadControl-Setup-X.exe</code>, built by GitHub Actions from the
+        <a href="https://github.com/youssefahmed2017/numpad-control">public repository</a> (the build script is
+        <code>packaging/windows/build-installer.ps1</code>). Nothing is signed that wasn't built there from that source.</li>
+      <li>Everything in the installer is open source: NumpadControl (GPL-3.0), and the third-party libraries it ships
+        (Python, Qt for Python, and a few others, each under its own open licence). The keyboard hook DLL is compiled
+        from <code>numpadhook.c</code> in the same build.</li>
+      <li>NumpadControl has no paid edition and no closed-source parts.</li>
+    </ul>
+
+    <h2>Who does what</h2>
+    <ul>
+      <li><b>Author and maintainer:</b> Youssef Ahmed (<a href="https://github.com/youssefahmed2017">youssefahmed2017</a>).</li>
+      <li><b>Reviewer and approver:</b> also Youssef Ahmed, as this is a one-person project. Every release is approved by
+        hand before it is signed, and nothing is signed automatically.</li>
+      <li>Access to the repository and to the signing service is protected with multi-factor authentication.</li>
+    </ul>
+
+    <h2>What the program does</h2>
+    <ul>
+      <li>It reads the keys of the numpad you choose and runs the actions you set up. It can hold back that numpad's keys
+        so they only run actions; on Windows it does so with a keyboard hook (Raw Input, no driver). An optional driver
+        (Interception) is only installed if you ask for it.</li>
+      <li>It collects nothing and sends nothing without you saying so. See the <a href="privacy.html">privacy page</a>.</li>
+      <li>It starts at login only if you leave that option on, and the uninstaller (Settings &rarr; Apps) removes it,
+        its shortcuts and its start-at-login entry.</li>
+    </ul>
+
+    <h2>Reporting a problem</h2>
+    <p>If you think a signed file is harmful or wasn't built from this source, please
+      <a href="https://github.com/youssefahmed2017/numpad-control/issues">open an issue</a> and it will be looked at
+      straight away; if it's confirmed, the release is withdrawn and SignPath is told so the signature can be revoked.</p>
+  </div>
+</section>
+
+</main>
+<footer class="site"></footer>
+</body>
+</html>
