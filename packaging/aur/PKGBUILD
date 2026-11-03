@@ -1,6 +1,6 @@
 # Maintainer: Youssef Ahmed <245279337+youssefahmed2017@users.noreply.github.com>
 pkgname=numpad-control
-pkgver=0.2.7
+pkgver=0.3.0
 pkgrel=1
 pkgdesc='Turn a cheap USB numpad into a control deck: OBS, apps, media, macros'
 arch=('any')
@@ -15,7 +15,7 @@ optdepends=('python-obsws: the OBS actions'
             'libnotify: notifications')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 install=numpad-control.install
-sha256sums=('ce2fa67bfce6fecee555c753f0aaf5b00f2a0554df1669eb7f2b3f1980d36d83')
+sha256sums=('4b37e596fb612e0d1065c1bdd1d861e11245c31eea67cd27ffe5c79862f8dff9')
 
 package() {
   cd "$srcdir/$pkgname-$pkgver"
