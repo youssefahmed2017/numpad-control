@@ -422,15 +422,28 @@ blocks that driver). From a copy of the project:
 ### Numpads that need replugging after boot or sleep
 Some cheap numpads aren't detected at boot (the kernel logs `device descriptor
 read/64, error -71`) or go silent after waking from sleep until they're replugged.
-`install-usb-fix.sh` (offered by the installer) adds a "virtual replug": at boot, if
-the numpad is missing, its USB port is switched off and on (up to 3 times); after
-sleep, the numpad is re-detected. It installs `/usr/local/bin/numpad-control-usb-kick`,
-`numpad-control-usb.service` and a systemd sleep hook, and remembers the numpad's port
-in `/etc/numpad-control/usb.conf`. (New; not yet confirmed on real hardware.)
 
-If the kernel log shows those `-71` errors, the numpad never reaches the service at
-all (a flaky cable, port or the numpad itself); try another port, ideally directly on
-the PC, not a hub.
+`install-usb-fix.sh` (offered by the installer) tries a "virtual replug": at boot, if the numpad is
+missing, its USB port is switched off and on in software (up to 3 times); after sleep, the numpad is
+re-detected. It installs `/usr/local/bin/numpad-control-usb-kick`, `numpad-control-usb.service` and a systemd
+sleep hook, and remembers the numpad's port in `/etc/numpad-control/usb.conf`.
+
+**It doesn't help every numpad, and it didn't help the one it was written for.** A software switch isn't a real
+unplug. On the author's PC (HP EliteDesk, numpad `c0f4:05f5`, an Intel xHCI controller) the kernel failed at
+every boot, the fix ran correctly (its three tries are in the journal) and the numpad was still not detected.
+Resetting the whole USB controller didn't help either, and neither did a full shutdown and power-on. Only
+physically unplugging and replugging the numpad worked, after which NumpadControl picked it up by itself. So if
+you see `-71` errors at every boot, expect the same, and don't count on the fix. (Whether it helps after sleep is
+untested.)
+
+What can help instead, roughly in this order:
+- **Another USB port**, ideally on the back of the PC.
+- **A cheap USB 2.0 hub** between the PC and the numpad. A hub sets up low-speed devices itself and hands the PC
+  a normal "device plugged in" event.
+- **BIOS settings**: turn off Fast Boot, look at the legacy USB / xHCI hand-off option, and at any option that
+  controls USB power while the PC is off (the names differ by maker). Unplugging the PC's power cable for ten
+  seconds shows whether the ports stay powered while it is off.
+- A different cable or another numpad of the same model, in case the one you have is faulty.
 
 ## OBS
 In OBS: Tools → WebSocket Server Settings → Enable WebSocket server. Put the

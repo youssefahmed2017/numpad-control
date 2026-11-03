@@ -13,4 +13,5 @@ sudo install -m 644 dist/numpad-control-usb.service /etc/systemd/system/numpad-c
 sudo install -m 755 dist/numpad-control-sleep-hook /usr/lib/systemd/system-sleep/numpad-control
 sudo systemctl daemon-reload
 sudo systemctl enable numpad-control-usb.service
-echo "Done. The numpad will be re-detected at boot if it was missed, and after sleep."
+echo "Done. A software replug can't revive every numpad: if yours is still missing after a restart, see the README"
+echo "section \"Numpads that need replugging after boot or sleep\" (another port or a USB hub usually helps)."

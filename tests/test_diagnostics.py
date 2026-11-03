@@ -24,7 +24,7 @@ class DiagnosticsTest(unittest.TestCase):
     def test_report_has_every_section_and_no_password(self):
         text = self.report({"running": True, "connected": False})
         for part in ("abc1234", "running, numpad NOT connected", "c0f4:05f5", "line one",
-                     "failed 9 times", "Default · 1 tap:"):
+                     "failed 9 times", "another USB port or a USB 2.0 hub", "Default · 1 tap:"):
             self.assertIn(part, text)
         self.assertNotIn("hunter2", text)
 
