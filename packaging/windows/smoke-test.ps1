@@ -36,6 +36,10 @@ foreach ($platform in "offscreen", "windows") {
     if ($LASTEXITCODE -ne 0) { throw "The Qt check failed on the $platform platform (the pruned Qt is missing something)." }
 }
 
+# The hook DLL in the installer was compiled by this build (not the committed copy): it must load and export what the app calls.
+& $python -c "import ctypes, sys; d = ctypes.WinDLL(sys.argv[1]); d.KeyboardProc; print('numpadhook.dll loads and exports KeyboardProc')" (Join-Path $dir "numpadctl\platform\numpadhook.dll")
+if ($LASTEXITCODE -ne 0) { throw "The installed numpadhook.dll doesn't load or has no KeyboardProc." }
+
 $uninstaller = Get-ChildItem $dir -Filter "unins*.exe" | Select-Object -First 1
 Start-Process $uninstaller.FullName -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait
 Start-Sleep -Seconds 3
