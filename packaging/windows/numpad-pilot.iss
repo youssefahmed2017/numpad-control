@@ -49,7 +49,7 @@ Name: "autostart"; Description: "Start NumpadPilot when I sign in"
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\numpad-pilot.ico"
-Name: "{autoprograms}\{#AppName} Settings"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"" gui"; WorkingDir: "{app}"; IconFilename: "{app}\assets\numpad-pilot.ico"
+Name: "{autoprograms}\{#AppName} Settings"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\numpad-control.pyw"" gui"; WorkingDir: "{app}"; IconFilename: "{app}\assets\numpad-pilot.ico"; AppUserModelID: "NumpadPilot.Settings"
 
 [Run]
 Filename: "{app}\python\python.exe"; Parameters: "-c ""from numpadctl.platform.windows_tray import set_autostart; set_autostart(True)"""; WorkingDir: "{app}"; Flags: runhidden; Tasks: autostart

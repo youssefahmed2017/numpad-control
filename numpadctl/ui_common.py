@@ -11,6 +11,9 @@ from . import actions, config, sandbox
 from .platform import IS_WINDOWS, ipc
 
 APP_ID = "dev.numpadctl.NumpadControl"
+# Windows groups taskbar buttons by this name. Without one the settings window is filed under pythonw.exe
+# and wears Python's icon; with it the taskbar uses the window's own icon.
+WINDOWS_APP_ID = "NumpadPilot.Settings"
 
 LAYOUT = [  # (key, row, column, rowspan)
     ("NumLock", 0, 0, 1), ("/", 0, 1, 1), ("*", 0, 2, 1), ("Backspace", 0, 3, 1),
@@ -24,6 +27,19 @@ LAYER_KEY_CHOICES = [k for k, *_ in LAYOUT if k not in config.TAP_ONLY_KEYS]
 
 SLOT_TITLES = {"tap": "Press", "hold": "Hold", "double": "Double tap"}
 NONE_BINDING = {"action": "none", "params": {}}
+
+
+def set_windows_app_id(shell32=None):
+    """Give this process its own taskbar identity on Windows (call before creating any window). Does nothing elsewhere."""
+    if not IS_WINDOWS and shell32 is None:
+        return
+    try:
+        if shell32 is None:
+            import ctypes
+            shell32 = ctypes.windll.shell32
+        shell32.SetCurrentProcessExplicitAppUserModelID(WINDOWS_APP_ID)
+    except (AttributeError, OSError):
+        pass  # only the taskbar icon is wrong then
 
 
 def action_name(action):

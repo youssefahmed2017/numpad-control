@@ -35,6 +35,7 @@ def _server_name():
 
 def run(args=()):
     hidden = "--hidden" in args
+    ui_common.set_windows_app_id()
     app = QApplication(sys.argv[:1])
     app.setApplicationName("NumpadPilot")
     app.setDesktopFileName(ui_common.APP_ID)  # the window's class on Wayland
