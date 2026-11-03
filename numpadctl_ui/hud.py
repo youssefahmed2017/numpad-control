@@ -33,6 +33,7 @@ class Hud(QWidget):
         self.setFixedSize(PAD * 2 + COLUMNS * CELL_W + (COLUMNS - 1) * GAP,
                           PAD * 2 + TITLE_H + ROWS * CELL_H + (ROWS - 1) * GAP)
         self.keys, self.opacity, self.alpha = {}, 0.9, 0.0
+        self.cells = ui_common.LAYOUT
         self.gone = 0
         self.fade = motion.Spring(self, "default_effects", self.set_alpha)
         self.fade.when_done(self.faded)
@@ -51,6 +52,7 @@ class Hud(QWidget):
 
     def show_keys(self, keys, opacity):
         self.keys, self.opacity = dict(keys), max(30, min(100, int(opacity))) / 100
+        self.cells = ui_common.layout_for(config.load())   # read again each time: the layout can change in Settings
         screen = QGuiApplication.screenAt(QCursor.pos()) or QGuiApplication.primaryScreen()
         area = screen.geometry()
         self.move(area.x() + (area.width() - self.width()) // 2, area.y() + (area.height() - self.height()) // 2)
@@ -103,7 +105,7 @@ class Hud(QWidget):
         name_font.setBold(True)
         name_font.setPointSizeF(max(9.0, name_font.pointSizeF() + 1))
         action_font.setPointSizeF(max(8.0, action_font.pointSizeF() - 1))
-        for key, row, column, span in ui_common.LAYOUT:
+        for key, row, column, span in self.cells:
             x = PAD + column * (CELL_W + GAP)
             y = PAD + TITLE_H + row * (CELL_H + GAP)
             height = span * CELL_H + (span - 1) * GAP

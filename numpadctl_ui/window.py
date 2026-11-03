@@ -294,14 +294,14 @@ class MainWindow(QMainWindow):
         page_layout = QVBoxLayout(numpad_page)
         page_layout.setContentsMargins(0, 0, 0, 0)
         page_layout.setSpacing(10)
-        grid = QGridLayout()
-        grid.setSpacing(8)
-        for key, row, col, span in ui_common.LAYOUT:
+        self.numpad_grid = QGridLayout()
+        self.numpad_grid.setSpacing(8)
+        for key, *_ in ui_common.LAYOUT:
             button = KeyButton(key)
             button.clicked.connect(lambda _=False, k=key: self.select(k))
-            grid.addWidget(button, row, col, span, 1)
             self.key_buttons[key] = button
-        page_layout.addLayout(grid)
+        self.arrange_keys()
+        page_layout.addLayout(self.numpad_grid)
 
         self.extra_title = label("Extra keys", "heading")
         page_layout.addWidget(self.extra_title)
@@ -796,6 +796,14 @@ class MainWindow(QMainWindow):
             self.refresh_pad()
             self.build_editor()
 
+    def arrange_keys(self):
+        """Put the key buttons where the numpad_layout setting says (the key names stay what they are)."""
+        placed = ui_common.layout_for(self.cfg)
+        for key, *_ in placed:
+            self.numpad_grid.removeWidget(self.key_buttons[key])
+        for key, row, col, span in placed:
+            self.numpad_grid.addWidget(self.key_buttons[key], row, col, span, 1)
+
     # ---------------------------------------------------------------- settings
     def open_settings(self):
         dialog = dialogs.SettingsDialog(self)
@@ -805,6 +813,7 @@ class MainWindow(QMainWindow):
             look = ("appearance", "accent", "contrast")
             look_changed = any(new[k] != self.cfg.get(k, DEFAULTS_LOOK[k]) for k in look)
             self.cfg.update(new)
+            self.arrange_keys()
             self.mark_dirty()
             self.refresh_layer_switch()
             self.refresh_pad()

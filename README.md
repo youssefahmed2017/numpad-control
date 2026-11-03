@@ -69,6 +69,10 @@ action, Save. What the installers do, and their options:
 - **Search the actions.** Click an action and type: "mute" finds the microphone, the
   speakers and OBS, "live" finds the streaming actions. Each one has a one-line
   description, and the ones you used last are listed first under *Recently used*.
+- **A different key arrangement.** Some numpads put Backspace below `+` instead of at the top right. Pick
+  yours under *Settings → Numpad layout*: the window and the key map are drawn that way. Only the picture
+  changes; a key keeps the name the numpad sends, so what you set on Backspace stays on Backspace. (In
+  `config.json` it is `"numpad_layout": "backspace_below"`; the default is `"standard"`.)
 - **First launch tour.** A new install opens a 3-step welcome: it finds your numpad, lets you
   pick a starting point (streaming, media, everyday shortcuts or empty) and has you press a
   key to see it register. Open it again from *Tools ▾ → Welcome tour*.

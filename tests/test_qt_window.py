@@ -177,6 +177,25 @@ class QtWindowTest(unittest.TestCase):
         self.assertEqual(values["appearance"], "auto")
         dialog.deleteLater()
 
+    def test_the_numpad_layout_setting_moves_the_key_buttons_but_not_their_names(self):
+        grid = self.w.numpad_grid
+
+        def spot(key):
+            row, column, _, _ = grid.getItemPosition(grid.indexOf(self.w.key_buttons[key]))
+            return row, column
+        self.assertEqual([spot(k) for k in ("Backspace", "-", "+")], [(0, 3), (1, 3), (2, 3)])
+        dialog = dialogs.SettingsDialog(self.w)
+        dialog.numpad_layout.setCurrentIndex(dialog.layout_ids.index("backspace_below"))
+        values = dialog.values()
+        dialog.deleteLater()
+        self.assertEqual(values["numpad_layout"], "backspace_below")
+        self.w.cfg.update(values)
+        self.w.arrange_keys()
+        self.assertEqual([spot(k) for k in ("-", "+", "Backspace")], [(0, 3), (1, 3), (2, 3)])
+        self.assertEqual(sorted(self.w.key_buttons), sorted(k for k, *_ in ui_common.LAYOUT))   # same keys, same names
+        self.w.select("Backspace")
+        self.assertEqual(self.w.selected, "Backspace")
+
     def test_close_with_unsaved_changes_can_discard(self):
         self.w.select("2")
         self.pick(0, "media_stop")

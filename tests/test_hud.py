@@ -390,6 +390,18 @@ class HudWindowTest(unittest.TestCase):
         QTest.qWait(300)
         self.assertFalse(window.isVisible())
 
+    def test_it_draws_the_keys_where_the_numpad_layout_setting_puts_them(self):
+        from numpadctl import config, ui_common
+        from numpadctl_ui import hud
+        window = hud.Hud()
+        self.addCleanup(window.deleteLater)
+        self.assertIs(window.cells, ui_common.LAYOUT)
+        with mock.patch.object(config, "load", return_value={"numpad_layout": "backspace_below"}):
+            window.show_keys({"7": "Mute"}, 90)
+        self.assertIs(window.cells, ui_common.LAYOUTS["backspace_below"][1])
+        window.grab()   # drawing with the other layout works too
+        window.hide()
+
     def test_it_draws_every_key_without_errors(self):
         from numpadctl_ui import hud
         window = hud.Hud()

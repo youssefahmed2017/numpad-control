@@ -56,6 +56,13 @@ class SettingsDialog(QDialog):
         self.layer_key.addItems(["Off"] + ui_common.LAYER_KEY_CHOICES + [keys.display(k, cfg) for k in extras])
         self.layer_key.setCurrentIndex(self.layer_choices.index(cfg.get("layer_key")))
         box.addWidget(self.layer_key)
+        box.addWidget(label("Numpad layout: where the keys are drawn (what each key does doesn't change)", "small"))
+        self.layout_ids = list(ui_common.LAYOUTS)
+        self.numpad_layout = ComboBox()
+        self.numpad_layout.addItems([name for name, _ in ui_common.LAYOUTS.values()])
+        current = cfg.get("numpad_layout") if cfg.get("numpad_layout") in ui_common.LAYOUTS else "standard"
+        self.numpad_layout.setCurrentIndex(self.layout_ids.index(current))
+        box.addWidget(self.numpad_layout)
         self.feedback = CheckBox("On-screen confirmations (e.g. “Recording” when OBS starts recording)")
         self.feedback.setChecked(cfg.get("feedback", True))
         box.addWidget(self.feedback)
@@ -242,6 +249,7 @@ class SettingsDialog(QDialog):
         return {"device": self.device, "grab": self.grab.isChecked(),
                 "hud": {"enabled": self.hud_enabled.isChecked(), "opacity": self.hud_opacity.value()},
                 "layer_key": self.layer_choices[self.layer_key.currentIndex()],
+                "numpad_layout": self.layout_ids[self.numpad_layout.currentIndex()],
                 "feedback": self.feedback.isChecked(),
                 "appearance": APPEARANCES[self.appearance.currentIndex()][0],
                 "accent": self.accent.currentText(),

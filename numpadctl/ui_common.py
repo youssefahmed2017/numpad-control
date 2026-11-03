@@ -22,6 +22,26 @@ LAYOUT = [  # (key, row, column, rowspan)
     ("1", 3, 0, 1), ("2", 3, 1, 1), ("3", 3, 2, 1), ("Enter", 3, 3, 2),
     ("0", 4, 0, 1), ("000", 4, 1, 1), (".", 4, 2, 1),
 ]
+# Some numpads put the same 19 keys somewhere else. Only the picture changes: a key keeps the name the numpad
+# sends, so what you bound to Backspace stays on Backspace. (key, row, column, rows it spans)
+LAYOUT_BACKSPACE_BELOW = [
+    ("NumLock", 0, 0, 1), ("/", 0, 1, 1), ("*", 0, 2, 1), ("-", 0, 3, 1),
+    ("7", 1, 0, 1), ("8", 1, 1, 1), ("9", 1, 2, 1), ("+", 1, 3, 1),
+    ("4", 2, 0, 1), ("5", 2, 1, 1), ("6", 2, 2, 1), ("Backspace", 2, 3, 1),
+    ("1", 3, 0, 1), ("2", 3, 1, 1), ("3", 3, 2, 1), ("Enter", 3, 3, 2),
+    ("0", 4, 0, 1), ("000", 4, 1, 1), (".", 4, 2, 1),
+]
+LAYOUTS = {   # config "numpad_layout" -> (what the settings window calls it, the key grid)
+    "standard": ("Standard: Backspace top right", LAYOUT),
+    "backspace_below": ("Backspace below +", LAYOUT_BACKSPACE_BELOW),
+}
+
+
+def layout_for(cfg):
+    """The key grid for the numpad_layout in cfg (the standard one if it is missing or unknown)."""
+    return LAYOUTS.get(cfg.get("numpad_layout"), LAYOUTS["standard"])[1]
+
+
 KEY_LABELS = {"NumLock": "Num", "Backspace": "⌫", "Enter": "⏎"}
 LAYER_KEY_CHOICES = [k for k, *_ in LAYOUT if k not in config.TAP_ONLY_KEYS]
 
