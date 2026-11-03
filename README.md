@@ -528,6 +528,18 @@ the Windows installer), then **sign it on your own computer**:
 uploads `source.zip` and `release.sig` to the release. Until then, installed copies see the release
 but refuse to install it.
 
+**0.3.1:** share profiles, a different key layout, and honest USB advice.
+- **Import and export profiles:** *Profile ⋯ → Export profile…* saves one profile (keys, actions and window match,
+  nothing else) as a small file; *Import profile…* adds one you were sent. The file is checked strictly, and you
+  see what it will do (with ⚠ on actions that run programs, press keys or power off) before anything is added.
+- **Numpad layout:** *Settings → Numpad layout* draws Backspace below `+` for numpads that have it there. Only the
+  picture changes; what you set on each key stays.
+- **USB numpads that aren't detected at boot:** the README and Diagnostics now say plainly that the "virtual replug"
+  doesn't revive every numpad (it didn't on the author's PC) and what helps instead: another port, a USB 2.0 hub,
+  BIOS settings.
+- **Windows installer:** its keyboard hook DLL is compiled from `numpadhook.c` in the build, and the Setup carries a
+  product name and company in its file properties; the site has a Code signing policy page (the installer isn't signed yet).
+
 **0.3.0:** NumpadControl again, and a much smaller install.
 - **Name:** NumpadPilot (the name from 0.2.0 to 0.2.7) is NumpadControl again, because another project already used
   NumpadPilot. The service, the `numpad-control` command and your settings never changed, so nothing moves. Installed
