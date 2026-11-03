@@ -33,6 +33,8 @@ and the details are public afterwards.
 - **Anything running as you can do what you can do.** NumpadControl doesn't try to protect itself from
   other programs running as the same user: they can edit `config.json`, whose actions run as you.
   Treat a settings file from someone else like a script from someone else.
+  The same goes for an imported profile (*Profile ⋯ → Import profile…*): it is checked and you see what it does before
+  it is added, but its actions then run as you.
 - **The Windows keyboard hook DLL** (`numpadhook.dll`) is loaded into other programs and sits in the
   per-user install folder (`%LOCALAPPDATA%\Programs\NumpadControl`), which your account can write. So
   malware already running as you could replace it, and the same malware could equally replace

@@ -289,6 +289,13 @@ keyboard in the window also removes the actions set on its keys.
   leaves unset uses Default.
   The profile menu can create, **duplicate** (copies every key, slot and layer key
   to start from), edit and delete profiles.
+- **Share a profile.** *Profile ⋯ → Export profile…* saves the selected profile as a small JSON file (only
+  its keys, actions and window match: never the OBS password or other settings); *Import profile…* adds one
+  you were sent as a new profile (renamed "Name (2)" if the name is taken). Before anything is added you see
+  what it will do, with ⚠ on actions that run programs, press keys for you or power the PC off, because an
+  imported profile runs on your computer as you: only import files from people you trust. The importer is
+  strict: the file must be small, plain JSON of the right shape, and anything it doesn't understand (an action
+  from a newer version, a setting that doesn't check out) is left out and listed rather than guessed at.
 - **Profile sets.** A set is a whole separate setup (its own Default and its own
   per-app profiles), for example "Coding", "Streaming" and "Gaming". Only the active set
   does anything, and a set never borrows keys from another one. Put **Switch to a profile

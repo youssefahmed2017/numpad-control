@@ -1,14 +1,16 @@
 """The settings window: the numpad on the left, the selected key's editor on the right."""
 
 import copy
+from pathlib import Path
 
 from PySide6.QtCore import QEvent, QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import (
-    QApplication, QButtonGroup, QFrame, QGridLayout, QHBoxLayout, QLineEdit, QMainWindow, QMessageBox,
+    QApplication, QButtonGroup, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLineEdit, QMainWindow, QMessageBox,
     QPushButton, QSizePolicy, QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
-from numpadctl import actions, config, devices, keys, presets, ui_common
+import numpadctl
+from numpadctl import actions, config, devices, keys, presets, profile_io, ui_common
 from numpadctl.platform import IS_WINDOWS
 from .checkbox import CheckBox
 from . import dialogs, effects, egg, motion, secret, theme, tokens, tools, welcome
@@ -247,6 +249,9 @@ class MainWindow(QMainWindow):
         menu.addAction("Delete profile", self.delete_profile)
         menu.addSeparator()
         menu.addAction("Add a starter preset…", self.add_preset)
+        menu.addSeparator()
+        menu.addAction("Export profile…", self.export_profile)
+        menu.addAction("Import profile…", self.import_profile)
         menu_button.setMenu(menu)
         profiles.addWidget(menu_button)
         layout.addLayout(profiles)
@@ -795,6 +800,77 @@ class MainWindow(QMainWindow):
             self.refresh_profiles()
             self.refresh_pad()
             self.build_editor()
+
+    # ---------------------------------------------------------------- share a profile
+    def export_profile(self):
+        safe = "".join(c if c.isalnum() or c in " -_" else "_" for c in self.profile["name"]).strip() or "profile"
+        path, _ = QFileDialog.getSaveFileName(self, "Export profile", str(Path.home() / f"{safe}.numpadprofile.json"),
+                                              "NumpadControl profile (*.json)")
+        if path:
+            self.export_profile_to(path)
+
+    def export_profile_to(self, path):
+        """Write the selected profile to `path` (keys and actions only: no OBS password or other settings)."""
+        data = profile_io.export_profile(self.profile, numpadctl.__version__)
+        try:
+            Path(path).write_text(profile_io.dumps(data), encoding="utf-8")
+        except OSError as e:
+            QMessageBox.warning(self, "Export profile", f"Couldn't save the file:\n{e}")
+            return False
+        self.toast(f"Exported “{self.profile['name']}” to {Path(path).name}")
+        return True
+
+    def import_profile(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Import profile", str(Path.home()),
+                                              "NumpadControl profile (*.json);;All files (*)")
+        if path:
+            self.import_profile_from(path)
+
+    def import_profile_from(self, path, confirm=None):
+        """Add the profile in the file at `path` as a new profile, once confirm(profile, dropped) says yes."""
+        try:
+            with open(path, "rb") as f:
+                text = f.read(profile_io.MAX_BYTES + 1).decode("utf-8", "replace")
+            profile, dropped = profile_io.parse(text)
+        except OSError as e:
+            QMessageBox.warning(self, "Import profile", f"Couldn't read the file:\n{e}")
+            return False
+        except profile_io.ProfileFileError as e:
+            QMessageBox.warning(self, "Import profile", f"This file can't be imported: {e}.")
+            return False
+        if not (confirm or self.confirm_import)(profile, dropped):
+            return False
+        profile["name"] = profile_io.unique_name(profile["name"], [p["name"] for p in self.cfg["profiles"]])
+        self.cfg["profiles"].append(profile)
+        self.profile_index = len(self.cfg["profiles"]) - 1
+        self.mark_dirty()
+        self.refresh_profiles()
+        self.refresh_pad()
+        self.build_editor()
+        self.toast(f"Imported “{profile['name']}” ({profile_io.key_count(profile)} keys)"
+                   + ("" if profile["match"] else ". It won't apply until you add a window class (Edit profile…)"))
+        return True
+
+    def confirm_import(self, profile, dropped):
+        """Show what the profile will do and ask: it comes from a file, so its actions run here as you."""
+        rows = profile_io.summary(profile)
+        lines = [f"{'⚠ ' if risky else '   '}{label}" + (f"  ×{n}" if n > 1 else "") for label, n, risky in rows]
+        box = QMessageBox(self)
+        box.setWindowTitle("Import profile")
+        box.setText(f"Add the profile “{profile['name']}”?")
+        applies = f"windows of: {profile['match']}" if profile["match"] else "no program yet (you choose)"
+        box.setInformativeText(
+            f"{profile_io.key_count(profile)} keys with actions. It applies to {applies}.\n\n"
+            + ("\n".join(lines) if lines else "It has no actions.")
+            + "\n\n⚠ marks actions that run programs, press keys for you or power the PC off. An imported profile "
+              "runs on this computer as you: only import files from people you trust."
+            + (f"\n\nLeft out: {len(dropped)} thing(s) this version can't use." if dropped else ""))
+        if dropped:
+            box.setDetailedText("\n".join(dropped))
+        box.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
+        box.button(QMessageBox.Ok).setText("Import")
+        box.setDefaultButton(QMessageBox.Cancel)
+        return box.exec() == QMessageBox.Ok
 
     def arrange_keys(self):
         """Put the key buttons where the numpad_layout setting says (the key names stay what they are)."""

@@ -1,5 +1,6 @@
 """The Qt settings window, run invisibly (offscreen) against a temporary config."""
 
+import copy
 import json
 import os
 import tempfile
@@ -195,6 +196,45 @@ class QtWindowTest(unittest.TestCase):
         self.assertEqual(sorted(self.w.key_buttons), sorted(k for k, *_ in ui_common.LAYOUT))   # same keys, same names
         self.w.select("Backspace")
         self.assertEqual(self.w.selected, "Backspace")
+
+    def test_a_profile_exported_and_imported_is_a_new_profile_with_the_same_keys(self):
+        self.w.cfg["obs"]["password"] = "hunter2"
+        path = Path(self.tmp.name) / "p.json"
+        self.assertTrue(self.w.export_profile_to(str(path)))
+        self.assertNotIn("hunter2", path.read_text())   # only the profile goes into the file
+        before = len(self.w.cfg["profiles"])
+        seen = []
+        self.assertTrue(self.w.import_profile_from(str(path), confirm=lambda profile, dropped: seen.append((profile, dropped)) or True))
+        self.assertEqual(len(self.w.cfg["profiles"]), before + 1)
+        new = self.w.cfg["profiles"][-1]
+        self.assertEqual(new["name"], "Default (2)")
+        self.assertEqual(new["bindings"], self.w.cfg["profiles"][0]["bindings"])
+        self.assertIsNot(new["bindings"], self.w.cfg["profiles"][0]["bindings"])   # a copy, not the same dict
+        self.assertEqual(self.w.profile_index, before)
+        self.assertEqual(seen[0][1], [])
+
+    def test_a_cancelled_import_changes_nothing(self):
+        path = Path(self.tmp.name) / "p.json"
+        self.w.export_profile_to(str(path))
+        before = copy.deepcopy(self.w.cfg["profiles"])
+        self.assertFalse(self.w.import_profile_from(str(path), confirm=lambda profile, dropped: False))
+        self.assertEqual(self.w.cfg["profiles"], before)
+
+    def test_a_bad_file_is_refused_with_a_message_and_a_hostile_one_loses_what_it_cannot_use(self):
+        path = Path(self.tmp.name) / "bad.json"
+        path.write_text("not json")
+        with mock.patch.object(window_module.QMessageBox, "warning") as warning:
+            self.assertFalse(self.w.import_profile_from(str(path), confirm=lambda profile, dropped: True))
+        self.assertIn("can't be imported", warning.call_args.args[2])
+        hostile = {"format": "numpadcontrol-profile", "version": 1, "profile": {
+            "name": "Gift", "match": "", "bindings": {"1": {"tap": {"action": "launch_missiles", "params": {}}},
+                                                       "2": {"tap": {"action": "mic_mute", "params": {}}}}}}
+        path.write_text(json.dumps(hostile))
+        seen = []
+        self.w.import_profile_from(str(path), confirm=lambda profile, dropped: seen.append((profile, dropped)) or True)
+        imported = self.w.cfg["profiles"][-1]
+        self.assertEqual(sorted(imported["bindings"]), ["2"])
+        self.assertEqual(len(seen[0][1]), 1)
 
     def test_close_with_unsaved_changes_can_discard(self):
         self.w.select("2")
