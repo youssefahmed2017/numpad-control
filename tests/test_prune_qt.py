@@ -20,7 +20,7 @@ def make(root, files):
 FILES = {
     "__init__.py": b"x", "QtCore.pyd": b"imports Qt6Core.dll and pyside6.abi3.dll", "QtGui.pyd": b"Qt6Gui.dll",
     "QtWidgets.pyd": b"Qt6Widgets.dll", "QtNetwork.pyd": b"Qt6Network.dll", "QtQml.pyd": b"Qt6Qml.dll",
-    "QtOpenGL.pyd": b"Qt6OpenGL.dll", "QtCore.pyi": b"stub",
+    "QtOpenGL.pyd": b"Qt6OpenGL.dll", "pyside6qml.abi3.dll": b"Qt6Qml.dll", "QtCore.pyi": b"stub",
     "pyside6.abi3.dll": b"shiboken6.abi3.dll msvcp140.dll", "msvcp140.dll": b"runtime",
     "Qt6Core.dll": b"core", "Qt6Gui.dll": b"needs Qt6Core.dll", "Qt6Widgets.dll": b"needs Qt6Gui.dll",
     "Qt6Network.dll": b"needs Qt6Core.dll", "Qt6Qml.dll": b"qml needs Qt6Network.dll", "Qt6OpenGL.dll": b"gl",
