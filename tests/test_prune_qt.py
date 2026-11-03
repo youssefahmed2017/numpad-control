@@ -39,7 +39,7 @@ class PruneQtTest(unittest.TestCase):
         self.root = Path(self.tmp.name)
         make(self.root, FILES)
         self.before, self.after = prune_qt.prune(self.root)
-        self.left = {str(p.relative_to(self.root / "PySide6")).replace("\\", "/") for p in (self.root / "PySide6").rglob("*") if p.is_file()}
+        self.left = {p.relative_to(self.root / "PySide6").as_posix() for p in (self.root / "PySide6").rglob("*") if p.is_file()}
 
     def test_what_the_window_needs_stays(self):
         for name in ("QtCore.pyd", "QtGui.pyd", "QtWidgets.pyd", "QtNetwork.pyd", "__init__.py", "support/signature.py",
@@ -90,7 +90,7 @@ class PruneQtLinuxTest(unittest.TestCase):
         self.root = Path(self.tmp.name)
         make(self.root, LINUX_FILES)
         prune_qt.prune(self.root)
-        self.left = {str(p.relative_to(self.root / "PySide6")) for p in (self.root / "PySide6").rglob("*") if p.is_file()}
+        self.left = {p.relative_to(self.root / "PySide6").as_posix() for p in (self.root / "PySide6").rglob("*") if p.is_file()}
 
     def test_the_window_and_both_desktops_stay(self):
         for name in ("QtWidgets.abi3.so", "libpyside6.abi3.so.6.12", "Qt/lib/libQt6Widgets.so.6", "Qt/lib/libQt6Core.so.6",
