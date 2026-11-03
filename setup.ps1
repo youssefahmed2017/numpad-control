@@ -296,41 +296,83 @@ function Enable-Colors {
     } catch { return $false }
 }
 
+# The logo and the word SETUP come from assets/banner.txt (plain letters, see its header): from a copy
+# of the project we read that file, through "irm | iex" there is none, so download it, or skip the picture.
+function Read-BannerArt {
+    $file = if ($PSScriptRoot) { Join-Path $PSScriptRoot "assets\banner.txt" } else { "" }
+    try {
+        $text = if ($file -and (Test-Path $file)) { Get-Content $file -Raw }
+                else { (Invoke-WebRequest "$RepoUrl/raw/main/assets/banner.txt" -UseBasicParsing).Content }
+        return @($text -split "\r?\n" | Where-Object { $_ -and -not $_.StartsWith("//") })
+    } catch { return @() }
+}
+
+# Builds the banner once from the rows of banner.txt. $pos is where the light sweep is (-999 = no sweep),
+# $frame makes the sparkles twinkle.
+function Get-BannerFrame($art, [int]$width, $sparkle, [int]$pos, [int]$frame) {
+    $block = [string][char]0x2588
+    $glyphs = @(" ", " ", [string][char]0xB7, "+", [string][char]0x2726, "+", [string][char]0xB7, " ")
+    $out = New-Object System.Text.StringBuilder
+    for ($r = 0; $r -lt $art.Count; $r++) {
+        [void]$out.Append("  ")
+        for ($c = 0; $c -lt $width; $c++) {
+            $ch = if ($c -lt $art[$r].Length) { $art[$r][$c] } else { " " }
+            $d = [Math]::Abs($c + 2 * $r - $pos)   # distance from the sweep
+            switch ($ch) {
+                "p" { $bg = if ($d -le 4) { "170;120;175" } else { "124;78;127" }; [void]$out.Append("$Esc[48;2;${bg}m $Esc[0m") }
+                "w" { [void]$out.Append("$Esc[48;2;255;255;255m $Esc[0m") }
+                "l" {
+                    $fg = if ($d -le 2) { "255;255;255" } elseif ($d -le 6) { "248;225;255" } else { "236;190;255" }
+                    [void]$out.Append("$Esc[38;2;${fg}m$block$Esc[0m")
+                }
+                default {
+                    if ($sparkle.ContainsKey("$r,$c") -and $pos -gt -900) {
+                        [void]$out.Append("$Esc[38;2;255;240;190m" + $glyphs[($frame + $sparkle["$r,$c"]) % 8] + "$Esc[0m")
+                    } else { [void]$out.Append(" ") }
+                }
+            }
+        }
+        [void]$out.Append("`n")
+    }
+    return $out.ToString()
+}
+
 function Show-Banner {
     $color = Enable-Colors
-    $tile = if ($color) { "$Esc[48;2;124;78;127m" } else { "" }
-    $key = if ($color) { "$Esc[48;2;255;255;255m" } else { "" }
-    $ink = if ($color) { "$Esc[38;2;236;190;255m" } else { "" }
     $accent = if ($color) { "$Esc[1;38;2;236;190;255m" } else { "" }
     $dim = if ($color) { "$Esc[2m" } else { "" }
     $rst = if ($color) { "$Esc[0m" } else { "" }
-    # The logo: a rounded tile with the numpad's keys (# = key), two characters wide per cell.
-    $logo = @(".............", ".###.###.###.", ".###.###.###.", ".............", ".###.###.###.",
-              ".###.###.###.", ".........###.", ".#######.###.", ".#######.###.", ".............")
-    $font = @{
-        S = @(" ####", "#    ", " ### ", "    #", "#### ")
-        E = @("#####", "#    ", "#### ", "#    ", "#####")
-        T = @("#####", "  #  ", "  #  ", "  #  ", "  #  ")
-        U = @("#   #", "#   #", "#   #", "#   #", " ### ")
-        P = @("#### ", "#   #", "#### ", "#    ", "#    ")
+    # The animation needs colour support and a real console; set NUMPAD_NO_ANIM=1 to turn it off.
+    $animate = $color -and -not [Console]::IsOutputRedirected -and -not $env:NUMPAD_NO_ANIM
+    $art = Read-BannerArt
+    Write-Host ""
+    if (-not $color) {
+        # no colour: the purple tile becomes light blocks, the keys and letters solid ones
+        foreach ($row in $art) { Write-Host ("  " + $row.Replace("p", [string][char]0x2591).Replace("w", [string][char]0x2588).Replace("l", [string][char]0x2588)) }
+    } elseif ($art.Count -gt 0) {
+        $width = 6 + [int]($art | ForEach-Object { $_.Length } | Measure-Object -Maximum).Maximum
+        $sparkle = @{}
+        for ($i = 0; $i -lt 9; $i++) {   # nine sparkles on empty cells right of the logo
+            $r = Get-Random -Maximum $art.Count
+            $c = Get-Random -Minimum 28 -Maximum $width
+            if (-not ($c -lt $art[$r].Length -and $art[$r][$c] -eq "l")) { $sparkle["$r,$c"] = Get-Random -Maximum 8 }
+        }
+        if ($animate) {
+            # the light sweeps across while the cursor is hidden, then the final picture is drawn over it
+            try { [Console]::CursorVisible = $false } catch { }
+            $frame = 0
+            for ($pos = -8; $pos -lt $width + 2 * $art.Count + 8; $pos += 4) {
+                Write-Host (Get-BannerFrame $art $width $sparkle $pos $frame) -NoNewline
+                Write-Host "$Esc[$($art.Count)A" -NoNewline
+                $frame++
+                Start-Sleep -Milliseconds 20
+            }
+            try { [Console]::CursorVisible = $true } catch { }
+        }
+        Write-Host (Get-BannerFrame $art $width $sparkle -999 0) -NoNewline
     }
     Write-Host ""
-    for ($r = 0; $r -lt 10; $r++) {
-        $line = "  "
-        for ($c = 0; $c -lt 13; $c++) {
-            $cell = $logo[$r][$c]
-            if ($cell -eq "#") { $line += if ($color) { "$key  $rst" } else { [string][char]0x2588 * 2 } }
-            else { $line += if ($color) { "$tile  $rst" } else { [string][char]0x2591 * 2 } }
-        }
-        if ($r -ge 2 -and $r -le 6) {
-            $text = ""
-            foreach ($letter in "S", "E", "T", "U", "P") { $text += $font[$letter][$r - 2] + " " }
-            $line += "    $ink" + $text.Replace("#", [string][char]0x2588) + $rst
-        } elseif ($r -eq 8) {
-            $line += "    ${accent}NumpadPilot${rst}${dim}  your `$10 numpad, now a control deck${rst}"
-        }
-        Write-Host $line
-    }
+    Write-Host "  ${accent}NumpadPilot${rst}${dim}  your `$10 numpad, now a control deck${rst}"
     Write-Host ""
     return @{ Accent = $accent; Rst = $rst; Dim = $dim }
 }
