@@ -29,6 +29,13 @@ $env:QT_QPA_PLATFORM = "offscreen"
 & $python -c "import numpadctl, numpadctl_ui.window, numpadctl.platform.windows_tray as t, PySide6.QtWidgets, pystray; from numpadctl import updater; assert updater.installer_install() and not updater.packaged(); print('installed copy imports fine, version', numpadctl.__version__)"
 if ($LASTEXITCODE -ne 0) { throw "The installed copy didn't start." }
 
+# The pruned Qt must still open the real window: offscreen, and with the Windows platform plugin the app uses.
+$qtCheck = Join-Path $PSScriptRoot "qt_check.py"
+foreach ($platform in "offscreen", "windows") {
+    & $python $qtCheck $platform
+    if ($LASTEXITCODE -ne 0) { throw "The Qt check failed on the $platform platform (the pruned Qt is missing something)." }
+}
+
 $uninstaller = Get-ChildItem $dir -Filter "unins*.exe" | Select-Object -First 1
 Start-Process $uninstaller.FullName -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait
 Start-Sleep -Seconds 3

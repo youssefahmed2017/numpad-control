@@ -36,6 +36,19 @@ Step "Python packages"
 python -m pip install --quiet --target (Join-Path $App "python\Lib\site-packages") --only-binary=:all: -r (Join-Path $Root "requirements.txt")
 Assert-Ok "pip install"
 
+# pip brings all of Qt (QML, translations, developer tools, ...); the window uses four modules. Keep only those.
+Step "Pruning Qt"
+$site = Join-Path $App "python\Lib\site-packages"
+function Show-Sizes($title) {
+    Write-Host $title
+    Get-ChildItem $site -Directory | ForEach-Object { [pscustomobject]@{ Name = $_.Name; MB = [math]::Round((Get-ChildItem $_.FullName -Recurse -File | Measure-Object Length -Sum).Sum / 1MB, 1) } } |
+        Sort-Object MB -Descending | Select-Object -First 8 | Format-Table -AutoSize | Out-String | Write-Host
+}
+Show-Sizes "Biggest packages before pruning:"
+python (Join-Path $PSScriptRoot "prune-qt.py") $site
+Assert-Ok "prune-qt.py"
+Show-Sizes "Biggest packages after pruning:"
+
 Step "NumpadPilot's code"
 foreach ($item in "numpadctl", "numpadctl_ui", "assets", "numpad-control.pyw", "LICENSE", "README.md") {
     Copy-Item -Recurse -Force (Join-Path $Root $item) $App
