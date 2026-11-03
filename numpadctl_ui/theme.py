@@ -245,9 +245,7 @@ QListWidget::item:hover { background: ${stateHover}; }
 QListWidget::item:selected { background: ${secondaryContainer}; color: ${onSecondaryContainer}; }
 
 QCheckBox { spacing: 12px; color: ${onSurface}; }
-QCheckBox::indicator { width: 18px; height: 18px; border-radius: ${r_xs}; border: 2px solid ${onSurfaceVariant}; background: transparent; }
-QCheckBox::indicator:hover { border-color: ${onSurface}; }
-QCheckBox::indicator:checked { background: ${primary}; border-color: ${primary}; image: url("${check}"); }
+QCheckBox::indicator { width: 18px; height: 18px; border: none; background: transparent; image: none; }  /* numpadctl_ui/checkbox.py draws it */
 
 QScrollBar:vertical { background: transparent; width: 12px; margin: 2px; }
 QScrollBar:horizontal { background: transparent; height: 12px; margin: 2px; }

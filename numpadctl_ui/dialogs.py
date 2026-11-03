@@ -3,10 +3,11 @@
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QHBoxLayout, QLineEdit, QListWidget, QListWidgetItem, QMessageBox,
+    QDialog, QDialogButtonBox, QHBoxLayout, QLineEdit, QListWidget, QListWidgetItem, QMessageBox,
     QVBoxLayout, QWidget)
 
 from numpadctl import config, desktop, devices, keys, modes, obs, presets, ui_common
+from .checkbox import CheckBox
 from . import tokens
 from .buttons import ComboBox, PushButton, SmoothScrollArea, SpinBox
 from .widgets import card, label
@@ -41,7 +42,7 @@ class SettingsDialog(QDialog):
         self.detect_button.clicked.connect(self.detect)
         row.addWidget(self.detect_button)
         box.addLayout(row)
-        self.grab = QCheckBox("Stop numpad from typing (keys only trigger actions)")
+        self.grab = CheckBox("Stop numpad from typing (keys only trigger actions)")
         self.grab.setChecked(cfg["grab"])
         box.addWidget(self.grab)
         layout.addWidget(frame)
@@ -55,7 +56,7 @@ class SettingsDialog(QDialog):
         self.layer_key.addItems(["Off"] + ui_common.LAYER_KEY_CHOICES + [keys.display(k, cfg) for k in extras])
         self.layer_key.setCurrentIndex(self.layer_choices.index(cfg.get("layer_key")))
         box.addWidget(self.layer_key)
-        self.feedback = QCheckBox("On-screen confirmations (e.g. “Recording” when OBS starts recording)")
+        self.feedback = CheckBox("On-screen confirmations (e.g. “Recording” when OBS starts recording)")
         self.feedback.setChecked(cfg.get("feedback", True))
         box.addWidget(self.feedback)
         box.addWidget(label("Appearance of this window", "small"))
@@ -90,7 +91,7 @@ class SettingsDialog(QDialog):
                             "showing what each key does in the layer. It never takes focus or catches clicks.",
                             "dim", wrap=True))
         hud = config.hud_settings(cfg)
-        self.hud_enabled = QCheckBox("Show the key map while the layer key is held")
+        self.hud_enabled = CheckBox("Show the key map while the layer key is held")
         self.hud_enabled.setChecked(hud["enabled"])
         box.addWidget(self.hud_enabled)
         row = QHBoxLayout()
@@ -190,7 +191,7 @@ class SettingsDialog(QDialog):
         state = modes.states()
         for name in self.mode_names:
             row = QHBoxLayout()
-            switch = QCheckBox(name)
+            switch = CheckBox(name)
             switch.setChecked(state.get(name, False))
             switch.toggled.connect(lambda on, n=name: modes.set_mode(n, on))
             remove = PushButton("Remove")
@@ -370,7 +371,7 @@ class AddDeviceDialog(QDialog):
         self.name.setPlaceholderText("Name shown in the window")
         self.name.setAccessibleName("Keyboard name")
         layout.addWidget(self.name)
-        self.grab = QCheckBox("Stop this keyboard typing (its keys only run actions)")
+        self.grab = CheckBox("Stop this keyboard typing (its keys only run actions)")
         self.grab.setChecked(True)
         layout.addWidget(self.grab)
         layout.addWidget(label("Hold Ctrl+Alt+Esc on it to give it back if you ever need to type with it.", "small", wrap=True))

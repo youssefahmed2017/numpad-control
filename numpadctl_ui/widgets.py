@@ -3,10 +3,11 @@ edits (no separate "collect the fields before saving" step)."""
 
 from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QCompleter, QFrame, QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit, QToolButton,
+    QComboBox, QCompleter, QFrame, QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit, QToolButton,
     QVBoxLayout, QWidget)
 
 from numpadctl import actions, sandbox, ui_common
+from .checkbox import CheckBox
 from . import theme
 from .buttons import ComboBox, Menu, PushButton, ToolButton
 from .picker import ActionPicker
@@ -167,7 +168,7 @@ class CodeField(QWidget):
         layout.addWidget(check, alignment=Qt.AlignLeft)
 
 
-class BoolField(QCheckBox):
+class BoolField(CheckBox):
     """A checkbox setting."""
 
     def __init__(self, param, value, on_change):

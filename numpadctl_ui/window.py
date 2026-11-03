@@ -5,11 +5,12 @@ import copy
 from PySide6.QtCore import QEvent, QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import (
-    QApplication, QButtonGroup, QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLineEdit, QMainWindow, QMessageBox,
+    QApplication, QButtonGroup, QFrame, QGridLayout, QHBoxLayout, QLineEdit, QMainWindow, QMessageBox,
     QPushButton, QSizePolicy, QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
 from numpadctl import actions, config, devices, keys, presets, ui_common
 from numpadctl.platform import IS_WINDOWS
+from .checkbox import CheckBox
 from . import dialogs, effects, egg, motion, secret, theme, tokens, tools, welcome
 from .snackbar import Snackbar
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, SpinBox, ToolButton, _Morph
@@ -669,7 +670,7 @@ class MainWindow(QMainWindow):
         if action.id != "none":
             add_param_widgets(layout, action, binding["params"], self, self.on_param_changed)
             if slot == "hold" and not action.confirm:
-                rapid = QCheckBox("Rapid-fire after holding 2 s")
+                rapid = CheckBox("Rapid-fire after holding 2 s")
                 rapid.setToolTip("Fires once, then keeps firing if you hold 2 more seconds")
                 rapid.setChecked(actions.rapid_fire(binding))
                 rapid.toggled.connect(lambda on: (binding.__setitem__("rapid", on), self.mark_dirty()))
@@ -685,7 +686,7 @@ class MainWindow(QMainWindow):
         """Turbo: keep firing the Press action while the key is held, N times a second."""
         others = any(actions.is_set(self.slot_binding(key, slot)) for slot in ("hold", "double") if slot in self.slots_for(key))
         row = QHBoxLayout()
-        turbo = QCheckBox("Turbo: repeat while held")
+        turbo = CheckBox("Turbo: repeat while held")
         turbo.setToolTip("Fires once, then keeps firing as fast as you choose for as long as the key is down")
         rate = SpinBox()
         rate.setRange(1, actions.TURBO_MAX)
