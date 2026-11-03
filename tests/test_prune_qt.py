@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SPEC = importlib.util.spec_from_file_location("prune_qt", Path(__file__).resolve().parent.parent / "packaging" / "windows" / "prune-qt.py")
+SPEC = importlib.util.spec_from_file_location("prune_qt", Path(__file__).resolve().parent.parent / "tools" / "prune-qt.py")
 prune_qt = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(prune_qt)
 
@@ -67,6 +67,43 @@ class PruneQtTest(unittest.TestCase):
         (self.root / "PySide6" / "QtWidgets.pyd").unlink()
         with self.assertRaises(SystemExit):
             prune_qt.prune(self.root)
+
+
+LINUX_FILES = {
+    "__init__.py": b"x", "QtCore.abi3.so": b"libQt6Core.so.6 libpyside6.abi3.so.6.12", "QtGui.abi3.so": b"libQt6Gui.so.6",
+    "QtWidgets.abi3.so": b"libQt6Widgets.so.6", "QtNetwork.abi3.so": b"libQt6Network.so.6", "QtQml.abi3.so": b"libQt6Qml.so.6",
+    "QtCore.pyi": b"stub", "assistant": b"tool", "libpyside6.abi3.so.6.12": b"libshiboken6.abi3.so.6.12",
+    "libpyside6qml.abi3.so.6.12": b"libQt6Qml.so.6", "Qt/lib/libQt6Core.so.6": b"libicuuc.so.73", "Qt/lib/libicuuc.so.73": b"libicudata.so.73",
+    "Qt/lib/libicudata.so.73": b"data", "Qt/lib/libQt6Gui.so.6": b"libQt6Core.so.6", "Qt/lib/libQt6Widgets.so.6": b"libQt6Gui.so.6",
+    "Qt/lib/libQt6Network.so.6": b"libQt6Core.so.6", "Qt/lib/libQt6Qml.so.6": b"libQt6Network.so.6", "Qt/lib/libQt6Quick.so.6": b"libQt6Qml.so.6",
+    "Qt/lib/libQt6WaylandClient.so.6": b"libQt6Gui.so.6", "Qt/lib/libQt6Designer.so.6": b"d",
+    "Qt/plugins/platforms/libqxcb.so": b"libQt6Gui.so.6", "Qt/plugins/platforms/libqwayland.so": b"libQt6WaylandClient.so.6",
+    "Qt/plugins/platformthemes/libqgtk3.so": b"t", "Qt/plugins/imageformats/libqico.so": b"i", "Qt/plugins/imageformats/libqsvg.so": b"svg",
+    "Qt/plugins/sqldrivers/libqsqlite.so": b"sql", "Qt/qml/QtQuick/x.qml": b"q", "Qt/translations/qt_de.qm": b"t", "Qt/metatypes/a.json": b"m",
+}
+
+
+class PruneQtLinuxTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        make(self.root, LINUX_FILES)
+        prune_qt.prune(self.root)
+        self.left = {str(p.relative_to(self.root / "PySide6")) for p in (self.root / "PySide6").rglob("*") if p.is_file()}
+
+    def test_the_window_and_both_desktops_stay(self):
+        for name in ("QtWidgets.abi3.so", "libpyside6.abi3.so.6.12", "Qt/lib/libQt6Widgets.so.6", "Qt/lib/libQt6Core.so.6",
+                     "Qt/lib/libicuuc.so.73", "Qt/lib/libicudata.so.73", "Qt/lib/libQt6WaylandClient.so.6",
+                     "Qt/plugins/platforms/libqxcb.so", "Qt/plugins/platforms/libqwayland.so",
+                     "Qt/plugins/platformthemes/libqgtk3.so", "Qt/plugins/imageformats/libqico.so"):
+            self.assertIn(name, self.left)
+
+    def test_qml_tools_and_unused_plugins_go(self):
+        for name in ("QtQml.abi3.so", "QtCore.pyi", "assistant", "libpyside6qml.abi3.so.6.12", "Qt/lib/libQt6Qml.so.6",
+                     "Qt/lib/libQt6Quick.so.6", "Qt/lib/libQt6Designer.so.6", "Qt/plugins/imageformats/libqsvg.so",
+                     "Qt/plugins/sqldrivers/libqsqlite.so", "Qt/qml/QtQuick/x.qml", "Qt/translations/qt_de.qm", "Qt/metatypes/a.json"):
+            self.assertNotIn(name, self.left)
 
 
 if __name__ == "__main__":

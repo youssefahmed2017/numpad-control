@@ -45,7 +45,7 @@ function Show-Sizes($title) {
         Sort-Object MB -Descending | Select-Object -First 8 | Format-Table -AutoSize | Out-String | Write-Host
 }
 Show-Sizes "Biggest packages before pruning:"
-python (Join-Path $PSScriptRoot "prune-qt.py") $site
+python (Join-Path $Root "tools\prune-qt.py") $site
 Assert-Ok "prune-qt.py"
 Show-Sizes "Biggest packages after pruning:"
 

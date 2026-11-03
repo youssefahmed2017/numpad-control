@@ -5,9 +5,9 @@ name: Windows installer
 on:
   push:
     branches: [main]
-    paths: ["packaging/windows/**", "requirements.txt", ".github/workflows/windows-installer.yml"]
+    paths: ["packaging/windows/**", "tools/prune-qt.py", "tools/qt_check.py", "requirements.txt", ".github/workflows/windows-installer.yml"]
   pull_request:
-    paths: ["packaging/windows/**", "requirements.txt", ".github/workflows/windows-installer.yml"]
+    paths: ["packaging/windows/**", "tools/prune-qt.py", "tools/qt_check.py", "requirements.txt", ".github/workflows/windows-installer.yml"]
   workflow_dispatch:
 
 jobs:

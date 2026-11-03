@@ -8,6 +8,7 @@
 #   --install | --uninstall | --update    do that and quit (--update = reinstall: keeps your settings)
 #   --dir PATH    where to put the code (default: ~/numpad-control)
 #   --no-deps     don't install system packages
+#   --no-prune    keep all of Qt (by default only the parts the window uses are kept: about 90 MB, not 250 MB)
 #   --yes         don't ask questions (skips the optional boot/sleep fix)
 #   --dry-run     only print what would be changed
 set -euo pipefail
@@ -15,19 +16,20 @@ set -euo pipefail
 REPO_URL="${NUMPAD_CONTROL_REPO:-https://github.com/youssefahmed2017/numpad-pilot.git}"
 DIR="${NUMPAD_CONTROL_DIR:-$HOME/numpad-control}"
 RAW_URL="https://raw.githubusercontent.com/youssefahmed2017/numpad-pilot/main"
-ANIMATE=0 DEPS=1 ASSUME_YES=0 DRY_RUN=0 ACTION=
+ANIMATE=0 PRUNE=1 DEPS=1 ASSUME_YES=0 DRY_RUN=0 ACTION=
 DEFAULT_VENDOR=c0f4 DEFAULT_PRODUCT=05f5   # the numpad this was built with
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --dir) DIR="$2"; shift ;;
         --no-deps) DEPS=0 ;;
+        --no-prune) PRUNE=0 ;;
         --yes) ASSUME_YES=1 ;;
         --dry-run) DRY_RUN=1 ;;
         --install) ACTION=install ;;
         --uninstall) ACTION=uninstall ;;
         --update|--reinstall) ACTION=update ;;
-        -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
         *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
     shift
@@ -275,6 +277,25 @@ if [ "$DRY_RUN" = 0 ]; then
     "$DIR/.venv/bin/python" -c 'import PySide6.QtWidgets' \
         || { echo "Qt for Python (PySide6) didn't install - see the messages above." >&2; exit 1; }
 fi
+
+# pip brings all of Qt (QML, translations, developer tools, ...); the window uses four modules. Keep only those,
+# prove the window still opens, and put the full Qt back if it doesn't. (A release from before tools/prune-qt.py
+# existed, a Qt from the system packages, and --no-prune are left alone.)
+prune_qt() {
+    local site
+    [ "$PRUNE" = 1 ] && [ -f "$DIR/tools/prune-qt.py" ] || return 0
+    if [ "$DRY_RUN" = 1 ]; then note "[dry-run] would keep only the parts of Qt the window uses"; return 0; fi
+    site=$("$DIR/.venv/bin/python" -c 'import os, PySide6; print(os.path.dirname(os.path.dirname(PySide6.__file__)))')
+    case "$site" in "$DIR/.venv/"*) ;; *) note "Qt comes from the system packages; leaving it as it is"; return 0 ;; esac
+    local report
+    report=$("$DIR/.venv/bin/python" "$DIR/tools/prune-qt.py" "$site") || { warn "couldn't slim down Qt; keeping all of it"; return 0; }
+    note "$(printf '%s\n' "$report" | head -1)"
+    if ! QT_QPA_PLATFORM=offscreen PYTHONPATH="$DIR" "$DIR/.venv/bin/python" "$DIR/tools/qt_check.py" offscreen > /dev/null 2>&1; then
+        warn "the slimmed-down Qt failed its check; putting the full Qt back"
+        "$DIR/.venv/bin/pip" install --quiet --force-reinstall --no-deps PySide6-Essentials
+    fi
+}
+prune_qt
 
 # ---------------------------------------------------------------- 4. numpad
 bold "4/7  Your numpad"

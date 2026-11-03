@@ -30,7 +30,7 @@ $env:QT_QPA_PLATFORM = "offscreen"
 if ($LASTEXITCODE -ne 0) { throw "The installed copy didn't start." }
 
 # The pruned Qt must still open the real window: offscreen, and with the Windows platform plugin the app uses.
-$qtCheck = Join-Path $PSScriptRoot "qt_check.py"
+$qtCheck = Join-Path $PSScriptRoot "..\..\tools\qt_check.py"
 foreach ($platform in "offscreen", "windows") {
     & $python $qtCheck $platform
     if ($LASTEXITCODE -ne 0) { throw "The Qt check failed on the $platform platform (the pruned Qt is missing something)." }

@@ -357,6 +357,14 @@ Window steps use `hyprctl` on Hyprland and kdotool on KDE Plasma.
     while running, so a bar module can list it as a hidden app.
 
 ## Install in detail
+
+**Install size.** pip installs all of Qt (about 250 MB), but the settings window uses four of its modules.
+After installing, `setup.sh` and `setup.ps1` delete the rest (QML, translations, developer tools, plugins for
+things NumpadPilot never does) with `tools/prune-qt.py`, then open the real window offscreen
+(`tools/qt_check.py`) to prove it still works; if that fails they put the full Qt back. Qt ends up around
+90 MB on Linux and 45 MB on Windows. `--no-prune` (`setup.sh`) or `-NoPrune` (`setup.ps1`) keeps all of it, and
+the Windows installer is slimmed the same way (it is 32 MB instead of 69 MB). Don't run the test suite in a pruned
+copy: a few tests use Qt's test module, which the app doesn't need.
 ### Linux
 One command (as your normal user; it asks for your password when it needs sudo):
 

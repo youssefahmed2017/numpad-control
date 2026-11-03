@@ -13,6 +13,7 @@
 # Options: -Install | -Uninstall | -Update   skip the menu (-Update = reinstall, keeping your settings)
 #          -Dir PATH     where to put it (default: your user folder\numpad-control)
 #          -NoAutostart  don't start NumpadPilot at login
+#          -NoPrune      keep all of Qt (by default only the parts the window uses are kept: about 45 MB, not 210 MB)
 #          -DryRun       only show what it would do
 #          -Uninstall    remove the shortcuts and autostart (keeps your settings)
 #          -Interception also install the Interception driver and use it to read the numpad
@@ -94,6 +95,7 @@ function Install-NumpadControl {
         [switch]$DryRun = [bool]$env:NUMPAD_DRYRUN,
         [switch]$Uninstall = [bool]$env:NUMPAD_UNINSTALL,
         [switch]$Interception = [bool]$env:NUMPAD_INTERCEPTION,
+        [switch]$NoPrune = [bool]$env:NUMPAD_NOPRUNE,
         [string]$ScriptRoot = ""
     )
     $ErrorActionPreference = "Stop"
@@ -176,7 +178,7 @@ function Install-NumpadControl {
     }
 
     # ---------------------------------------------------------------- 3. Python environment
-    Step "3/6  Python environment (downloads Qt for the settings window, about 250 MB)"
+    Step "3/6  Python environment (downloads Qt for the settings window, then keeps only the parts it uses)"
     Run "stop a running NumpadPilot (it restarts at the end)" { Stop-NumpadControl $Launcher }
     if (-not (Test-Path $VenvPython)) {
         Run "create the environment in $Dir\.venv" { & $Python -m venv (Join-Path $Dir ".venv"); Assert-Ok "Creating the Python environment" }
@@ -185,6 +187,26 @@ function Install-NumpadControl {
         & $VenvPython -m pip install --quiet --upgrade pip
         & $VenvPython -m pip install --quiet --upgrade -r (Join-Path $Dir "requirements.txt")
         Assert-Ok "Installing the Python packages"
+    }
+    # pip brings all of Qt (QML, translations, developer tools, ...); the window uses four modules. Keep only those,
+    # prove the window still opens, and put the full Qt back if it doesn't. (A release from before tools\prune-qt.py
+    # existed and -NoPrune are left alone.)
+    $PruneScript = Join-Path $Dir "tools\prune-qt.py"
+    if (-not $NoPrune -and (Test-Path $PruneScript)) {
+        Run "keep only the parts of Qt the window uses" {
+            $site = & $VenvPython -c "import os, PySide6; print(os.path.dirname(os.path.dirname(PySide6.__file__)))"
+            $report = & $VenvPython $PruneScript $site
+            if ($LASTEXITCODE -ne 0) { Warn "couldn't slim down Qt; keeping all of it"; return }
+            Note ($report | Select-Object -First 1)
+            $env:QT_QPA_PLATFORM = "offscreen"; $env:PYTHONPATH = $Dir
+            & $VenvPython (Join-Path $Dir "tools\qt_check.py") offscreen *> $null
+            $ok = ($LASTEXITCODE -eq 0)
+            Remove-Item Env:QT_QPA_PLATFORM, Env:PYTHONPATH -ErrorAction SilentlyContinue
+            if (-not $ok) {
+                Warn "the slimmed-down Qt failed its check; putting the full Qt back"
+                & $VenvPython -m pip install --quiet --force-reinstall --no-deps PySide6-Essentials
+            }
+        }
     }
 
     # ---------------------------------------------------------------- 4. reading the numpad
