@@ -496,6 +496,15 @@ the Windows installer), then **sign it on your own computer**:
 uploads `source.zip` and `release.sig` to the release. Until then, installed copies see the release
 but refuse to install it.
 
+**0.2.7:** smoother motion, Windows updates and a nicer installer start.
+- **Motion:** every animation now uses Material 3's easing curves, durations and springs (buttons squeeze and bounce
+  back, popups, fades and scrolling follow the same tokens), and messages appear in a real Material 3 snackbar.
+- **Windows updates:** installed Windows copies update themselves again. They download the newer Setup, check its
+  SHA-256 against the signed release, run it silently, and NumpadPilot starts again with your settings. Copies
+  installed before this release need one manual install first.
+- **Installers:** `setup.sh` and `setup.ps1` draw the logo from `assets/banner.txt` with a light sweep and sparkles
+  (`NUMPAD_NO_ANIM=1` turns the effect off).
+
 **0.2.6:** security and profile sets.
 - **Signed updates:** installed copies update only to releases signed with the author's offline key, checked
   before anything changes (see [SECURITY.md](SECURITY.md)). Older copies install this one on trust, then
