@@ -296,6 +296,11 @@ keyboard in the window also removes the actions set on its keys.
   imported profile runs on your computer as you: only import files from people you trust. The importer is
   strict: the file must be small, plain JSON of the right shape, and anything it doesn't understand (an action
   from a newer version, a setting that doesn't check out) is left out and listed rather than guessed at.
+- **Profile library.** *Profile ⋯ → Browse library…* lists ready-made profiles from
+  [numpad-controllib](https://github.com/youssefahmed2017/numpad-controllib): official ones and ones shared by
+  the community, with search and the ⚠ actions each one uses. Picking one imports it exactly like a file: it
+  is checked the same way and you see what it will do before it is added. Nothing is fetched until you open
+  the library. `NUMPADCTL_LIBRARY` points it at another `https://` address or at a local copy of the library.
 - **Profile sets.** A set is a whole separate setup (its own Default and its own
   per-app profiles), for example "Coding", "Streaming" and "Gaming". Only the active set
   does anything, and a set never borrows keys from another one. Put **Switch to a profile
@@ -647,6 +652,7 @@ system; your user name and home folder taken out) is also kept in
 - `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
 - `numpadctl/release_key.py`: the public key releases must be signed with; `tools/sign-release` makes the key and signs releases
 - `numpadctl/profile_sets.py`: which profile set is active (a small state file, like `modes.py`)
+- `numpadctl/library.py`: the profile library (Browse library…): reads its index and fetches a profile to import
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
 - `numpadctl/platform/`: everything that differs between operating systems, so a
   future Windows version only has to add its own versions of these:

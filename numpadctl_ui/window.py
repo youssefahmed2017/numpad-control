@@ -252,6 +252,7 @@ class MainWindow(QMainWindow):
         menu.addSeparator()
         menu.addAction("Export profile…", self.export_profile)
         menu.addAction("Import profile…", self.import_profile)
+        menu.addAction("Browse library…", lambda: self.browse_library())
         menu_button.setMenu(menu)
         profiles.addWidget(menu_button)
         layout.addLayout(profiles)
@@ -831,14 +832,32 @@ class MainWindow(QMainWindow):
         try:
             with open(path, "rb") as f:
                 text = f.read(profile_io.MAX_BYTES + 1).decode("utf-8", "replace")
-            profile, dropped = profile_io.parse(text)
         except OSError as e:
             QMessageBox.warning(self, "Import profile", f"Couldn't read the file:\n{e}")
             return False
+        return self.import_profile_text(text, confirm)
+
+    def browse_library(self, ask=None):
+        """Pick a profile from the library; it is imported like any file: checked, shown, then added."""
+        from .library_dialog import LibraryDialog
+        picked = (ask or LibraryDialog.ask)(self)
+        if picked is None:
+            return False
+        entry, text = picked
+        origin = "official profile" if entry.tier == "official" else f"community profile by @{entry.author or 'someone'}"
+        return self.import_profile_text(text, source=f"From the profile library: {origin}.")
+
+    def import_profile_text(self, text, confirm=None, source=None):
+        """Add the profile in `text` (a profile file's contents) once confirm(profile, dropped) says yes.
+
+        `source` says where it came from, shown when asking."""
+        try:
+            profile, dropped = profile_io.parse(text)
         except profile_io.ProfileFileError as e:
             QMessageBox.warning(self, "Import profile", f"This file can't be imported: {e}.")
             return False
-        if not (confirm or self.confirm_import)(profile, dropped):
+        ask = confirm or (lambda p, d: self.confirm_import(p, d, source))
+        if not ask(profile, dropped):
             return False
         profile["name"] = profile_io.unique_name(profile["name"], [p["name"] for p in self.cfg["profiles"]])
         self.cfg["profiles"].append(profile)
@@ -851,7 +870,7 @@ class MainWindow(QMainWindow):
                    + ("" if profile["match"] else ". It won't apply until you add a window class (Edit profile…)"))
         return True
 
-    def confirm_import(self, profile, dropped):
+    def confirm_import(self, profile, dropped, source=None):
         """Show what the profile will do and ask: it comes from a file, so its actions run here as you."""
         rows = profile_io.summary(profile)
         lines = [f"{'⚠ ' if risky else '   '}{label}" + (f"  ×{n}" if n > 1 else "") for label, n, risky in rows]
@@ -860,7 +879,8 @@ class MainWindow(QMainWindow):
         box.setText(f"Add the profile “{profile['name']}”?")
         applies = f"windows of: {profile['match']}" if profile["match"] else "no program yet (you choose)"
         box.setInformativeText(
-            f"{profile_io.key_count(profile)} keys with actions. It applies to {applies}.\n\n"
+            (f"{source}\n" if source else "")
+            + f"{profile_io.key_count(profile)} keys with actions. It applies to {applies}.\n\n"
             + ("\n".join(lines) if lines else "It has no actions.")
             + "\n\n⚠ marks actions that run programs, press keys for you or power the PC off. An imported profile "
               "runs on this computer as you: only import files from people you trust."
