@@ -39,7 +39,7 @@ def spawn(*argv):
 # Session variables a desktop app needs. The background service can start
 # before the desktop shares them, and they change on every login, so they're
 # fetched again before each action instead of trusted from startup.
-SESSION_VARS = ("WAYLAND_DISPLAY", "DISPLAY", "HYPRLAND_INSTANCE_SIGNATURE",
+SESSION_VARS = ("WAYLAND_DISPLAY", "DISPLAY", "XAUTHORITY", "HYPRLAND_INSTANCE_SIGNATURE",
                 "XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE", "XDG_SESSION_DESKTOP")
 
 

@@ -12,8 +12,9 @@ Everything is set up in the settings window (the same on Linux and Windows; no c
 needed). NumpadControl is free and open source: the service, the settings window and
 everything else are in this repository, under the GPL-3.0.
 
-Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland), and on
-**Windows** (newer: its installer and some of its actions are still being tested).
+Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland), on **XFCE** (X11, which also covers
+other X11 desktops such as Cinnamon, MATE and i3), and on **Windows** (newer: its installer and some of its actions
+are still being tested).
 
 ![The settings window: a numpad on the left, the selected key's "Go live" macro on the right](docs/screenshots/macro.png)
 
@@ -95,24 +96,28 @@ action, Save. What the installers do, and their options:
   Save.
 - The service fetches the desktop's display variables on every key press, so
   apps open correctly even if it started before the desktop at boot, and it
-  switches between Hyprland and KDE tools when you log out of one desktop and
-  into the other (no restart needed).
+  switches between the Hyprland, KDE and X11 tools when you log out of one desktop and
+  into another (no restart needed).
 
-## Hyprland and KDE Plasma
-The desktop is detected automatically (`XDG_CURRENT_DESKTOP`) and each feature
-uses that desktop's own tools:
+## Hyprland, KDE Plasma and X11 desktops
+The desktop is detected automatically (`XDG_CURRENT_DESKTOP`; any other desktop running on X11 is an "X11
+desktop", e.g. XFCE) and each feature uses that desktop's own tools:
 
-| Feature | Hyprland | KDE Plasma |
-|---|---|---|
-| Window actions, per-app profiles, Wait for window | `hyprctl` | kdotool |
-| Workspaces | Hyprland workspaces | virtual desktops |
-| Toggle floating, scratchpad | yes | not available (Hyprland only) |
-| On-screen popups | SwayOSD | Plasma's own popups |
-| Do not disturb | dunst | Plasma's Do Not Disturb |
-| Screenshots | grim + slurp | Spectacle |
-| Lock screen | hyprlock | KDE's screen locker (`loginctl lock-session`) |
-| Settings window at login | Hyprland autostart | KDE autostart (`~/.config/autostart`) |
-| Hidden settings window | listed by your bar (PID file) | system tray icon |
+| Feature | Hyprland | KDE Plasma | X11 desktops (XFCE, Cinnamon, MATE, i3...) |
+|---|---|---|---|
+| Window actions, per-app profiles, Wait for window | `hyprctl` | kdotool | the window manager's standard calls, through python-xlib (nothing else to install) |
+| Workspaces | Hyprland workspaces | virtual desktops | the window manager's workspaces |
+| Toggle floating, scratchpad | yes | not available (Hyprland only) | not available (Hyprland only) |
+| Hide all windows (Privacy panic) | an empty workspace | minimises every window | "show desktop" |
+| On-screen popups | SwayOSD | Plasma's own popups | a notification instead |
+| Do not disturb | dunst | Plasma's Do Not Disturb | dunst, or XFCE's own notification daemon |
+| Screenshots | grim + slurp | Spectacle | the first installed of maim, scrot, xfce4-screenshooter, gnome-screenshot, Spectacle |
+| Lock screen | hyprlock | KDE's screen locker (`loginctl lock-session`) | `xflock4` (XFCE), else `loginctl lock-session` |
+| Settings window at login | Hyprland autostart | KDE autostart (`~/.config/autostart`) | the same autostart entry |
+| Hidden settings window | listed by your bar (PID file) | system tray icon | system tray icon |
+
+GNOME on Wayland has no way for programs to read the focused window or switch workspaces, so those actions say so
+there instead of doing nothing.
 
 ## Every action
 | Group | Actions |
@@ -373,9 +378,9 @@ Window steps use `hyprctl` on Hyprland and kdotool on KDE Plasma.
 - The background service starts at login (systemd, `default.target`).
 - The settings window starts hidden at login (`numpad-control --hidden`), so it
   opens instantly from the launcher. Closing it only hides it; Ctrl+Q quits it.
-  - **KDE Plasma:** started by `~/.config/autostart/numpad-control.desktop`
-    (installed by `setup.sh`), and shown as a **system tray icon**: click it to
-    open the settings; right-click for Open settings / Quit.
+  - **KDE Plasma, XFCE and other desktops with a tray** (Cinnamon, MATE, LXQt, LXDE, Budgie...): started by
+    `~/.config/autostart/numpad-control.desktop` (installed by `setup.sh`), and shown as a **system tray icon**:
+    click it to open the settings; right-click for Open settings / Quit.
   - **Hyprland:** add `numpad-control --hidden` to your Hyprland autostart. No tray
     icon is shown there; instead it writes `$XDG_RUNTIME_DIR/numpad-control-window.pid`
     while running, so a bar module can list it as a hidden app.
@@ -662,7 +667,7 @@ Stickers never leave your computer. The same text is on the [privacy page](https
   is installed, otherwise the settings file. `numpadctl/ui_common.py` holds what any
   settings window needs (the link to the service, the key layout, action names): the
   interface the window builds on.
-- `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
+- `numpadctl/desktop.py`: desktop-specific tools (Hyprland, KDE Plasma, X11); `numpadctl/platform/x11_desktop.py` is the X11 one
 - `numpadctl/release_key.py`: the public key releases must be signed with; `tools/sign-release` makes the key and signs releases
 - `numpadctl/profile_sets.py`: which profile set is active (a small state file, like `modes.py`)
 - `numpadctl/stickers.py`: key pictures: their names, where they live, which one a profile shows (`numpadctl_ui/sticker_image.py` makes them from a picture file)

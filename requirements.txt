@@ -1,5 +1,6 @@
 # Tested with evdev 2.0.0, obsws-python 1.8.0, PySide6-Essentials 6.12.0, pystray 0.19.5 (pycaw: not yet tried on Windows)
 evdev>=1.7; sys_platform == "linux"
+python-xlib>=0.33; sys_platform == "linux"   # window and workspace actions on X11 desktops (XFCE...)
 obsws-python>=1.7
 PySide6-Essentials>=6.7
 cryptography>=42  # checks the signature on every release before it is installed

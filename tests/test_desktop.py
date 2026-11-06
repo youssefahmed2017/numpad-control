@@ -133,6 +133,21 @@ class SessionSwitchTest(unittest.TestCase):
             self.assertEqual(linux_system.os.environ["PATH"], "/bin", "unrelated variables are kept")
             self.assertEqual(desktop.current(), "kde")
 
+    def test_the_x_login_cookie_follows_the_session(self):
+        """Without XAUTHORITY the overlay can't connect to the display of an X11 login (it is different every time)."""
+        systemd = mock.Mock(stdout="DISPLAY=:0\nXAUTHORITY=/tmp/xauth_new\nXDG_CURRENT_DESKTOP=XFCE\n")
+        stale = {"DISPLAY": ":1", "XAUTHORITY": "/tmp/xauth_old", "PATH": "/bin"}
+        with mock.patch.dict(linux_system.os.environ, stale, clear=True), \
+                mock.patch.object(linux_system.subprocess, "run", return_value=systemd):
+            actions.refresh_session_env()
+            self.assertEqual(linux_system.os.environ["XAUTHORITY"], "/tmp/xauth_new")
+            self.assertEqual(linux_system.os.environ["DISPLAY"], ":0")
+        systemd = mock.Mock(stdout="WAYLAND_DISPLAY=wayland-1\nXDG_CURRENT_DESKTOP=Hyprland\n")
+        with mock.patch.dict(linux_system.os.environ, stale, clear=True), \
+                mock.patch.object(linux_system.subprocess, "run", return_value=systemd):
+            actions.refresh_session_env()
+            self.assertNotIn("XAUTHORITY", linux_system.os.environ, "the old login's cookie is dropped")
+
     def test_nothing_dropped_if_systemd_cannot_be_asked(self):
         with mock.patch.dict(linux_system.os.environ, {"WAYLAND_DISPLAY": "wayland-1"}, clear=True), \
                 mock.patch.object(linux_system.subprocess, "run", side_effect=OSError):

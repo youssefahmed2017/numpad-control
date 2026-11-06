@@ -1,4 +1,4 @@
-"""Desktop-specific parts, for Hyprland and KDE Plasma.
+"""Desktop-specific parts, for Hyprland, KDE Plasma and any X11 desktop (XFCE, Cinnamon, MATE, i3...).
 
 current() looks at XDG_CURRENT_DESKTOP, which the service refreshes before each
 key press (see actions.refresh_session_env), so logging out of one desktop and
@@ -15,8 +15,8 @@ from pathlib import Path
 
 from .platform import IS_WINDOWS
 
-HYPRLAND, KDE, WINDOWS, OTHER = "hyprland", "kde", "windows", "other"
-NAMES = {HYPRLAND: "Hyprland", KDE: "KDE Plasma", WINDOWS: "Windows"}
+HYPRLAND, KDE, X11, WINDOWS, OTHER = "hyprland", "kde", "x11", "windows", "other"
+NAMES = {HYPRLAND: "Hyprland", KDE: "KDE Plasma", X11: "an X11 desktop", WINDOWS: "Windows"}
 
 
 class DesktopError(Exception):
@@ -33,6 +33,8 @@ def current():
         return KDE
     if not desktop and os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
         return HYPRLAND
+    if os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
+        return X11   # XFCE, Cinnamon, MATE, GNOME or any other desktop on Xorg: the standard X11 window calls
     return OTHER
 
 
@@ -61,6 +63,14 @@ def _kdotool(*args):
     return out.stdout.strip()
 
 
+def _x11():
+    """The X11 backend when this is an X11 session (everything but Hyprland and KDE), else None."""
+    if current() != X11:
+        return None
+    from .platform import x11_desktop
+    return x11_desktop
+
+
 def _supported(what):
     _only(what, HYPRLAND, KDE)
     return current()
@@ -70,6 +80,8 @@ def _supported(what):
 
 def active_window_class():
     """Class of the focused window (e.g. "kitty", "firefox"), or "" if unknown."""
+    if x11 := _x11():
+        return x11.active_window_class()
     try:
         if current() == HYPRLAND:
             out = _run(["hyprctl", "activewindow", "-j"], timeout=1).stdout
@@ -83,6 +95,8 @@ def active_window_class():
 
 def open_windows():
     """[(class, title)] of open windows, one per class, for picking a profile's app."""
+    if x11 := _x11():
+        return x11.open_windows()
     result, seen = [], set()
     try:
         if current() == HYPRLAND:
@@ -104,6 +118,8 @@ def open_windows():
 
 def focus_window(cls):
     """cls must already be validated (letters, digits, . _ - only)."""
+    if x11 := _x11():
+        return x11.focus_window(cls)
     if _supported("Focusing a window") == HYPRLAND:
         _hyprctl(f'hl.dsp.focus({{ window = "class:{cls}" }})')
     else:
@@ -114,6 +130,8 @@ def focus_window(cls):
 
 
 def close_window():
+    if x11 := _x11():
+        return x11.close_window()
     if _supported("Closing a window") == HYPRLAND:
         _hyprctl("hl.dsp.window.close()")
     else:
@@ -121,6 +139,8 @@ def close_window():
 
 
 def toggle_fullscreen():
+    if x11 := _x11():
+        return x11.toggle_fullscreen()
     if _supported("Fullscreen") == HYPRLAND:
         _hyprctl('hl.dsp.window.fullscreen({ mode = "fullscreen" })')
     else:
@@ -128,11 +148,15 @@ def toggle_fullscreen():
 
 
 def toggle_floating():
+    if x11 := _x11():
+        return x11.toggle_floating()
     _only("Floating windows", HYPRLAND)  # KDE windows always float
     _hyprctl('hl.dsp.window.float({ action = "toggle" })')
 
 
 def toggle_scratchpad():
+    if x11 := _x11():
+        return x11.toggle_scratchpad()
     _only("The scratchpad", HYPRLAND)
     _hyprctl('hl.dsp.workspace.toggle_special("magic")')
 
@@ -151,6 +175,8 @@ def _kde_check_desktop(number):
 
 
 def go_to_workspace(number):
+    if x11 := _x11():
+        return x11.go_to_workspace(number)
     if _supported("Workspaces") == HYPRLAND:
         _hyprctl(f"hl.dsp.focus({{ workspace = {number} }})")
     else:
@@ -159,6 +185,8 @@ def go_to_workspace(number):
 
 
 def move_window_to_workspace(number):
+    if x11 := _x11():
+        return x11.move_window_to_workspace(number)
     if _supported("Workspaces") == HYPRLAND:
         _hyprctl(f"hl.dsp.window.move({{ workspace = {number} }})")
     else:
@@ -168,6 +196,8 @@ def move_window_to_workspace(number):
 
 def step_workspace(step):
     """step = +1 (next) or -1 (previous)."""
+    if x11 := _x11():
+        return x11.step_workspace(step)
     if _supported("Workspaces") == HYPRLAND:
         _hyprctl(f'hl.dsp.focus({{ workspace = "e{step:+d}" }})')
     else:
@@ -217,14 +247,36 @@ def toggle_dnd():
         reply = call("Inhibit", GLib.Variant("(ssa{sv})", ("numpad-control", "Do not disturb (NumpadControl)", {})), "(u)")
         _dnd["cookie"] = reply.unpack()[0]
         return True
+    if not _running("dunst") and "xfce" in os.environ.get("XDG_CURRENT_DESKTOP", "").lower() \
+            and shutil.which("xfconf-query"):
+        return _toggle_xfce_dnd()
     out = _run(["dunstctl", "set-paused", "toggle"])
     if out.returncode != 0:
         raise DesktopError("dunstctl failed - is dunst running?")
     return _run(["dunstctl", "is-paused"]).stdout.strip() == "true"
 
 
+def _running(program):
+    try:
+        return subprocess.run(["pgrep", "-x", program], capture_output=True, timeout=2).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def _toggle_xfce_dnd():
+    """XFCE's notification daemon keeps do-not-disturb as a setting; returns True if it is now on."""
+    query = ["xfconf-query", "-c", "xfce4-notifyd", "-p", "/do-not-disturb"]
+    now = _run(query).stdout.strip() == "true"
+    done = _run([*query, "-n", "-t", "bool", "-s", "false" if now else "true"])
+    if done.returncode != 0:
+        raise DesktopError("couldn't change XFCE's do-not-disturb setting")
+    return not now
+
+
 def screenshot(path: Path, region=False):
     """Save a screenshot to path. Returns False if the user cancelled the selection."""
+    if current() == X11:
+        return _x11_screenshot(path, region)
     if current() == KDE or (not shutil.which("grim") and shutil.which("spectacle")):
         out = _run(["spectacle", "--background", "--nonotify", "--region" if region else "--fullscreen",
                     "--output", str(path)], timeout=120)
@@ -239,9 +291,32 @@ def screenshot(path: Path, region=False):
     return path.exists()
 
 
+# X11 screenshot tools, the first one installed is used: (program, whole screen, a region you select)
+X11_SCREENSHOT_TOOLS = (
+    ("maim", lambda p: ["maim", p], lambda p: ["maim", "-s", p]),
+    ("scrot", lambda p: ["scrot", p], lambda p: ["scrot", "-s", p]),
+    ("xfce4-screenshooter", lambda p: ["xfce4-screenshooter", "-f", "-s", p],
+     lambda p: ["xfce4-screenshooter", "-r", "-s", p]),
+    ("gnome-screenshot", lambda p: ["gnome-screenshot", "-f", p], lambda p: ["gnome-screenshot", "-a", "-f", p]),
+    ("spectacle", lambda p: ["spectacle", "--background", "--nonotify", "--fullscreen", "--output", p],
+     lambda p: ["spectacle", "--background", "--nonotify", "--region", "--output", p]),
+)
+
+
+def _x11_screenshot(path, region):
+    for program, whole, area in X11_SCREENSHOT_TOOLS:
+        if shutil.which(program):
+            out = _run((area if region else whole)(str(path)), timeout=120)
+            return out.returncode == 0 and path.exists()
+    raise DesktopError("no screenshot tool found: install maim, scrot or xfce4-screenshooter")
+
+
 def lock_screen():
     if current() == HYPRLAND and shutil.which("hyprlock"):
         subprocess.Popen(["hyprlock"], start_new_session=True,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    elif current() == X11 and shutil.which("xflock4"):   # XFCE's own: it picks the screensaver that is installed
+        subprocess.Popen(["xflock4"], start_new_session=True,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
         _run(["loginctl", "lock-session"])  # KDE's (and most desktops') screen locker listens
@@ -249,6 +324,8 @@ def lock_screen():
 
 # Never force-killed, whatever is focused: the desktop itself and NumpadControl.
 PROTECTED = {"hyprland", "plasmashell", "kwin_wayland", "kwin_x11", "krunner", "sddm", "waybar", "hyprpaper",
+             "xfwm4", "xfdesktop", "xfce4-panel", "xfce4-session", "gnome-shell", "mutter", "marco", "cinnamon",
+             "mate-panel", "lxqt-panel", "openbox", "i3", "xorg",
              "dev.numpadctl.numpadcontrol", "explorer", "dwm", "winlogon", "csrss", "python", "pythonw"}
 
 
@@ -256,6 +333,8 @@ def hide_windows():
     """Get everything off the screen at once: an empty workspace (Hyprland), every window minimised (KDE).
 
     Returns what restore_windows() needs to bring it all back (JSON-friendly)."""
+    if x11 := _x11():
+        return x11.hide_windows()
     if _supported("Hiding the windows") == HYPRLAND:
         info = json.loads(_run(["hyprctl", "activeworkspace", "-j"], timeout=2).stdout or "{}")
         _hyprctl('hl.dsp.focus({ workspace = "empty" })')
@@ -268,6 +347,8 @@ def hide_windows():
 
 def restore_windows(token):
     """Undo hide_windows(): back to the workspace you were on, or every minimised window shown again."""
+    if x11 := _x11():
+        return x11.restore_windows(token)
     if _supported("Showing the windows again") == HYPRLAND:
         if token.get("workspace") is not None:
             _hyprctl(f"hl.dsp.focus({{ workspace = {int(token['workspace'])} }})")
@@ -278,6 +359,8 @@ def restore_windows(token):
 
 def force_close_window():
     """Kill the focused window's program at once (SIGKILL) and return its name. Unsaved work in it is lost."""
+    if x11 := _x11():
+        return x11.force_close_window()
     if _supported("Force-quitting a window") == HYPRLAND:
         info = json.loads(_run(["hyprctl", "activewindow", "-j"], timeout=2).stdout or "{}")
         name, pid = info.get("class", ""), info.get("pid", 0)
@@ -293,6 +376,8 @@ def force_close_window():
 
 def focus_app_window(app_id):
     """Bring this app's own (already shown) window to the front."""
+    if x11 := _x11():
+        return x11.focus_app_window(app_id)
     try:
         if current() == HYPRLAND:
             _hyprctl(f'hl.dsp.focus({{ window = "class:{app_id}" }})')

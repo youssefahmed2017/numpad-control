@@ -6,5 +6,5 @@ GenericName=Numpad Control
 Keywords=Numpad Control;NumpadControl;NumpadPilot;Numpad Pilot;numpad;pilot;numpad control;macro pad;
 Exec=@HOME@/.local/bin/numpad-control --hidden
 Icon=numpad-control
-OnlyShowIn=KDE;
+OnlyShowIn=KDE;XFCE;X-Cinnamon;MATE;LXQt;LXDE;Budgie;Pantheon;Deepin;
 X-KDE-autostart-phase=2
