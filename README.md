@@ -410,6 +410,10 @@ Update, [0] Quit**. (`--install`, `--uninstall` and `--update` skip the menu.) I
 1. installs the system packages (pacman, apt or dnf): Python, python-gobject, git, ydotool, playerctl, PipeWire tools, wl-clipboard, plus the
    extras for each desktop it finds (Hyprland: SwayOSD, grim, slurp, dunst, hyprlock;
    KDE Plasma: Spectacle, and kdotool from the AUR via yay/paru)
+   On **Ubuntu** (tested on 24.04 LTS, Python 3.12, in a container: the install path and the whole test suite pass) it
+   also installs `python3-evdev` (so nothing has to be compiled) and the xcb libraries Qt's X11 backend loads, which
+   the key map overlay needs. Ubuntu's `ydotool` is the old 0.1.8: if **Type text** or **Press keys** doesn't work,
+   install ydotool 1.0 or newer and make sure you can write to `/dev/uinput`.
 2. clones the code to `~/numpad-control` (or updates it if it's already there)
 3. creates the Python environment (`.venv`, with `requirements.txt`)
 4. asks you to press a key on your numpad, to find it

@@ -222,9 +222,15 @@ if [ "$DEPS" = 1 ]; then
             fi
         fi
     elif command -v apt-get > /dev/null; then
-        run sudo apt-get install -y git python3 python3-venv python3-gi \
-            libnotify-bin xdg-utils wl-clipboard ydotool playerctl wireplumber pulseaudio-utils
+        # python3-evdev: pip would have to compile evdev (no wheel), which needs a compiler and Python headers.
+        # The xcb libraries are what Qt's X11 backend loads: the key map overlay and every X11 desktop need them,
+        # and a stock Ubuntu image doesn't have them all (tested on 24.04).
+        run sudo apt-get install -y git python3 python3-venv python3-gi python3-evdev \
+            libnotify-bin xdg-utils wl-clipboard ydotool playerctl wireplumber pulseaudio-utils \
+            libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-render-util0 libxcb-xkb1
         warn "Install your desktop's extras yourself if needed (Hyprland: swayosd grim slurp dunst; KDE: kdotool spectacle)."
+        warn "Ubuntu's ydotool is the old 0.1.8: the Type text and Press keys actions may need a newer ydotool (1.0+) and access to /dev/uinput."
     elif command -v dnf > /dev/null; then
         run sudo dnf install -y git python3 python3-gobject libnotify xdg-utils \
             wl-clipboard ydotool playerctl wireplumber pulseaudio-utils
