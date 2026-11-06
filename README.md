@@ -13,7 +13,7 @@ needed). NumpadControl is free and open source: the service, the settings window
 everything else are in this repository, under the GPL-3.0.
 
 Built and tested on Arch Linux with **Hyprland** and **KDE Plasma 6** (Wayland), on **XFCE** (X11, which also covers
-other X11 desktops such as Cinnamon, MATE and i3), and on **Windows** (newer: its installer and some of its actions
+other X11 desktops such as Cinnamon, MATE and i3) and **GNOME** (Wayland, with limits), and on **Windows** (newer: its installer and some of its actions
 are still being tested).
 
 ![The settings window: a numpad on the left, the selected key's "Go live" macro on the right](docs/screenshots/macro.png)
@@ -116,8 +116,14 @@ desktop", e.g. XFCE) and each feature uses that desktop's own tools:
 | Settings window at login | Hyprland autostart | KDE autostart (`~/.config/autostart`) | the same autostart entry |
 | Hidden settings window | listed by your bar (PID file) | system tray icon | system tray icon |
 
-GNOME on Wayland has no way for programs to read the focused window or switch workspaces, so those actions say so
-there instead of doing nothing.
+**GNOME on Wayland** doesn't let programs read the focused window, list windows or switch workspaces, and
+NumpadControl installs no shell extension. So it presses GNOME's own shortcuts for you (it reads the ones you have set,
+custom ones included, and presses them with ydotool): next / previous workspace, go to or move a window to workspace N
+(GNOME ships a shortcut for only some of them), close window, fullscreen and hide-all-windows (GNOME has no default
+shortcut for these two: set one in *Settings → Keyboard → Keyboard Shortcuts*, and the action says where when it is
+missing). **Not possible on GNOME:** per-app profiles, Focus a window, and Force-quit. Do not disturb uses GNOME's own
+setting, popups are GNOME notifications, screenshots need `gnome-screenshot`, and the settings window has no tray icon
+(GNOME has none without an extension): open it from the app grid.
 
 ## Every action
 | Group | Actions |
@@ -667,7 +673,7 @@ Stickers never leave your computer. The same text is on the [privacy page](https
   is installed, otherwise the settings file. `numpadctl/ui_common.py` holds what any
   settings window needs (the link to the service, the key layout, action names): the
   interface the window builds on.
-- `numpadctl/desktop.py`: desktop-specific tools (Hyprland, KDE Plasma, X11); `numpadctl/platform/x11_desktop.py` is the X11 one
+- `numpadctl/desktop.py`: desktop-specific tools (Hyprland, KDE Plasma, GNOME, X11); `numpadctl/platform/x11_desktop.py` and `gnome_desktop.py` are the last two
 - `numpadctl/release_key.py`: the public key releases must be signed with; `tools/sign-release` makes the key and signs releases
 - `numpadctl/profile_sets.py`: which profile set is active (a small state file, like `modes.py`)
 - `numpadctl/stickers.py`: key pictures: their names, where they live, which one a profile shows (`numpadctl_ui/sticker_image.py` makes them from a picture file)

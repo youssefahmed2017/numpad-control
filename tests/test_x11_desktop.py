@@ -93,7 +93,8 @@ class X11Test(unittest.TestCase):
     # ---------------------------------------------------------------- detection
     def test_detection(self):
         cases = ((X11_ENV, "x11"), ({"XDG_CURRENT_DESKTOP": "GNOME", "DISPLAY": ":0"}, "x11"),
-                 ({"XDG_CURRENT_DESKTOP": "GNOME", "DISPLAY": ":0", "WAYLAND_DISPLAY": "wayland-0"}, "other"),
+                 ({"XDG_CURRENT_DESKTOP": "GNOME", "DISPLAY": ":0", "WAYLAND_DISPLAY": "wayland-0"}, "gnome"),
+                 ({"XDG_CURRENT_DESKTOP": "sway", "DISPLAY": ":0", "WAYLAND_DISPLAY": "wayland-0"}, "other"),
                  ({"XDG_CURRENT_DESKTOP": "Hyprland", "DISPLAY": ":1", "WAYLAND_DISPLAY": "wayland-1"}, "hyprland"),
                  ({"XDG_CURRENT_DESKTOP": "KDE", "DISPLAY": ":0"}, "kde"),
                  ({"XDG_CURRENT_DESKTOP": "XFCE"}, "other"))
