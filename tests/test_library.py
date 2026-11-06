@@ -55,6 +55,12 @@ class IndexTest(unittest.TestCase):
         self.assertEqual(entries[1].tier, "community")
         self.assertEqual(entries[0].match, ["obs", "obs64"])
 
+    def test_text_direction_tricks_are_taken_out_of_every_text(self):
+        [e] = library.parse_index(index(entry(
+            name="ev\u202egnp.exe", author="a\u200bnn", description="x\u2066y", tags=["t\u202ea"])))
+        for text in (e.name, e.author, e.description, e.tags[0]):
+            self.assertFalse(set(text) & set("\u202e\u200b\u2066"), text)
+
     def test_tier_comes_from_the_path_not_the_claim(self):
         [e] = library.parse_index(index(entry(path="profiles/community/ann/x.json", tier="official")))
         self.assertEqual(e.tier, "community")
@@ -172,11 +178,19 @@ class OnlineSourceTest(unittest.TestCase):
             seen.append((request.full_url, request.get_header("User-agent"), timeout))
             return Response()
 
-        with mock.patch.object(library.urllib.request, "urlopen", urlopen):
+        with mock.patch.object(library._opener, "open", urlopen):
             library.fetch_index(library.DEFAULT_SOURCE)
         self.assertEqual(seen[0][0], library.DEFAULT_SOURCE + "index.json")
         self.assertTrue(seen[0][1].startswith("numpad-control/"))
         self.assertEqual(seen[0][2], library.TIMEOUT)
+
+    def test_redirects_to_plain_http_are_refused(self):
+        handler = library._HttpsOnly()
+        request = library.urllib.request.Request("https://example.org/index.json")
+        with self.assertRaises(library.urllib.error.URLError):
+            handler.redirect_request(request, None, 302, "Found", {}, "http://example.org/index.json")
+        self.assertIsNotNone(handler.redirect_request(
+            request, None, 302, "Found", {}, "https://example.org/other.json"))
 
     def test_not_found_and_offline_read_plainly(self):
         def not_found(request, timeout):
@@ -185,10 +199,10 @@ class OnlineSourceTest(unittest.TestCase):
         def offline(request, timeout):
             raise library.urllib.error.URLError("no network")
 
-        with mock.patch.object(library.urllib.request, "urlopen", not_found):
+        with mock.patch.object(library._opener, "open", not_found):
             with self.assertRaisesRegex(library.LibraryError, "isn't available"):
                 library.fetch_index(library.DEFAULT_SOURCE)
-        with mock.patch.object(library.urllib.request, "urlopen", offline):
+        with mock.patch.object(library._opener, "open", offline):
             with self.assertRaisesRegex(library.LibraryError, "Are you online"):
                 library.fetch_index(library.DEFAULT_SOURCE)
 

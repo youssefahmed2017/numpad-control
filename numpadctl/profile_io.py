@@ -28,7 +28,8 @@ MAX_NAME = 60
 BINDING_FIELDS = ("action", "params", "rapid", "turbo")
 RISKY_GROUPS = ("Advanced", "System", "Keyboard")   # run code, press keys for you, or power off the PC
 RISKY_IDS = ("open_path", "launch_app", "open_url")           # open a file or program, or a web page
-_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+# control characters, plus the invisible ones that can reorder or hide text (right-to-left override, zero-width...)
+_CONTROL = re.compile("[\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]")
 
 
 class ProfileFileError(Exception):

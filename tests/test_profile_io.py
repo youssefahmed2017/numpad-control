@@ -126,6 +126,10 @@ class ImportCleansTest(unittest.TestCase):
         self.assertTrue(profile["name"].startswith("A B C"))
         self.assertEqual(profile["match"], "o bs")
 
+    def test_text_direction_tricks_are_removed_from_names(self):
+        profile, _ = profile_io.parse(file_for(profile={**PROFILE, "name": "ev\u202egnp.exe\u200b"}))
+        self.assertEqual(profile["name"], "ev gnp.exe")
+
     def test_a_missing_layer_section_is_fine(self):
         data = profile_io.export_profile(PROFILE, "0.3.0")
         del data["profile"]["layer_bindings"]

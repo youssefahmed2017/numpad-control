@@ -108,7 +108,7 @@ def _read(src, path, limit):
         url = urllib.parse.urljoin(src, path)
         request = urllib.request.Request(url, headers={"User-Agent": f"numpad-control/{__version__}"})
         try:
-            with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+            with _opener.open(request, timeout=TIMEOUT) as response:
                 data = response.read(limit + 1)
         except urllib.error.HTTPError as e:
             if e.code == 404:
@@ -122,10 +122,27 @@ def _read(src, path, limit):
     return data
 
 
+def _clean(value, length):
+    """A text field of the index with control and text-direction characters taken out, cut to `length`."""
+    return profile_io._CONTROL.sub(" ", value).strip()[:length] if isinstance(value, str) else ""
+
+
 def _strings(value, limit=50, length=200):
     if not isinstance(value, list):
         return []
-    return [v[:length] for v in value[:limit] if isinstance(v, str)]
+    return [_clean(v, length) for v in value[:limit] if isinstance(v, str)]
+
+
+class _HttpsOnly(urllib.request.HTTPRedirectHandler):
+    """Follow redirects only to https:// addresses (a library never needs to be fetched in the clear)."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not newurl.lower().startswith("https://"):
+            raise urllib.error.URLError("redirected to a connection that isn't https")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_opener = urllib.request.build_opener(_HttpsOnly)
 
 
 def parse_index(data):
@@ -161,8 +178,7 @@ def parse_index(data):
         mav = item.get("min_app_version")
         entries.append(Entry(
             path=path, name=profile_io._CONTROL.sub(" ", name).strip()[:profile_io.MAX_NAME], tier=tier,
-            author=item["author"][:40] if isinstance(item.get("author"), str) else "",
-            description=item["description"][:500] if isinstance(item.get("description"), str) else "",
+            author=_clean(item.get("author"), 40), description=_clean(item.get("description"), 500),
             match=_strings(item.get("match")), tags=_strings(item.get("tags"), 8, 40),
             platforms=[p for p in _strings(item.get("platforms"), 5) if p in PLATFORMS],
             requires=_strings(item.get("requires"), 10, 80),
