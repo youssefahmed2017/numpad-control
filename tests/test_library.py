@@ -1,5 +1,6 @@
 """The profile library: reading its index and fetching profiles, careful with what comes from outside."""
 
+import hashlib
 import json
 import os
 import tempfile
@@ -123,6 +124,21 @@ class FolderSourceTest(unittest.TestCase):
         profile, dropped = profile_io.parse(library.fetch_profile(e, lib.root))
         self.assertEqual(profile["name"], "Streaming")
         self.assertEqual(dropped, [])
+
+    def test_a_profile_that_doesnt_match_its_checksum_is_refused(self):
+        good = hashlib.sha256(json.dumps(PROFILE).encode()).hexdigest()
+        lib = LibraryFolder(entry(sha256=good))
+        self.addCleanup(lib.tmp.cleanup)
+        [e] = library.fetch_index(lib.root)
+        self.assertEqual(e.sha256, good)
+        self.assertTrue(library.fetch_profile(e, lib.root))           # matches: fine
+        (lib.root / e.path).write_text(json.dumps({**PROFILE, "meta": {"author": "changed"}}), encoding="utf-8")
+        with self.assertRaisesRegex(library.LibraryError, "doesn't match"):
+            library.fetch_profile(e, lib.root)
+
+    def test_a_malformed_checksum_is_ignored(self):
+        [e] = library.parse_index(index(entry(sha256="not-a-hash")))
+        self.assertEqual(e.sha256, "")
 
     def test_the_environment_variable_picks_the_folder(self):
         lib = LibraryFolder(entry())

@@ -302,7 +302,8 @@ keyboard in the window also removes the actions set on its keys.
   is checked the same way and you see what it will do before it is added. Nothing is fetched until you open
   the library. `NUMPADCTL_LIBRARY` points it at another `https://` address or at a local copy of the library.
   Names and descriptions have control and text-direction characters taken out (so a name can't disguise itself),
-  and the library is never fetched over a redirect to plain `http://`.
+  and the library is never fetched over a redirect to plain `http://`. A profile is also checked against the checksum in the library's list, so a half-updated
+  online copy is refused instead of imported.
 - **Profile sets.** A set is a whole separate setup (its own Default and its own
   per-app profiles), for example "Coding", "Streaming" and "Gaming". Only the active set
   does anything, and a set never borrows keys from another one. Put **Switch to a profile

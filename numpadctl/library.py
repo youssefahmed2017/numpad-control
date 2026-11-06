@@ -10,6 +10,7 @@ Nothing is fetched until the library window is opened. NUMPADCTL_LIBRARY points 
 https:// address, or a folder with a copy of the library (for trying profiles before they are published).
 """
 
+import hashlib
 import json
 import os
 import re
@@ -31,6 +32,7 @@ MAX_ENTRIES = 5000
 TIMEOUT = 15
 # where a profile may be: nothing else is ever fetched, whatever the index says
 PATH = re.compile(r"profiles/(official|community/[A-Za-z0-9-]{1,39})/[a-z0-9]+(?:-[a-z0-9]+)*\.json")
+SHA256 = re.compile(r"[0-9a-f]{64}")
 PLATFORMS = {"windows": "Windows", "linux": "Linux", "hyprland": "Hyprland"}
 
 
@@ -53,6 +55,7 @@ class Entry:
     min_app_version: str = ""
     keys: int = 0
     risky_actions: list = field(default_factory=list)
+    sha256: str = ""          # checksum of the profile file; empty when the index has none (a local draft)
 
     @property
     def needs_newer_app(self):
@@ -184,7 +187,8 @@ def parse_index(data):
             requires=_strings(item.get("requires"), 10, 80),
             min_app_version=mav if isinstance(mav, str) and parse_version(mav) else "",
             keys=keys if isinstance(keys, int) and not isinstance(keys, bool) and keys >= 0 else 0,
-            risky_actions=_strings(item.get("risky_actions"), 100, 40)))
+            risky_actions=_strings(item.get("risky_actions"), 100, 40),
+            sha256=item["sha256"].lower() if isinstance(item.get("sha256"), str) and SHA256.fullmatch(item["sha256"].lower()) else ""))
     entries.sort(key=lambda e: (e.tier != "official", e.name.lower()))
     return entries
 
@@ -199,6 +203,10 @@ def fetch_profile(entry, src=None):
     if not PATH.fullmatch(entry.path):
         raise LibraryError("that profile's address isn't one the library uses")
     data = _read(source() if src is None else src, entry.path, profile_io.MAX_BYTES)
+    if entry.sha256 and hashlib.sha256(data).hexdigest() != entry.sha256:
+        # most often the online copy is mid-update (the list and the file are cached separately)
+        raise LibraryError("that profile doesn't match the library's list (it may be updating): "
+                           "try again in a few minutes")
     return data.decode("utf-8", "replace")
 
 
