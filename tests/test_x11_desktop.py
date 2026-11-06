@@ -261,6 +261,7 @@ class X11ToolsTest(unittest.TestCase):
         self.assertIn("string:x-canonical-private-synchronous:numpadcontrol-volume", sent)
         self.assertEqual(sent[-2:], ["Volume", "55%"])
         self.assertIn("audio-volume-medium-symbolic", sent)
+        self.assertEqual(sent[sent.index("-u") + 1], "normal", "GNOME shows no banner for low urgency")
 
     def test_a_muted_or_silent_level_says_so(self):
         with self.installed("wpctl", "notify-send"), self.fake_run({"wpctl": "Volume: 0.30 [MUTED]"}):

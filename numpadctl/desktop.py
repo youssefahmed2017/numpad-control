@@ -241,7 +241,7 @@ def show_volume():
     percent, muted = round(float(found.group(1)) * 100), "[MUTED]" in out
     icon = ("audio-volume-muted-symbolic" if muted or percent == 0 else "audio-volume-low-symbolic" if percent < 34
             else "audio-volume-medium-symbolic" if percent < 67 else "audio-volume-high-symbolic")
-    _run(["notify-send", "-a", "NumpadControl", "-u", "low", "-t", "1500", "-i", icon,
+    _run(["notify-send", "-a", "NumpadControl", "-u", "normal", "-t", "1500", "-i", icon,
           "-h", "string:x-canonical-private-synchronous:numpadcontrol-volume", "-h", f"int:value:{min(percent, 100)}",
           "Volume", f"{percent}%" + (" (muted)" if muted else "")])
 
