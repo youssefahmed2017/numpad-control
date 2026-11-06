@@ -25,6 +25,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
 RestartApplications=no
 LicenseFile={#BuildDir}\app\LICENSE
+InfoBeforeFile=privacy.txt
 SetupIconFile={#BuildDir}\app\assets\numpad-control.ico
 UninstallDisplayIcon={app}\assets\numpad-control.ico
 OutputDir={#BuildDir}

@@ -23,7 +23,7 @@
   <div class="wrap">
     <span class="label">Privacy</span>
     <h1 class="display-m" style="margin-top:10px">Almost nothing, on purpose</h1>
-    <p>Last updated October 27, 2026.</p>
+    <p>Last updated November 6, 2026.</p>
   </div>
 </section>
 
@@ -33,7 +33,9 @@
     <p>NumpadControl reads the keys of the numpad you choose, so it can run the actions you set up. It collects nothing: no telemetry, no usage statistics, no account, and nothing you type ever leaves your computer.</p>
     <ul>
       <li><b>Crash reports</b> are only sent if you say yes in the dialog that appears after a crash. Yes opens a pre-filled GitHub issue in your browser, so you read everything before sending it. A report contains the error, where in the program it happened, the version and your operating system, with your user name and home folder taken out.</li>
-      <li><b>Updates:</b> once a day the program asks GitHub whether a new version exists. GitHub sees that request, like any visit to a website.</li>
+      <li><b>Updates:</b> once a day the program asks GitHub whether a new version exists. GitHub sees that request, like any visit to a website. It can be turned off (set <code>"updates": "off"</code> in the settings file, <code>config.json</code>), or set to <code>"notify"</code> to only be told.</li>
+      <li><b>Profile library:</b> nothing is fetched until you open <i>Profile &#8943; &rarr; Browse library&hellip;</i>. Then the program downloads the list of profiles and the profile you pick from the public <code>numpad-controllib</code> repository on GitHub (<code>raw.githubusercontent.com</code>), which sees the request like any visit to a website. Nothing about you or your setup is sent, and a downloaded profile is checked and shown to you before it is added.</li>
+      <li><b>Stickers:</b> the pictures you choose for keys are copied into the program's own folder on your computer and never leave it.</li>
     </ul>
 
     <h2>This website</h2>

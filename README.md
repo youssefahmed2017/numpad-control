@@ -638,6 +638,11 @@ system; your user name and home folder taken out) is also kept in
 `~/.local/state/numpad-control/crashes/` (Windows: `%LOCALAPPDATA%\numpad-control\state\crashes`).
 (`numpadctl/crash.py`; the plan's [section 12](docs/plan-section-12-crash-reports.md).)
 
+The only other times it uses the network: once a day it asks GitHub whether a new version exists (turn it off or
+set it to only tell you with `"updates": "off"` / `"notify"` in `config.json`), and **Profile ⋯ → Browse library…**
+downloads the profile list and the profile you pick from GitHub, only when you open it. Nothing about you is sent.
+Stickers never leave your computer. The same text is on the [privacy page](https://youssefahmed2017.github.io/numpad-control/privacy.html).
+
 ![The crash dialog on Linux (xmessage, the most basic of the dialogs it can use)](docs/screenshots/crash-dialog-linux.png)
 
 ## Code layout

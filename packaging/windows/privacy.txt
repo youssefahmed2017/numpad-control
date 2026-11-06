@@ -1,0 +1,18 @@
+NumpadControl privacy
+
+NumpadControl reads the keys of the numpad you choose, so it can run the actions
+you set up. It collects nothing: no telemetry, no usage statistics, no account,
+and nothing you type leaves your computer.
+
+The only times it uses the network:
+
+ - Once a day it asks GitHub whether a new version exists. You can turn this off
+   (or set it to only tell you) with "updates": "off" or "notify" in config.json.
+ - If you open Profile > Browse library, it downloads the list of profiles and
+   the profile you pick from GitHub. Nothing about you is sent.
+ - If a crash happens, it asks whether to report it. Yes opens a pre-filled
+   GitHub issue in your browser, so you read everything before it is sent; No
+   sends nothing.
+
+The program is free and open source (GPL-3.0). Full privacy page:
+https://youssefahmed2017.github.io/numpad-control/privacy.html
