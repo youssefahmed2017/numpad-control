@@ -35,8 +35,56 @@ Windows then shows the publisher as SignPath Foundation. Their conditions
 | Multi-factor authentication, separate author / reviewer / approver roles | To confirm when applying (this is a one-person project) |
 | Every release approved by hand before it is signed | Fits: the release workflow waits for the approval |
 
-Apply at <https://signpath.org/apply>. Once accepted, the release workflow gets a step that sends the installer to
+Apply at <https://signpath.org/apply>, after the checklist below. Once accepted, the release workflow gets a step that sends the installer to
 SignPath; `tools/sign-release` then signs the release (for the updater) over the *signed* installer's hash.
+
+## Before applying: checklist
+
+SignPath Foundation's [terms](https://signpath.org/terms) are checked by a person, who may refuse a project without
+giving a reason. What they ask for, and where it stands:
+
+- [x] The words "Code signing policy" as a link on every page (the site footer) and a policy page with the roles
+  and the privacy statement: [code-signing.html](../site/code-signing.html), [privacy.html](../site/privacy.html).
+- [x] Product name and version are the same in every build: `VersionInfoProductName=NumpadControl`, one version per
+  release (`packaging/windows/numpad-control.iss`).
+- [x] Everything signed is built by GitHub Actions from this repository.
+- [ ] **Multi-factor authentication on the GitHub account** (and later on SignPath). GitHub's API doesn't show it;
+  check *Settings → Password and authentication*.
+- [ ] **Reputation.** For programs SignPath wants "a certain verifiable reputation". The repository is new (first
+  commit 2026-10-24) and has few users yet, so the application may be refused for now; applying again later is
+  allowed. Releases, an active issue tracker, the download page and the winget package all help.
+- [ ] The application form itself (needs your own login and details): project name, repository, licence, download
+  page, a description, and who the author, reviewer and approver are (all Youssef Ahmed).
+
+The legacy `NumpadPilot-Setup-X.exe` copy on each release (kept for old versions' updater) is the same installer under
+an old file name; when signing starts, sign both or drop the copy.
+
+## After acceptance: the workflow step
+
+SignPath gives an organisation id, a project and signing-policy slug, and an API token (kept as the repository secret
+`SIGNPATH_API_TOKEN`). The Windows build then uploads the unsigned installer and waits for the signed one, after you
+approve the request in SignPath:
+
+```yaml
+      - uses: actions/upload-artifact@v4
+        id: unsigned
+        with:
+          name: NumpadControl-Setup-unsigned
+          path: build/windows/NumpadControl-Setup-*.exe
+      - uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: <from SignPath>
+          project-slug: numpad-control
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: build/windows/signed
+```
+
+Use the signed file from `build/windows/signed` for the release, the winget manifest and `tools/sign-release` (the
+release signature must cover the *signed* installer). Then change the policy page's wording from "will be provided" to
+SignPath's exact attribution sentence, and remove "the installer isn't signed yet" there and in the README.
 
 ## Other options (not chosen)
 
