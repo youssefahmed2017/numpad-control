@@ -12,13 +12,14 @@ Layout:
 
     profile["bindings"]        key -> {"tap": b, "hold": b, "double": b}
     profile["layer_bindings"]  same, used while the layer key is held
+    profile["stickers"]        key -> picture file name (stickers.py): the picture shown on that key
     b = {"action": id, "params": {...}}
 """
 
 import json
 import os
 
-from . import profile_sets
+from . import profile_sets, stickers
 from .platform import paths
 
 CONFIG_DIR = paths.config_dir()
@@ -75,6 +76,7 @@ def _clean_sets(data):
         if not item["profiles"]:
             item["profiles"].append({"name": "Default", "match": "", "bindings": {}, "layer_bindings": {}})
         for profile in item["profiles"]:
+            stickers.clean(profile)
             for kind in ("bindings", "layer_bindings"):
                 keys = profile.setdefault(kind, {})
                 for key, value in list(keys.items()):

@@ -65,9 +65,10 @@ class LayerMessagesTest(unittest.IsolatedAsyncioTestCase):
         self.d.on_key(".", True)
         self.d.on_key(".", True)  # a repeat of the same state says nothing more
         self.assertEqual(self.huds(), [{"event": "hud", "on": True, "opacity": 60,
-                                        "keys": {"7": "Mute / unmute microphone", "8": "Hold: Full screen"}}])
+                                        "keys": {"7": "Mute / unmute microphone", "8": "Hold: Full screen"},
+                                        "stickers": {}}])
         self.d.on_key(".", False)
-        self.assertEqual(self.huds()[-1], {"event": "hud", "on": False, "opacity": 60, "keys": {}})
+        self.assertEqual(self.huds()[-1], {"event": "hud", "on": False, "opacity": 60, "keys": {}, "stickers": {}})
         self.assertEqual(len(self.huds()), 2)
 
     def test_other_keys_do_not_show_it(self):

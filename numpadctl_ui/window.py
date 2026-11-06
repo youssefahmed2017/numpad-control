@@ -6,14 +6,14 @@ from pathlib import Path
 from PySide6.QtCore import QEvent, QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import (
-    QApplication, QButtonGroup, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLineEdit, QMainWindow, QMessageBox,
+    QApplication, QButtonGroup, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox,
     QPushButton, QSizePolicy, QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
 import numpadctl
-from numpadctl import actions, config, devices, keys, presets, profile_io, ui_common
+from numpadctl import actions, config, devices, keys, presets, profile_io, stickers, ui_common
 from numpadctl.platform import IS_WINDOWS
 from .checkbox import CheckBox
-from . import dialogs, effects, egg, motion, secret, theme, tokens, tools, welcome
+from . import dialogs, effects, egg, motion, secret, sticker_image, theme, tokens, tools, welcome
 from .snackbar import Snackbar
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, SpinBox, ToolButton, _Morph
 from .picker import ActionPicker
@@ -46,11 +46,27 @@ class KeyButton(_Morph, QPushButton):
         layout.setSpacing(0)
         self.name = label(name or ui_common.KEY_LABELS.get(key, key), "keyname")
         self.action = label("", "keyaction")
+        self.picture = QLabel()   # the key's sticker, in place of its name (sticker_image.py)
+        self.picture.setVisible(False)
+        layout.addWidget(self.picture)
         for part in (self.name, self.action):
             part.setAlignment(Qt.AlignCenter)
             part.setAttribute(Qt.WA_TransparentForMouseEvents)
             layout.addWidget(part)
+        self.picture.setAlignment(Qt.AlignCenter)
+        self.picture.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.action.setVisible(not compact)
+        self.sticker = ""
+
+    def set_sticker(self, name):
+        """Show the sticker `name` instead of the key's name ("" for none)."""
+        if name == self.sticker:
+            return
+        pix = sticker_image.pixmap(name, 18 if self.compact else 30) if name else None
+        self.sticker = name if pix else ""
+        self.picture.setPixmap(pix) if pix else self.picture.clear()
+        self.picture.setVisible(bool(pix))
+        self.name.setVisible(not pix)
 
     def _animation(self, apply):
         return motion.Spring(self, "default_effects", lambda value: (apply(value), self.update()))
@@ -589,6 +605,7 @@ class MainWindow(QMainWindow):
             elided = button.action.fontMetrics().elidedText(text, Qt.ElideRight, 96)
             if button.action.text() != elided:
                 button.action.setText(elided)
+            button.set_sticker(stickers.lookup(self.cfg["profiles"], key, index=self.profile_index))
             button.set_selected(key == self.selected)
 
     def select(self, key):
@@ -626,6 +643,8 @@ class MainWindow(QMainWindow):
             inner.addLayout(row)
             layout.addWidget(frame)
 
+        layout.addWidget(self._sticker_card(key))
+
         if key == self.cfg.get("layer_key"):
             frame, inner = card()
             inner.addWidget(label("This is your layer key", "heading"))
@@ -650,6 +669,62 @@ class MainWindow(QMainWindow):
             effects.fade_in(page)
         if old is not None:
             old.deleteLater()
+
+    def _sticker_card(self, key):
+        """Pick a picture for the key: it shows on the key here and on the key map overlay."""
+        frame, inner = card()
+        inner.addWidget(label("Sticker", "heading"))
+        own = self.profile.get("stickers", {}).get(key, "")
+        shown = stickers.lookup(self.cfg["profiles"], key, index=self.profile_index)
+        row = QHBoxLayout()
+        preview = QLabel()
+        preview.setFixedSize(48, 48)
+        preview.setAlignment(Qt.AlignCenter)
+        pix = sticker_image.pixmap(shown, 44) if shown else None
+        if pix:
+            preview.setPixmap(pix)
+        else:
+            preview.setText("🖼")
+        preview.setAccessibleName("Sticker preview")
+        row.addWidget(preview)
+        text = ("A picture shown on this key." if not shown else
+                "This profile's sticker." if own else "From the Default profile. Choose one to give this profile its own.")
+        row.addWidget(label(text, "dim", wrap=True), 1)
+        choose = PushButton("Change…" if shown else "Choose image…")
+        choose.clicked.connect(lambda _=False, k=key: self.choose_sticker(k))
+        row.addWidget(choose)
+        if own:
+            remove = PushButton("Remove")
+            remove.setObjectName("flat")
+            remove.clicked.connect(lambda _=False, k=key: self.set_sticker(k, ""))
+            row.addWidget(remove)
+        inner.addLayout(row)
+        return frame
+
+    def choose_sticker(self, key, path=None):
+        """Ask for a picture file (or use `path`) and make it this key's sticker. True when it was set."""
+        if path is None:
+            path, _ = QFileDialog.getOpenFileName(self, "Choose a sticker", "", sticker_image.FILTER)
+            if not path:
+                return False
+        try:
+            name = sticker_image.make(path)
+        except sticker_image.StickerError as e:
+            QMessageBox.warning(self, "Sticker", str(e))
+            return False
+        self.set_sticker(key, name)
+        return True
+
+    def set_sticker(self, key, name):
+        """Give `key` the sticker `name` in this profile ("" takes it away)."""
+        found = self.profile.setdefault("stickers", {})
+        if name:
+            found[key] = name
+        else:
+            found.pop(key, None)
+        self.mark_dirty()
+        self.refresh_pad()
+        self.build_editor()
 
     def _slot_card(self, key, slot, has_extra):
         binding = self.slot_binding(key, slot)
@@ -768,7 +843,8 @@ class MainWindow(QMainWindow):
             copied = self.cfg["profiles"][copy_from] if copy_from is not None else {}
             self.cfg["profiles"].append({"name": name, "match": classes,
                                          "bindings": copy.deepcopy(copied.get("bindings", {})),
-                                         "layer_bindings": copy.deepcopy(copied.get("layer_bindings", {}))})
+                                         "layer_bindings": copy.deepcopy(copied.get("layer_bindings", {})),
+                                         "stickers": dict(copied.get("stickers", {}))})
             self.profile_index = len(self.cfg["profiles"]) - 1
             if not classes:
                 self.toast("It won't apply until you add a window class (Edit profile…)")
@@ -1117,6 +1193,7 @@ class MainWindow(QMainWindow):
                 profile[kind] = {key: kept for key, slots in profile[kind].items()
                                  if (kept := {s: b for s, b in slots.items() if actions.is_set(b)})}
         config.save(self.cfg)
+        stickers.prune(self.cfg)   # pictures no profile uses any more
         self.dirty = False
         self.dirty_label.setText("")
         self.toast("Saved. The service picks it up automatically.")

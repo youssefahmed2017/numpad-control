@@ -16,7 +16,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from . import actions, config, games, keys, updater
+from . import actions, config, games, keys, stickers, updater
 from .platform import IS_WINDOWS, ipc, numpad_input, paths, processes
 
 log = logging.getLogger("numpadctl")
@@ -343,9 +343,10 @@ class Daemon:
             self.zero_timer = None
 
     # ------------------------------------------------------------ the key map overlay
-    def hud_keys(self):
+    def hud_keys(self, window=None):
         """{key: short text} of what every key does while the layer key is held (for the focused app's profile)."""
-        window = active_window_class() if len(self.cfg["profiles"]) > 1 else ""
+        if window is None:
+            window = active_window_class() if len(self.cfg["profiles"]) > 1 else ""
         every = {key for profile in self.cfg["profiles"] for key in profile["layer_bindings"]}
         shown = {}
         for key in sorted(every):
@@ -354,9 +355,16 @@ class Daemon:
                 shown[key] = text
         return shown
 
+    def hud_stickers(self, shown, window):
+        """{key: sticker file name} for the keys the overlay shows (the focused app's profile, then Default)."""
+        found = {key: stickers.lookup(self.cfg["profiles"], key, window) for key in shown}
+        return {key: name for key, name in found.items() if name}
+
     def hud_message(self, on):
+        window = active_window_class() if on and len(self.cfg["profiles"]) > 1 else ""
+        shown = self.hud_keys(window) if on else {}
         return {"event": "hud", "on": on, "opacity": config.hud_settings(self.cfg)["opacity"],
-                "keys": self.hud_keys() if on else {}}
+                "keys": shown, "stickers": self.hud_stickers(shown, window) if on else {}}
 
     def hud_preview(self):
         """Show the key map for a few seconds (the settings window's Preview button), starting the overlay if needed."""

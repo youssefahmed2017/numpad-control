@@ -304,6 +304,11 @@ keyboard in the window also removes the actions set on its keys.
   Names and descriptions have control and text-direction characters taken out (so a name can't disguise itself),
   and the library is never fetched over a redirect to plain `http://`. A profile is also checked against the checksum in the library's list, so a half-updated
   online copy is refused instead of imported.
+- **Stickers.** Give a key a picture: select it and press **Choose image…** in the *Sticker* card (PNG, JPG, GIF,
+  WebP, BMP or SVG). The picture takes the place of the key's name on the pad and on the key map overlay. A sticker
+  belongs to a key of one profile, and a profile with none for a key shows the Default profile's, like it does for
+  actions. Pictures are shrunk to at most 128 px and kept in the `stickers` folder of the settings directory; saving
+  deletes the ones no profile uses any more. They stay on your computer: exporting a profile leaves them out.
 - **Profile sets.** A set is a whole separate setup (its own Default and its own
   per-app profiles), for example "Coding", "Streaming" and "Gaming". Only the active set
   does anything, and a set never borrows keys from another one. Put **Switch to a profile
@@ -655,6 +660,7 @@ system; your user name and home folder taken out) is also kept in
 - `numpadctl/desktop.py`: desktop-specific tools (Hyprland vs KDE Plasma)
 - `numpadctl/release_key.py`: the public key releases must be signed with; `tools/sign-release` makes the key and signs releases
 - `numpadctl/profile_sets.py`: which profile set is active (a small state file, like `modes.py`)
+- `numpadctl/stickers.py`: key pictures: their names, where they live, which one a profile shows (`numpadctl_ui/sticker_image.py` makes them from a picture file)
 - `numpadctl/library.py`: the profile library (Browse library…): reads its index and fetches a profile to import
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
 - `numpadctl/platform/`: everything that differs between operating systems, so a

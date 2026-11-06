@@ -7,18 +7,19 @@ a window the window manager doesn't manage floats above everything without being
 
 import sys
 
-from PySide6.QtCore import QRectF, Qt
+from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QCursor, QFont, QFontMetrics, QGuiApplication, QPainter
 from PySide6.QtWidgets import QApplication, QWidget
 
 from numpadctl import config, ui_common
 
-from . import motion, theme, tokens
+from . import motion, sticker_image, theme, tokens
 from .widgets import Dispatcher
 
 CELL_W, CELL_H, GAP, PAD, TITLE_H = 104, 70, 8, 20, 34
 GONE_AFTER = 5  # status messages saying the service is gone, 2 s apart, before the overlay quits too
 ROWS, COLUMNS = 5, 4
+STICKER = 28   # a sticker's size on the overlay, where the key's name would be
 
 
 class Hud(QWidget):
@@ -32,7 +33,7 @@ class Hud(QWidget):
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.setFixedSize(PAD * 2 + COLUMNS * CELL_W + (COLUMNS - 1) * GAP,
                           PAD * 2 + TITLE_H + ROWS * CELL_H + (ROWS - 1) * GAP)
-        self.keys, self.opacity, self.alpha = {}, 0.9, 0.0
+        self.keys, self.stickers, self.opacity, self.alpha = {}, {}, 0.9, 0.0
         self.cells = ui_common.LAYOUT
         self.gone = 0
         self.fade = motion.Spring(self, "default_effects", self.set_alpha)
@@ -50,8 +51,9 @@ class Hud(QWidget):
         if self.alpha <= 0.0:
             self.hide()
 
-    def show_keys(self, keys, opacity):
+    def show_keys(self, keys, opacity, stickers=None):
         self.keys, self.opacity = dict(keys), max(30, min(100, int(opacity))) / 100
+        self.stickers = dict(stickers) if isinstance(stickers, dict) else {}
         self.cells = ui_common.layout_for(config.load())   # read again each time: the layout can change in Settings
         screen = QGuiApplication.screenAt(QCursor.pos()) or QGuiApplication.primaryScreen()
         area = screen.geometry()
@@ -67,7 +69,7 @@ class Hud(QWidget):
         event = message.get("event")
         if event == "hud":
             if message.get("on"):
-                self.show_keys(message.get("keys", {}), message.get("opacity", 90))
+                self.show_keys(message.get("keys", {}), message.get("opacity", 90), message.get("stickers"))
             else:
                 self.hide_keys()
         elif event == "status":
@@ -116,8 +118,14 @@ class Hud(QWidget):
             painter.drawRoundedRect(QRectF(x, y, CELL_W, height), 16, 16)
             painter.setFont(name_font)
             painter.setPen(colour("onSecondaryContainer" if used else "onSurfaceVariant", 1.0 if used else 0.7))
-            painter.drawText(QRectF(x, y + 8, CELL_W, 24), Qt.AlignHCenter | Qt.AlignVCenter,
-                             ui_common.KEY_LABELS.get(key, key))
+            sticker = sticker_image.pixmap(self.stickers.get(key), STICKER) if used else None
+            if sticker:   # the key's picture instead of its name
+                logical = sticker.deviceIndependentSize()
+                painter.drawPixmap(QPointF(x + (CELL_W - logical.width()) / 2, y + 4 + (STICKER - logical.height()) / 2),
+                                   sticker)
+            else:
+                painter.drawText(QRectF(x, y + 8, CELL_W, 24), Qt.AlignHCenter | Qt.AlignVCenter,
+                                 ui_common.KEY_LABELS.get(key, key))
             painter.setFont(action_font)
             text = self.keys.get(key, "—")
             elided = QFontMetrics(action_font).elidedText(text, Qt.ElideRight, CELL_W - 14)
