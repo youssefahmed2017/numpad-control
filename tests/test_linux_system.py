@@ -94,5 +94,42 @@ class LinuxSystemTest(unittest.TestCase):
         self.assertFalse(linux_system.is_key("BANANA"))
 
 
+class DefaultBrowserTest(unittest.TestCase):
+    """XFCE's xdg-settings can name a launcher that doesn't exist (brave.desktop for brave-browser.desktop)."""
+
+    def ask(self, answers, installed):
+        def run(*argv, **kwargs):
+            return SimpleNamespace(stdout=answers.get(argv[0] + " " + argv[-1], "") + "\n")
+
+        def launch(app_id):
+            if app_id not in installed:
+                raise linux_system.SystemActionError(f"app {app_id!r} is not installed")
+            self.launched.append(app_id)
+        self.launched = []
+        return (mock.patch.object(linux_system, "_run", run), mock.patch.object(linux_system, "launch_app", launch),
+                mock.patch.object(linux_system.shutil, "which", lambda name: "/usr/bin/" + name))
+
+    def open(self, answers, installed):
+        patches = self.ask(answers, installed)
+        with patches[0], patches[1], patches[2]:
+            linux_system.open_default_browser()
+
+    def test_a_launcher_that_does_not_exist_falls_back_to_the_next_handler(self):
+        self.open({"xdg-settings default-web-browser": "brave.desktop", "xdg-mime text/html": "brave-browser.desktop",
+                   "xdg-mime x-scheme-handler/https": "xfce4-web-browser.desktop"},
+                  installed={"brave-browser.desktop", "xfce4-web-browser.desktop"})
+        self.assertEqual(self.launched, ["brave-browser.desktop"])
+
+    def test_the_first_answer_is_used_when_it_is_fine(self):
+        self.open({"xdg-settings default-web-browser": "firefox.desktop", "xdg-mime text/html": "brave-browser.desktop"},
+                  installed={"firefox.desktop", "brave-browser.desktop"})
+        self.assertEqual(self.launched, ["firefox.desktop"])
+
+    def test_when_nothing_is_installed_the_first_complaint_is_reported(self):
+        with self.assertRaisesRegex(linux_system.SystemActionError, "brave.desktop"):
+            self.open({"xdg-settings default-web-browser": "brave.desktop", "xdg-mime text/html": "gone.desktop"},
+                      installed=set())
+
+
 if __name__ == "__main__":
     unittest.main()

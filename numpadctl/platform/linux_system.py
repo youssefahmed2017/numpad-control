@@ -91,14 +91,33 @@ def open_url(url):
         webbrowser.open(url)
 
 
+def _default_browsers():
+    """Desktop-file ids that may be the default browser, best guess first. Desktops disagree (XFCE's xdg-settings
+    can name a file that doesn't exist, like brave.desktop for brave-browser.desktop), so ask the MIME handlers too."""
+    asked = []
+    if shutil.which("xdg-settings"):
+        asked.append(("xdg-settings", "get", "default-web-browser"))
+    if shutil.which("xdg-mime"):
+        asked += [("xdg-mime", "query", "default", mime) for mime in ("text/html", "x-scheme-handler/https")]
+    found = []
+    for argv in asked:
+        name = _run(*argv, timeout=5, capture_output=True, text=True).stdout.strip()
+        if name.endswith(".desktop") and name not in found:
+            found.append(name)
+    return found
+
+
 def open_default_browser():
-    browser = _run("xdg-settings", "get", "default-web-browser", timeout=5,
-                   capture_output=True, text=True).stdout.strip() \
-        if shutil.which("xdg-settings") else ""
-    if browser:
-        launch_app(browser)
-    else:
-        webbrowser.open("about:blank")
+    problem = None
+    for browser in _default_browsers():
+        try:
+            launch_app(browser)
+            return
+        except SystemActionError as e:   # that id isn't an installed app: try the next one
+            problem = problem or e
+    if problem:
+        raise problem
+    webbrowser.open("about:blank")
 
 
 def open_path(path):

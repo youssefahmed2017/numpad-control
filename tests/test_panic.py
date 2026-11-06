@@ -173,6 +173,7 @@ class ForceQuitTest(unittest.TestCase):
             mock.patch.object(actions.desktop, "force_close_window", lambda: self.killed.append("x") or "firefox"),
             mock.patch.object(actions, "_open_browser", lambda cfg, url="": self.opened.append(url)),
             mock.patch.object(actions.time, "monotonic", lambda: self.clock[0]),
+            mock.patch.object(actions, "notify", lambda *args, **kwargs: None),  # no real notification daemon
         ]
         for patch in patches:
             patch.start()
