@@ -114,7 +114,7 @@ class DesktopTest(unittest.TestCase):
 
     def test_other_desktops_get_a_clear_message(self):
         with self.on({"XDG_CURRENT_DESKTOP": "GNOME"}):
-            with self.assertRaisesRegex(actions.ActionError, "only works on Hyprland or KDE Plasma"):
+            with self.assertRaisesRegex(actions.ActionError, "isn't supported on this desktop yet"):
                 self.run_action("hypr_close")
 
 

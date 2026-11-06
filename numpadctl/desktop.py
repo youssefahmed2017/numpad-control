@@ -78,7 +78,9 @@ def _backend():
 
 
 def _supported(what):
-    _only(what, HYPRLAND, KDE)
+    if current() not in (HYPRLAND, KDE):
+        raise DesktopError(f"{what} isn't supported on this desktop yet: it works on Hyprland, KDE Plasma, GNOME and "
+                           "X11 desktops such as XFCE (not on other Wayland desktops)")
     return current()
 
 
