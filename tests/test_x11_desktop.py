@@ -263,6 +263,17 @@ class X11ToolsTest(unittest.TestCase):
         self.assertIn("audio-volume-medium-symbolic", sent)
         self.assertEqual(sent[sent.index("-u") + 1], "normal", "GNOME shows no banner for low urgency")
 
+    def test_the_next_press_updates_the_same_notification(self):
+        desktop._volume_notice["id"] = None
+        with self.installed("wpctl", "notify-send"), self.fake_run({"wpctl": "Volume: 0.40", "notify-send": "42"}):
+            desktop.show_volume()
+            desktop.show_volume()
+        first, second = [c for c in self.calls if c[0] == "notify-send"]
+        self.assertIn("-p", first)
+        self.assertNotIn("-r", first)
+        self.assertEqual(second[second.index("-r") + 1], "42", "replaces the first one instead of adding another")
+        desktop._volume_notice["id"] = None
+
     def test_a_muted_or_silent_level_says_so(self):
         with self.installed("wpctl", "notify-send"), self.fake_run({"wpctl": "Volume: 0.30 [MUTED]"}):
             desktop.show_volume()

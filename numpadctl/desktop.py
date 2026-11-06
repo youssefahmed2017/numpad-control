@@ -241,9 +241,17 @@ def show_volume():
     percent, muted = round(float(found.group(1)) * 100), "[MUTED]" in out
     icon = ("audio-volume-muted-symbolic" if muted or percent == 0 else "audio-volume-low-symbolic" if percent < 34
             else "audio-volume-medium-symbolic" if percent < 67 else "audio-volume-high-symbolic")
-    _run(["notify-send", "-a", "NumpadControl", "-u", "normal", "-t", "1500", "-i", icon,
-          "-h", "string:x-canonical-private-synchronous:numpadcontrol-volume", "-h", f"int:value:{min(percent, 100)}",
-          "Volume", f"{percent}%" + (" (muted)" if muted else "")])
+    # -p prints the notification's id and -r reuses it, so the next press updates this one in place (GNOME ignores the
+    # x-canonical-private-synchronous hint); the hint stays for daemons that only know that one.
+    replace = ["-r", str(_volume_notice["id"])] if _volume_notice["id"] else []
+    done = _run(["notify-send", "-p", *replace, "-a", "NumpadControl", "-u", "normal", "-t", "1500", "-i", icon,
+                 "-h", "string:x-canonical-private-synchronous:numpadcontrol-volume",
+                 "-h", f"int:value:{min(percent, 100)}", "Volume", f"{percent}%" + (" (muted)" if muted else "")])
+    shown = done.stdout.strip()
+    _volume_notice["id"] = int(shown) if shown.isdigit() else None
+
+
+_volume_notice = {"id": None}   # the id of the notification the volume level is shown in
 
 
 _dnd = {"bus": None, "cookie": None}
