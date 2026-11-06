@@ -280,9 +280,15 @@ class X11ToolsTest(unittest.TestCase):
         self.assertEqual(self.calls[-1][-2:], ["Volume", "30% (muted)"])
         self.assertIn("audio-volume-muted-symbolic", self.calls[-1])
 
-    def test_other_desktops_have_their_own_volume_popup_so_nothing_is_added(self):
-        for env in ({"XDG_CURRENT_DESKTOP": "Hyprland", "WAYLAND_DISPLAY": "w", "DISPLAY": ":1"},
-                    {"XDG_CURRENT_DESKTOP": "KDE", "DISPLAY": ":0"}):
+    def test_plasma_is_asked_to_show_its_own_volume_popup(self):
+        with mock.patch.dict(desktop.os.environ, {"XDG_CURRENT_DESKTOP": "KDE", "DISPLAY": ":0"}, clear=True), \
+                self.installed("wpctl", "busctl", "notify-send"), self.fake_run({"wpctl": "Volume: 0.35"}):
+            desktop.show_volume()
+        self.assertEqual(self.calls[-1][-4:], ["volumeChanged", "ii", "35", "100"])
+        self.assertNotIn("notify-send", [c[0] for c in self.calls], "Plasma's popup, not a notification")
+
+    def test_hyprland_has_swayosd_so_nothing_is_added(self):
+        for env in ({"XDG_CURRENT_DESKTOP": "Hyprland", "WAYLAND_DISPLAY": "w", "DISPLAY": ":1"},):
             with self.subTest(env), mock.patch.dict(desktop.os.environ, env, clear=True), \
                     self.installed("wpctl", "notify-send"), self.fake_run({"wpctl": "Volume: 0.5"}):
                 desktop.show_volume()

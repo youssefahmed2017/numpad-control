@@ -230,15 +230,24 @@ def show_osd(message, icon):
 
 
 def show_volume():
-    """X11 and GNOME have no volume popup for programs (SwayOSD and Plasma have one): show the level as a
+    """Show the volume level after a change. Plasma: its own popup, asked for over D-Bus. X11 and GNOME have none for
+    programs (SwayOSD has one on Hyprland): the level goes into a
     notification that replaces the previous one, with a level bar if the notification daemon draws one."""
-    if current() not in (X11, GNOME) or not shutil.which("wpctl") or not shutil.which("notify-send"):
+    kind = current()
+    if kind not in (X11, GNOME, KDE) or not shutil.which("wpctl"):
         return
     out = _run(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]).stdout   # "Volume: 0.55" or "Volume: 0.55 [MUTED]"
     found = re.search(r"([0-9]+(?:\.[0-9]+)?)", out)
     if not found:
         return
     percent, muted = round(float(found.group(1)) * 100), "[MUTED]" in out
+    if kind == KDE:   # Plasma only shows its volume popup for its own shortcuts, but anyone can ask it to show one
+        if shutil.which("busctl"):
+            _run(["busctl", "--user", "call", "org.kde.plasmashell", "/org/kde/osdService", "org.kde.osdService",
+                  "volumeChanged", "ii", "0" if muted else str(min(percent, 100)), "100"])
+        return
+    if not shutil.which("notify-send"):
+        return
     icon = ("audio-volume-muted-symbolic" if muted or percent == 0 else "audio-volume-low-symbolic" if percent < 34
             else "audio-volume-medium-symbolic" if percent < 67 else "audio-volume-high-symbolic")
     # -p prints the notification's id and -r reuses it, so the next press updates this one in place (GNOME ignores the
