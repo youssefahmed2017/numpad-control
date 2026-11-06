@@ -223,6 +223,23 @@ def show_osd(message, icon):
     return False
 
 
+def show_volume():
+    """X11 desktops have no volume popup of their own (SwayOSD and Plasma have one): show the level as a
+    notification that replaces the previous one, with a level bar if the notification daemon draws one."""
+    if current() != X11 or not shutil.which("wpctl") or not shutil.which("notify-send"):
+        return
+    out = _run(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]).stdout   # "Volume: 0.55" or "Volume: 0.55 [MUTED]"
+    found = re.search(r"([0-9]+(?:\.[0-9]+)?)", out)
+    if not found:
+        return
+    percent, muted = round(float(found.group(1)) * 100), "[MUTED]" in out
+    icon = ("audio-volume-muted-symbolic" if muted or percent == 0 else "audio-volume-low-symbolic" if percent < 34
+            else "audio-volume-medium-symbolic" if percent < 67 else "audio-volume-high-symbolic")
+    _run(["notify-send", "-a", "NumpadControl", "-u", "low", "-t", "1500", "-i", icon,
+          "-h", "string:x-canonical-private-synchronous:numpadcontrol-volume", "-h", f"int:value:{min(percent, 100)}",
+          "Volume", f"{percent}%" + (" (muted)" if muted else "")])
+
+
 _dnd = {"bus": None, "cookie": None}
 
 

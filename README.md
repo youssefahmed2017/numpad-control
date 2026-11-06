@@ -109,7 +109,7 @@ desktop", e.g. XFCE) and each feature uses that desktop's own tools:
 | Workspaces | Hyprland workspaces | virtual desktops | the window manager's workspaces |
 | Toggle floating, scratchpad | yes | not available (Hyprland only) | not available (Hyprland only) |
 | Hide all windows (Privacy panic) | an empty workspace | minimises every window | "show desktop" |
-| On-screen popups | SwayOSD | Plasma's own popups | a notification instead |
+| On-screen popups, volume | SwayOSD | Plasma's own popups | a notification (needs a notification daemon: XFCE's `xfce4-notifyd`, or dunst); volume shows as one that replaces itself |
 | Do not disturb | dunst | Plasma's Do Not Disturb | dunst, or XFCE's own notification daemon |
 | Screenshots | grim + slurp | Spectacle | the first installed of maim, scrot, xfce4-screenshooter, gnome-screenshot, Spectacle |
 | Lock screen | hyprlock | KDE's screen locker (`loginctl lock-session`) | `xflock4` (XFCE), else `loginctl lock-session` |

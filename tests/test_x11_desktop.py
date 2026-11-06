@@ -251,6 +251,30 @@ class X11ToolsTest(unittest.TestCase):
             self.assertTrue(desktop.toggle_dnd())
         self.assertEqual(self.calls[0], ["dunstctl", "set-paused", "toggle"])
 
+    def test_volume_changes_show_the_level_as_a_replacing_notification(self):
+        with self.installed("wpctl", "notify-send"), self.fake_run({"wpctl": "Volume: 0.55"}):
+            desktop.show_volume()
+        sent = self.calls[-1]
+        self.assertEqual(sent[0], "notify-send")
+        self.assertIn("int:value:55", sent)
+        self.assertIn("string:x-canonical-private-synchronous:numpadcontrol-volume", sent)
+        self.assertEqual(sent[-2:], ["Volume", "55%"])
+        self.assertIn("audio-volume-medium-symbolic", sent)
+
+    def test_a_muted_or_silent_level_says_so(self):
+        with self.installed("wpctl", "notify-send"), self.fake_run({"wpctl": "Volume: 0.30 [MUTED]"}):
+            desktop.show_volume()
+        self.assertEqual(self.calls[-1][-2:], ["Volume", "30% (muted)"])
+        self.assertIn("audio-volume-muted-symbolic", self.calls[-1])
+
+    def test_other_desktops_have_their_own_volume_popup_so_nothing_is_added(self):
+        for env in ({"XDG_CURRENT_DESKTOP": "Hyprland", "WAYLAND_DISPLAY": "w", "DISPLAY": ":1"},
+                    {"XDG_CURRENT_DESKTOP": "KDE", "DISPLAY": ":0"}):
+            with self.subTest(env), mock.patch.dict(desktop.os.environ, env, clear=True), \
+                    self.installed("wpctl", "notify-send"), self.fake_run({"wpctl": "Volume: 0.5"}):
+                desktop.show_volume()
+        self.assertEqual(self.calls, [])
+
     def test_lock_uses_xflock4_when_it_is_there(self):
         with self.installed("xflock4"), mock.patch.object(desktop.subprocess, "Popen") as popen:
             desktop.lock_screen()

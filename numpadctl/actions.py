@@ -379,8 +379,16 @@ def _move_to_workspace(cfg, workspace):
     desktop.move_window_to_workspace(_workspace_number(workspace))
 
 
+def _change_volume(cfg, step):
+    system.change_volume(step)
+    if cfg.get("feedback", True):
+        desktop.show_volume()   # a popup on desktops that have none of their own
+
+
 def _set_volume(cfg, percent):
     system.set_volume(_percent(percent))
+    if cfg.get("feedback", True):
+        desktop.show_volume()
 
 
 # Sleep / shutdown / restart: the second press must come within this window. Presses
@@ -692,8 +700,8 @@ ACTIONS = [
             Param("volume", "Volume (%)", default="100")],
            group="Media", check=lambda path, volume: (None if path.strip() else _raise("no sound file set"), _percent(volume))),
     Action("stop_sounds", "Stop all sounds", _stop_sounds, group="Media", osd_icon="media-playback-stop-symbolic"),
-    Action("volume_up", "Volume up", lambda cfg: system.change_volume(+5), group="Media", repeat=True),
-    Action("volume_down", "Volume down", lambda cfg: system.change_volume(-5), group="Media", repeat=True),
+    Action("volume_up", "Volume up", lambda cfg: _change_volume(cfg, +5), group="Media", repeat=True),
+    Action("volume_down", "Volume down", lambda cfg: _change_volume(cfg, -5), group="Media", repeat=True),
     Action("volume_set", "Set volume to…", _set_volume,
            [Param("percent", "Volume %", default="50")], group="Media",
            check=lambda percent: _percent(percent)),
