@@ -45,6 +45,18 @@ def hud_pid_file():
     return paths.state_dir() / "hud.pid"
 
 
+def hud_error_file():
+    return paths.state_dir() / "hud.err"
+
+
+def hud_error_tail(lines=8):
+    """The last lines the overlay process printed to stderr before it died (empty when there are none)."""
+    try:
+        return " | ".join(hud_error_file().read_text(errors="replace").strip().splitlines()[-lines:])
+    except OSError:
+        return ""
+
+
 def kill_stale_hud():
     """End a key map overlay left behind by an earlier service (it was killed or crashed): only ever one."""
     try:
@@ -66,8 +78,17 @@ def spawn_hud():
     kwargs = {"creationflags": 0x08000008} if IS_WINDOWS else {"start_new_session": True}  # no console window, own group
     if not IS_WINDOWS:
         kill_stale_hud()
-    process = subprocess.Popen([sys.executable, "-m", "numpadctl_ui.hud"], env=env, stdin=subprocess.DEVNULL,
-                               stdout=subprocess.DEVNULL, **kwargs)
+    try:
+        hud_error_file().parent.mkdir(parents=True, exist_ok=True)
+        errors = open(hud_error_file(), "w", encoding="utf-8")  # its traceback, when it dies at once (no console on Windows)
+    except OSError:
+        errors = subprocess.DEVNULL
+    try:
+        process = subprocess.Popen([sys.executable, "-m", "numpadctl_ui.hud"], env=env, stdin=subprocess.DEVNULL,
+                                   stdout=subprocess.DEVNULL, stderr=errors, **kwargs)
+    finally:
+        if errors is not subprocess.DEVNULL:
+            errors.close()
     try:
         hud_pid_file().parent.mkdir(parents=True, exist_ok=True)
         hud_pid_file().write_text(str(process.pid))
@@ -401,8 +422,9 @@ class Daemon:
             self.hud_failures = self.hud_failures + 1 if quick else 0
             if quick:
                 self.hud_retry = now + min(60, 5 * self.hud_failures)
-                log.warning("the key map overlay stopped at once (%s time(s)); trying again in %d s",
-                            self.hud_failures, self.hud_retry - now)
+                log.warning("the key map overlay stopped at once (%s time(s), exit code %s); trying again in %d s%s",
+                            self.hud_failures, self.hud_proc.returncode, self.hud_retry - now,
+                            f"; it printed: {hud_error_tail()}" if hud_error_tail() else "")
             self.hud_proc = None
         if alive and (not self.hud_wanted() or look != self.hud_sig):
             self.stop_hud()
