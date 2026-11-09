@@ -1,0 +1,6 @@
+bubbles 0.2.0: a short list of things that rise
+
+  1. carbon dioxide, in a glass
+  2. hot air, in a meeting
+  3. the "unread" count on any app you forgot about
+  4. your hopes, during an installer's progress bar at 99%

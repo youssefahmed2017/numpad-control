@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# soda: a fake package manager. It installs nothing, removes nothing and changes nothing, not even with sudo.
-# It only prints (and naps). SODA_FAST=1 skips the naps, NO_COLOR=1 turns the colours off.
+# soda: a small package manager with very few packages. It downloads plain files from a package index
+# (a JSON file, https only), checks their sha256 and keeps them in ~/.local/share/soda. It never runs, extracts or
+# installs anything system-wide, never needs sudo, and touches nothing outside its own folder.
+# SODA_FAST=1 skips the naps, NO_COLOR=1 turns the colours off, SODA_REPO=<https url or local file> picks the index,
+# SODA_HOME=<dir> moves its folder.
 #
 #   soda --help                         soda drink          soda whoareyou        soda credits
+#   soda search [word]   soda info <package>   soda list   soda show <package>
 #   soda -Install somepackage          sudo soda -ROOT
 #   soda -abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 #   soda -InstallRemoveInstallagainUpdateDestroyInstallagain somepackage
+#
+# The index: {"format": 1, "packages": {"name": {"version": "1.0", "description": "...", "file": "name-1.0.txt",
+#   "url": "pacs/name-1.0.txt" (relative to the index, or an https:// url), "sha256": "<64 hex>"}}}
 set -u
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
@@ -14,6 +21,10 @@ else
     B= D= G= Y= R= C= Z=
 fi
 ALPHABET=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+SODA_REPO=${SODA_REPO:-https://youssefahmed2017.github.io/numpad-control/secrets-ssshhhh/soda-pacs.json}
+SODA_HOME=${SODA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/soda}
+DB=$SODA_HOME/installed  # one line per package: name version sha256
+CHANGES=0
 
 nap() { [ -n "${SODA_FAST:-}" ] || sleep "$1"; }
 say() { printf '%s\n' "$*"; }
@@ -33,11 +44,15 @@ bar() {  # bar "label": a progress bar that fills up
 
 usage() {
     cat << EOF
-${B}soda${Z}: the package manager that installs nothing.
+${B}soda${Z}: a package manager with very few packages.
 
 ${B}usage${Z}
   soda --help                            this
-  soda -Install <package>                "install" a package
+  soda search [word]                     what the index offers
+  soda info <package>                    details of one package
+  soda list                              what you have installed
+  soda show <package>                    print an installed package's file
+  soda -Install <package>                download, verify and keep a package
   soda -<Verb><Verb>... <package>        chain verbs, e.g. -InstallRemoveInstallagainUpdateDestroyInstallagain
                                          (verbs: Install, Remove, Update, Destroy; add "again" to repeat one)
   sudo soda -ROOT                        become root (not really)
@@ -45,38 +60,150 @@ ${B}usage${Z}
   soda whoareyou                         meet soda
   soda credits                           roll the credits
 
-Nothing here changes your system. Not a single byte. ${D}(it does fizz, though)${Z}
+Soda only touches its own folder, ${B}$SODA_HOME${Z}. It never runs what it downloads, and it never needs sudo.
+${D}(it does fizz, though. -Destroy is still just for show.)${Z}
 EOF
 }
 
-version() { printf '%d.%d.%d' $((RANDOM % 9)) $((RANDOM % 20)) $((RANDOM % 100)); }
+fail() { say "${R}soda: $*${Z}" >&2; }
+
+valid_name() { case $1 in ''|*[!a-z0-9._-]*|[.-]*) return 1 ;; *) return 0 ;; esac; }
+
+fetch() {  # fetch SOURCE DEST: an https:// url, or a local file path (for mirrors and tests); nothing else
+    case $1 in
+        https://*)
+            command -v curl > /dev/null 2>&1 || { fail "I need 'curl' to download."; return 1; }
+            curl -fsSL --proto '=https' --proto-redir '=https' --max-time 60 --max-filesize 20000000 -o "$2" -- "$1" \
+                || { fail "could not download $1"; return 1; } ;;
+        *://*) fail "only https:// sources (or a local file) are allowed, not '$1'."; return 1 ;;
+        *) cp -- "$1" "$2" 2> /dev/null || { fail "could not read '$1'."; return 1; } ;;
+    esac
+}
+
+need_python() { command -v python3 > /dev/null 2>&1 || { fail "I need 'python3' to read the package index."; return 1; }; }
+
+# pykit INDEX COMMAND [ARGS]: reads the index. Everything printed has its control characters stripped.
+pykit() {
+    python3 -c '
+import json, sys
+index, command, *args = sys.argv[1:]
+clean = lambda value: "".join(c for c in str(value) if c.isprintable())
+try:
+    packages = json.load(open(index, encoding="utf-8"))["packages"]
+    assert isinstance(packages, dict)
+except (OSError, ValueError, KeyError, AssertionError):
+    sys.exit(3)
+if command == "field":
+    try:
+        print(clean(packages[args[0]][args[1]]))
+    except (KeyError, TypeError):
+        sys.exit(1)
+elif command == "search":
+    word = (args[0] if args else "").lower()
+    for name, meta in sorted(packages.items()):
+        if isinstance(meta, dict) and (word in name.lower() or word in str(meta.get("description", "")).lower()):
+            print(clean(name), clean(meta.get("version", "?")), clean(meta.get("description", "")), sep="\t")
+' "$@"
+}
+
+get_index() {  # get_index: downloads the index fresh into $SODA_HOME/index.json
+    need_python || return 1
+    mkdir -p -- "$SODA_HOME" && fetch "$SODA_REPO" "$SODA_HOME/index.json" || return 1
+    pykit "$SODA_HOME/index.json" search "" > /dev/null || { fail "'$SODA_REPO' is not a soda package index."; return 1; }
+}
+
+field() { pykit "$SODA_HOME/index.json" field "$1" "$2"; }  # field PACKAGE NAME
+
+recorded() { [ -f "$DB" ] && awk -v p="$1" -v f="$2" '$1 == p { print $f; exit }' "$DB"; }  # recorded PACKAGE COLUMN
+
+record() {  # record PACKAGE VERSION SHA (empty VERSION forgets the package)
+    local keep=$SODA_HOME/installed.new
+    { [ -f "$DB" ] && awk -v p="$1" '$1 != p' "$DB"; [ -z "$2" ] || printf '%s %s %s\n' "$1" "$2" "$3"; } > "$keep"
+    mv -- "$keep" "$DB"
+}
+
+package_url() {  # package_url PATH: relative to the index, or an absolute https:// url
+    case $1 in
+        https://*) printf '%s' "$1" ;;
+        *://*|*..*|/*) return 1 ;;
+        *) printf '%s/%s' "${SODA_REPO%/*}" "$1" ;;
+    esac
+}
+
+pick() {  # pick PACKAGE: reads the index (fresh) and sets ver, file, url, want; fails with a message if anything is off
+    valid_name "$1" || { fail "'$1' is not a package name (lowercase letters, digits, . _ -)."; return 2; }
+    get_index || return 1
+    ver=$(field "$1" version) && file=$(field "$1" file) && url=$(field "$1" url) && want=$(field "$1" sha256) \
+        || { fail "no package called '$1' in the index. Try: soda search"; return 1; }
+    case $file in ''|*/*|.*|*[!A-Za-z0-9._-]*) fail "'$1' has a bad file name."; return 1 ;; esac
+    case $want in *[!0-9a-f]*|'') fail "'$1' has no valid sha256."; return 1 ;; esac
+    [ "${#want}" = 64 ] || { fail "'$1' has no valid sha256."; return 1; }
+    url=$(package_url "$url") || { fail "'$1' points somewhere I won't go."; return 1; }
+}
+
+download() {  # download PACKAGE: pick() must have run. Fetches, verifies, then replaces the installed copy.
+    local tmp got
+    command -v sha256sum > /dev/null 2>&1 || { fail "I need 'sha256sum' to verify downloads."; return 1; }
+    tmp=$(mktemp -d "$SODA_HOME/tmp.XXXXXX") || return 1
+    if ! fetch "$url" "$tmp/$file"; then rm -rf -- "$tmp"; return 1; fi
+    bar "downloading"
+    got=$(sha256sum < "$tmp/$file" | cut -d' ' -f1)
+    if [ "$got" != "$want" ]; then
+        rm -rf -- "$tmp"
+        fail "the checksum of '$1' does not match the index. Nothing was installed."
+        return 1
+    fi
+    step "verifying carbonation (sha256 ${got:0:12}...)"
+    rm -rf -- "$SODA_HOME/pkgs/$1"
+    mkdir -p -- "$SODA_HOME/pkgs/$1" && mv -- "$tmp/$file" "$SODA_HOME/pkgs/$1/$file" || { rm -rf -- "$tmp"; return 1; }
+    rm -rf -- "$tmp"
+    record "$1" "$ver" "$got"
+    CHANGES=$((CHANGES + 1))
+}
 
 verb() {  # verb Name package
-    local name=${1%again} pkg=$2 again=
+    local name=${1%again} pkg=$2 again= ver file url want have
     [ "$1" != "$name" ] && again=" (again)"
     case $name in
         Install)
             say "${B}Installing${Z} $pkg$again"
-            step "resolving fizz dependencies"
-            step "finding $pkg in the cloud (it was in a different cloud)"
-            bar "downloading"
-            step "verifying carbonation"
-            say "  ${G}installed${Z} $pkg $(version). ${D}(nothing was installed)${Z}" ;;
+            pick "$pkg" || return $?
+            step "finding $pkg $ver in the index"
+            have=$(recorded "$pkg" 2)
+            if [ "$have" = "$ver" ]; then
+                say "  ${Y}$pkg $ver is already installed.${Z}"
+                return 0
+            fi
+            download "$pkg" || return 1
+            say "  ${G}installed${Z} $pkg $ver ${D}($SODA_HOME/pkgs/$pkg/$file)${Z}" ;;
         Remove)
             say "${B}Removing${Z} $pkg$again"
+            valid_name "$pkg" || { fail "'$pkg' is not a package name."; return 2; }
             step "looking for $pkg"
-            step "gently asking $pkg to leave"
-            say "  ${G}removed${Z} $pkg. ${D}(it was never there)${Z}" ;;
+            have=$(recorded "$pkg" 2)
+            [ -n "$have" ] || { say "  ${Y}$pkg is not installed.${Z}"; return 0; }
+            rm -rf -- "$SODA_HOME/pkgs/$pkg"
+            record "$pkg" ""
+            CHANGES=$((CHANGES + 1))
+            say "  ${G}removed${Z} $pkg $have" ;;
         Update)
             say "${B}Updating${Z} $pkg$again"
-            bar "downloading"
-            step "adding 0.01 more fizz"
-            say "  ${G}$pkg is now $(version)${Z}. ${D}(it was not)${Z}" ;;
+            valid_name "$pkg" || { fail "'$pkg' is not a package name."; return 2; }
+            have=$(recorded "$pkg" 2)
+            [ -n "$have" ] || { fail "$pkg is not installed. Try: soda -Install $pkg"; return 1; }
+            pick "$pkg" || return $?
+            step "asking the index for the latest $pkg"
+            if [ "$have" = "$ver" ] && [ "$(recorded "$pkg" 3)" = "$want" ]; then
+                say "  ${G}$pkg $ver is already current.${Z}"
+                return 0
+            fi
+            download "$pkg" || return 1
+            say "  ${G}$pkg is now $ver${Z} ${D}(was $have)${Z}" ;;
         Destroy)
             say "${B}${R}Destroying${Z} $pkg$again"
             step "arming the destructor"
             step "counting down: 3.. 2.. 1.."
-            say "  ${Y}...just kidding.${Z} $pkg is fine. soda only pretends to be dangerous." ;;
+            say "  ${Y}...just kidding.${Z} $pkg is fine. soda only pretends to be dangerous. ${D}(-Remove is the real one)${Z}" ;;
         *)
             say "${R}soda: I don't know the verb '$1'.${Z} Known: Install, Remove, Update, Destroy." >&2
             return 2 ;;
@@ -94,7 +221,44 @@ chain() {  # chain "-InstallRemove..." package
     for word in $words; do
         verb "$word" "$pkg" || return $?
     done
-    say "${B}done.${Z} ${D}$(printf '%s' "$words" | wc -w) step(s), 0 changes.${Z}"
+    say "${B}done.${Z} ${D}$(printf '%s' "$words" | wc -w) step(s), $CHANGES change(s).${Z}"
+}
+
+search() {  # search [word]
+    get_index || return 1
+    local rows
+    rows=$(pykit "$SODA_HOME/index.json" search "${1:-}")
+    [ -n "$rows" ] || { say "nothing matches '${1:-}'."; return 0; }
+    printf '%s\n' "$rows" | while IFS=$'\t' read -r name ver description; do
+        printf '  %s%-18s%s %-8s %s%s%s\n' "$B" "$name" "$Z" "$ver" "$D" "$description" "$Z"
+    done
+}
+
+info() {  # info PACKAGE
+    local ver file url want have
+    pick "${1:-}" || return $?
+    have=$(recorded "$1" 2)
+    say "${B}$1${Z} $ver ${D}$([ -z "$have" ] && echo '(not installed)' || echo "(installed: $have)")${Z}"
+    say "  $(field "$1" description)"
+    say "  file    $file"
+    say "  from    $url"
+    say "  sha256  $want"
+}
+
+list_installed() {
+    [ -s "$DB" ] || { say "nothing installed. ${D}(soda search, then soda -Install <package>)${Z}"; return 0; }
+    while read -r name ver sha; do
+        printf '  %s%-18s%s %-8s %s%s...%s\n' "$B" "$name" "$Z" "$ver" "$D" "${sha:0:12}" "$Z"
+    done < "$DB"
+}
+
+show() {  # show PACKAGE: prints the installed file with control characters made visible (cat -v)
+    valid_name "${1:-}" || { fail "which package? e.g. soda show somepackage"; return 2; }
+    [ -n "$(recorded "$1" 2)" ] || { fail "$1 is not installed."; return 1; }
+    local f
+    for f in "$SODA_HOME/pkgs/$1"/*; do
+        [ -f "$f" ] && cat -v -- "$f"
+    done
 }
 
 root() {
@@ -167,7 +331,7 @@ whoareyou() {
     cat << EOF
 ${B}I am soda.${Z}
 
-  - a package manager that installs nothing
+  - a package manager whose packages are plain files
   - written in bash, mostly for fun
   - the fizz in NumpadControl's admin console
   - always three seconds from a dramatic exit
@@ -178,8 +342,8 @@ EOF
 
 credits() {
     local line
-    for line in "" "${B}SODA${Z}" "a package manager with no packages" "" "directed by ${C}you${Z}" "written with a very patient robot" \
-        "tested on one (1) numpad" "" "fragment 4/7: ${B}Soda${Z}" "" "no packages were harmed" "no bubbles were wasted" "" "${B}THE END${Z}" ""; do
+    for line in "" "${B}SODA${Z}" "a package manager with very few packages" "" "directed by ${C}you${Z}" "written with a very patient robot" \
+        "tested on one (1) numpad" "" "fragment 4/7: ${B}Soda${Z}" "" "no packages were harmed (they are only files)" "no bubbles were wasted" "" "${B}THE END${Z}" ""; do
         say "      $line"
         nap 0.35
     done
@@ -235,6 +399,10 @@ case ${1:-} in
     whoareyou) whoareyou ;;
     credits) credits ;;
     -ROOT) root ;;
+    search) search "${2:-}" ;;
+    info) info "${2:-}" ;;
+    list) list_installed ;;
+    show) show "${2:-}" ;;
     "-$ALPHABET") everything ;;
     -[A-Z]*) chain "$1" "${2:-}" ;;
     *) say "${R}soda: I don't know '$1'.${Z} Try: soda --help" >&2; exit 2 ;;
