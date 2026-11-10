@@ -1,7 +1,9 @@
 """Material 3 Expressive controls that paint and animate themselves.
 
-Buttons morph their shape: soft corners at rest, fully round on hover, squeezed small while
-pressed (all animated, with the ripple following the shape). Drop-downs and menus open with a
+Buttons morph their shape like Google's M3 Expressive buttons: a full pill at rest, squeezed to
+small corners while pressed, then springing back (all animated, with the ripple following the
+shape). Hover only lays the state colour over it. Icons come from Material Symbols (icons.py) and
+are drawn in the button's own content colour. Drop-downs and menus open with a
 short reveal and the scroll area scrolls smoothly. Everything is drawn here because a Qt
 stylesheet can't animate a corner radius.
 """
@@ -12,10 +14,9 @@ from PySide6.QtCore import QEvent, QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QAbstractScrollArea, QComboBox, QMenu, QPushButton, QScrollArea, QSpinBox, QStyledItemDelegate, QToolButton
 
-from . import motion, theme, tokens
+from . import icons, motion, theme, tokens
 
-REST_RADIUS = 10      # corner radius at rest (px)
-PRESSED_RADIUS = 4    # ...while pressed
+PRESSED_RADIUS = 8    # corner radius while pressed (px); at rest a button is a full pill
 PRESS_HOLD_MS = 150   # the squeeze stays at least this long, so even a quick click is seen over many frames
 SCROLL_PX_PER_NOTCH = 72
 
@@ -72,10 +73,25 @@ class _Morph:
         self._go(self._press_anim, self._press, 0)
 
     def current_radius(self):
-        """Soft at rest, fully round on hover, small while pressed: used for painting and the ripple's clip."""
+        """A full pill at rest, small corners while pressed: used for painting and the ripple's clip."""
         full = self.height() / 2
-        radius = REST_RADIUS + (full - REST_RADIUS) * self._hover
-        return radius + (PRESSED_RADIUS - radius) * self._press
+        return full + (min(PRESSED_RADIUS, full) - full) * self._press
+
+    def _sync_icon(self, content):
+        """Draw the button's Material Symbol (set_symbol) in its content colour; a selected segment shows a tick."""
+        name = self.property("symbol")
+        if self.objectName() == "segment":
+            name = "check" if self.isChecked() else None
+        if not name:
+            if getattr(self, "_icon_key", None):
+                self._icon_key = None
+                self.setIcon(icons.QIcon())
+            return
+        size = self.iconSize().height() or icons.SIZE
+        key = (name, content, size)
+        if getattr(self, "_icon_key", None) != key:
+            self._icon_key = key
+            self.setIcon(icons.icon(name, content, size, fill=1.0 if self.isCheckable() and self.isChecked() else 0.0))
 
     def ripple_color(self):
         return QColor(self._look()[1])
@@ -86,12 +102,14 @@ class _Morph:
         if not c:
             return None, "#000000"
         if not self.isEnabled():
-            if isinstance(self, QToolButton) or self.objectName() in ("flat", "segment"):
+            if isinstance(self, QToolButton) or self.objectName() in ("flat", "segment", "icon"):
                 return None, c["onSurfaceVariant"]
             return tokens.blend(c["surfaceContainer"], c["onSurface"], 0.12), c["onSurfaceVariant"]
         name = self.objectName()
+        if name == "icon":   # M3 standard icon button: no container, a tonal one while its menu is open
+            return (c["secondaryContainer"], c["onSecondaryContainer"]) if self.isChecked() else (None, c["onSurfaceVariant"])
         if isinstance(self, QToolButton):
-            return (c["tertiaryContainer"], c["onTertiaryContainer"]) if self.isChecked() else (None, c["primary"])
+            return (c["secondaryContainer"], c["onSecondaryContainer"]) if self.isChecked() else (None, c["primary"])
         if name == "primary":
             return c["primary"], c["onPrimary"]
         if name == "flat":
@@ -106,6 +124,7 @@ class _Morph:
             return super().paintEvent(event)
         self._update_press()
         container, content = self._look()
+        self._sync_icon(content)
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setPen(Qt.NoPen)

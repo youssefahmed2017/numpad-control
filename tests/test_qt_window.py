@@ -330,10 +330,25 @@ class QtWindowTest(unittest.TestCase):
     def test_the_key_map_overlay_settings_are_in_the_settings_dialog(self):
         dialog = dialogs.SettingsDialog(self.w)
         self.addCleanup(dialog.deleteLater)
-        self.assertEqual(dialog.values()["hud"], {"enabled": True, "opacity": 90})
+        self.assertEqual(dialog.values()["hud"], {"enabled": True, "opacity": 90, "trigger": "combo", "key": "Enter"})
         dialog.hud_enabled.setChecked(False)
         dialog.hud_opacity.setValue(55)
-        self.assertEqual(dialog.values()["hud"], {"enabled": False, "opacity": 55})
+        dialog.hud_trigger.setCurrentIndex(len(dialog.hud_keys))   # the last choice: the old hold-to-show
+        self.assertEqual(dialog.values()["hud"], {"enabled": False, "opacity": 55, "trigger": "hold", "key": "Enter"})
+
+    def test_the_overlay_combo_says_what_it_costs(self):
+        """Issue #12: Layer + a key opens the key map; the dialog explains when that combo is taken or impossible."""
+        dialog = dialogs.SettingsDialog(self.w)
+        self.addCleanup(dialog.deleteLater)
+        self.assertIn("Choose a layer key", dialog.hud_note.text())
+        dialog.layer_key.setCurrentIndex(dialog.layer_choices.index("NumLock"))
+        self.assertIn("Press Layer + ⏎ to open the key map", dialog.hud_note.text())
+        dialog.hud_trigger.setCurrentIndex(dialog.hud_keys.index("NumLock"))
+        self.assertIn("is the layer key itself", dialog.hud_note.text())
+        self.w.cfg["profiles"][0]["layer_bindings"]["7"] = b("mic_mute")
+        dialog.hud_trigger.setCurrentIndex(dialog.hud_keys.index("7"))
+        self.assertIn("won't run", dialog.hud_note.text())
+        self.assertEqual(dialog.values()["hud"]["key"], "7")
 
     def test_the_preview_button_needs_the_service_and_a_layer_key(self):
         dialog = dialogs.SettingsDialog(self.w)

@@ -2,13 +2,14 @@
 
 import json
 
-from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtCore import QEvent, QPoint, QRect, QRectF, QSize, Qt, Signal
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath
 from PySide6.QtWidgets import (QApplication, QFrame, QLineEdit, QListWidget, QListWidgetItem, QStyle,
                                QStyledItemDelegate, QVBoxLayout)
 
 from numpadctl import ui_common
 from numpadctl.platform import paths
+from . import icons, theme, tokens
 from .buttons import PushButton, reveal
 
 RECENT_MAX = 5
@@ -180,8 +181,15 @@ class _Popup(QFrame):
         return super().eventFilter(obj, event)
 
 
+FIELD_RADIUS = 4    # M3 filled text field: small top corners, square bottom resting on the indicator line
+
+
 class ActionPicker(PushButton):
-    """Shows the chosen action; a click opens the searchable list. picked(index into `items`)."""
+    """Shows the chosen action; a click opens the searchable list. picked(index into `items`).
+
+    It looks like Google's filled drop-down field (M3 "exposed dropdown menu"), not like a button: a
+    tinted field, the value on the left, arrow_drop_down at the right edge and an indicator line along
+    the bottom that turns into the accent colour, twice as thick, while it has focus or its list is open."""
     picked = Signal(int)
 
     def __init__(self, items, current=0, names=None):
@@ -191,8 +199,7 @@ class ActionPicker(PushButton):
         self._names = names or [ui_common.action_name(a) for a in items]
         self._popup = None
         self.index = current
-        self.setText(self._names[current] + "   ▾")
-        self.setStyleSheet("text-align: left; padding: 8px 14px;")
+        self.setText(self._names[current])
         self.setFocusPolicy(Qt.StrongFocus)
         self.clicked.connect(self.open)
 
@@ -208,11 +215,43 @@ class ActionPicker(PushButton):
         popup.search.setFocus()
         reveal(popup)
 
+    def current_radius(self):
+        return FIELD_RADIUS   # the ripple is clipped to the field's corners (no pill morph for a field)
+
+    def paintEvent(self, event):
+        c = theme.current
+        if not c:
+            return super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        rect = QRectF(self.rect())
+        shape = QPainterPath()   # rounded top, square bottom (winding: the two overlapping parts add up, not cancel)
+        shape.setFillRule(Qt.WindingFill)
+        shape.addRoundedRect(rect, FIELD_RADIUS, FIELD_RADIUS)
+        shape.addRect(rect.adjusted(0, FIELD_RADIUS, 0, 0))
+        shape = shape.simplified()
+        base = c["surfaceContainerHighest"]
+        hover = tokens.STATE["hover"] * self._hover if self.isEnabled() else 0.0
+        painter.fillPath(shape, QColor(tokens.blend(base, c["onSurface"], hover)))
+        active = self.isEnabled() and (self.hasFocus() or self._popup is not None and self._popup.isVisible())
+        line = QColor(c["primary"] if active else c["onSurface"] if self._hover else c["onSurfaceVariant"])
+        thick = 2 if active else 1
+        painter.fillRect(QRectF(0, rect.height() - thick, rect.width(), thick), line)
+        content = c["onSurface"] if self.isEnabled() else c["onSurfaceVariant"]
+        arrow = icons.pixmap("arrow_drop_down", c["primary"] if active else c["onSurfaceVariant"], 24)
+        painter.drawPixmap(QRectF(rect.width() - 12 - 24, (rect.height() - 24) / 2, 24, 24), arrow, QRectF(arrow.rect()))
+        painter.setFont(self.font())
+        painter.setPen(QColor(content))
+        text_rect = QRectF(16, 0, rect.width() - 16 - 48, rect.height())
+        painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter,
+                         QFontMetrics(self.font()).elidedText(self.text(), Qt.ElideRight, int(text_rect.width())))
+        painter.end()
+
     def choose(self, index):
         """Pick action number `index` (what a click in the list does)."""
         if index == self.index:
             return
         self.index = index
-        self.setText(self._names[index] + "   ▾")
+        self.setText(self._names[index])
         remember(self.items[index].id)
         self.picked.emit(index)

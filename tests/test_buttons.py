@@ -41,7 +41,7 @@ class MorphTest(unittest.TestCase):
         frames_squeezed = sum(v < rest - 2 for v in values)
         self.assertGreaterEqual(frames_squeezed * 16, 100, "and stays squeezed for a perceptible time")
         self.assertAlmostEqual(values[-1], hovered_radius, delta=1.5,
-                               msg="then springs back to the hovered shape (the pointer is still over it)")
+                               msg="then springs back to the pill")
         button.deleteLater()
 
     def test_push_button(self):
@@ -59,17 +59,17 @@ class MorphTest(unittest.TestCase):
         key.resize(110, 70)
         self.check_quick_click(key, window.KEY_HOVER_RADIUS)
 
-    def test_hover_makes_it_rounder_gradually(self):
+    def test_a_pill_at_rest_and_hover_keeps_the_shape(self):
+        """M3 Expressive: buttons rest as a full pill; hover only fades in the state layer, it doesn't morph."""
         button = buttons.PushButton("Settings")
         button.resize(140, 40)
         button.show()
         QTest.qWait(30)
-        rest = button.current_radius()
+        self.assertAlmostEqual(button.current_radius(), 20, delta=0.01, msg="half the height: a full pill")
         button._go(button._hover_anim, 0, 1)
         values = sample(button, 400)
-        self.assertGreater(max(values), rest + 5)
-        self.assertGreater(len({round(v, 1) for v in values}), 5)
-        self.assertAlmostEqual(max(values), 20, delta=0.6, msg="fully round at the end: half the height")
+        self.assertTrue(all(abs(v - 20) < 0.01 for v in values), "hovering doesn't change the shape")
+        self.assertAlmostEqual(button._hover, 1.0, delta=0.05, msg="the hover state layer is fully in")
         button.deleteLater()
 
 

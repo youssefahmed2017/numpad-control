@@ -40,11 +40,15 @@ class SlotSummaryTest(unittest.TestCase):
 
 class HudSettingsTest(unittest.TestCase):
     def test_defaults_clamping_and_junk(self):
-        self.assertEqual(config.hud_settings({}), {"enabled": True, "opacity": 90})
-        self.assertEqual(config.hud_settings({"hud": {"enabled": False, "opacity": 5}}), {"enabled": False, "opacity": 30})
+        default = {"enabled": True, "opacity": 90, "trigger": "combo", "key": "Enter"}
+        self.assertEqual(config.hud_settings({}), default)
+        self.assertEqual(config.hud_settings({"hud": {"enabled": False, "opacity": 5}}),
+                         {**default, "enabled": False, "opacity": 30})
         self.assertEqual(config.hud_settings({"hud": {"opacity": 500}})["opacity"], 100)
         self.assertEqual(config.hud_settings({"hud": {"opacity": "lots"}})["opacity"], 90)
-        self.assertEqual(config.hud_settings({"hud": "yes"}), {"enabled": True, "opacity": 90})
+        self.assertEqual(config.hud_settings({"hud": "yes"}), default)
+        self.assertEqual(config.hud_settings({"hud": {"trigger": "hold", "key": "+"}})["trigger"], "hold")
+        self.assertEqual(config.hud_settings({"hud": {"trigger": "wiggle", "key": 5}}), default, "junk falls back")
 
 
 class LayerMessagesTest(unittest.IsolatedAsyncioTestCase):
@@ -59,17 +63,74 @@ class LayerMessagesTest(unittest.IsolatedAsyncioTestCase):
     def huds(self):
         return [m for m in self.sent if m.get("event") == "hud"]
 
-    def test_holding_the_layer_key_shows_what_the_layer_does_and_letting_go_hides_it(self):
+    def test_hold_mode_holding_the_layer_key_shows_both_halves_and_letting_go_hides_it(self):
         self.d.cfg = make_cfg({"7": {"tap": b("mic_mute")}, "8": {"hold": b("screenshot_full")}},
-                              hud={"enabled": True, "opacity": 60})
+                              bindings={"1": {"tap": b("lock_screen")}},
+                              hud={"enabled": True, "opacity": 60, "trigger": "hold"})
         self.d.on_key(".", True)
         self.d.on_key(".", True)  # a repeat of the same state says nothing more
         self.assertEqual(self.huds(), [{"event": "hud", "on": True, "opacity": 60,
                                         "keys": {"7": "Mute / unmute microphone", "8": "Hold: Full screen"},
-                                        "stickers": {}}])
+                                        "base": {"1": "Lock screen"}, "stickers": {}, "base_stickers": {},
+                                        "layer_key": ".", "combo_key": ""}])
         self.d.on_key(".", False)
-        self.assertEqual(self.huds()[-1], {"event": "hud", "on": False, "opacity": 60, "keys": {}, "stickers": {}})
+        self.assertEqual(self.huds()[-1], {"event": "hud", "on": False, "opacity": 60, "keys": {}, "base": {},
+                                           "stickers": {}, "base_stickers": {}, "layer_key": ".", "combo_key": ""})
         self.assertEqual(len(self.huds()), 2)
+
+    def test_combo_mode_holding_the_layer_key_alone_shows_nothing(self):
+        """Issue #12: Layer + 1 used to flash the key map up every time; now only the combo opens it."""
+        ran = []
+        self.d.run_action = lambda *a: ran.append(a)
+        self.d.cfg = make_cfg({"1": {"tap": b("mic_mute")}})
+        self.d.on_key(".", True)
+        self.d.on_key("1", True)
+        self.d.on_key("1", False)
+        self.d.on_key(".", False)
+        self.assertEqual(self.huds(), [])
+        self.assertEqual(len(ran), 1, "Layer + 1 still runs its action")
+
+    def test_combo_opens_and_closes_it_and_runs_no_action(self):
+        ran = []
+        self.d.run_action = lambda *a: ran.append(a)
+        self.d.cfg = make_cfg({"Enter": {"tap": b("mic_mute")}}, hud={"key": "Enter"})
+        self.d.on_key(".", True)
+        self.d.on_key("Enter", True)
+        self.d.on_key("Enter", False)
+        self.assertEqual([m["on"] for m in self.huds()], [True])
+        self.assertEqual(self.huds()[0]["combo_key"], "Enter")
+        self.assertTrue(self.d.hud_showing())
+        self.d.on_key("Enter", True)   # again: closes it
+        self.d.on_key("Enter", False)
+        self.assertEqual([m["on"] for m in self.huds()], [True, False])
+        self.assertEqual(ran, [], "the combo belongs to the overlay: Layer + Enter's own action doesn't run")
+
+    def test_combo_closes_when_the_layer_key_is_let_go(self):
+        self.d.cfg = make_cfg({})
+        self.d.on_key(".", True)
+        self.d.on_key("Enter", True)
+        self.d.on_key("Enter", False)
+        self.d.on_key(".", False)
+        self.assertEqual([m["on"] for m in self.huds()], [True, False])
+        self.assertFalse(self.d.hud_showing())
+        self.d.on_key(".", True)   # holding it again doesn't bring it back by itself
+        self.assertEqual(len(self.huds()), 2)
+
+    def test_the_combo_key_without_the_layer_key_is_an_ordinary_key(self):
+        ran = []
+        self.d.run_action = lambda *a: ran.append(a)
+        self.d.cfg = make_cfg({}, bindings={"Enter": {"tap": b("mic_mute")}})
+        self.d.on_key("Enter", True)
+        self.d.on_key("Enter", False)
+        self.assertEqual((self.huds(), len(ran)), ([], 1))
+
+    def test_switched_off_the_combo_runs_its_action(self):
+        ran = []
+        self.d.run_action = lambda *a: ran.append(a)
+        self.d.cfg = make_cfg({"Enter": {"tap": b("mic_mute")}}, hud={"enabled": False})
+        self.d.on_key(".", True)
+        self.d.on_key("Enter", True)
+        self.assertEqual((self.huds(), len(ran)), ([], 1))
 
     def test_other_keys_do_not_show_it(self):
         self.d.cfg = make_cfg({"7": {"tap": b("mic_mute")}})
@@ -87,7 +148,7 @@ class LayerMessagesTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(self.d.hud_keys()["7"], "Mute / unmute microphone")
 
     def test_losing_the_numpad_while_the_layer_key_is_down_hides_it(self):
-        self.d.cfg = make_cfg({"7": {"tap": b("mic_mute")}})
+        self.d.cfg = make_cfg({"7": {"tap": b("mic_mute")}}, hud={"trigger": "hold"})
         self.d.on_key(".", True)
         self.d.reset()
         self.assertFalse(self.huds()[-1]["on"])
@@ -103,7 +164,7 @@ class LayerMessagesTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([m["on"] for m in self.huds()], [True, False])
 
     async def test_preview_does_not_hide_a_key_map_you_are_holding_open(self):
-        self.d.cfg = make_cfg({"7": {"tap": b("mic_mute")}})
+        self.d.cfg = make_cfg({"7": {"tap": b("mic_mute")}}, hud={"trigger": "hold"})
         with mock.patch.object(daemon, "HUD_PREVIEW_DELAY", 0.02), mock.patch.object(daemon, "HUD_PREVIEW_SECONDS", 0.05), \
                 mock.patch.object(daemon.Daemon, "ensure_hud", lambda self: None):
             self.d.hud_preview()
@@ -147,7 +208,10 @@ class LateOverlayTest(unittest.IsolatedAsyncioTestCase):
             d.cfg = make_cfg({"7": {"tap": b("mic_mute")}})
             self.assertEqual([m["event"] for m in await self.connect(d)], ["status"])
             d.layer_held = True
+            self.assertEqual([m["event"] for m in await self.connect(d)], ["status"], "held, but not opened")
+            d.hud_open = True   # opened with the combo
             self.assertEqual([m["event"] for m in await self.connect(d)], ["status", "hud"])
+            d.hud_open = False
             d.layer_held = False
             d.hud_show_until = daemon.time.monotonic() + 5  # a preview
             self.assertEqual([m["event"] for m in await self.connect(d)], ["status", "hud"])
@@ -411,6 +475,24 @@ class HudWindowTest(unittest.TestCase):
         window.set_alpha(1.0)
         picture = window.grab()
         self.assertEqual((picture.width(), picture.height()), (window.width(), window.height()))
+
+    def test_it_shows_the_normal_and_the_layer_half_side_by_side(self):
+        """Issue #12: the normal keys get a key map too, next to the layer one."""
+        from numpadctl_ui import hud
+        window = hud.Hud()
+        self.addCleanup(window.deleteLater)
+        window.show_keys({"7": "Mute"}, 90)   # an older service: only the layer half
+        single = window.width()
+        window.show_keys({"7": "Mute"}, 90, base={"1": "Lock screen"}, layer_key="NumLock", combo_key="Enter")
+        self.assertEqual(window.width(), single + hud.Hud.grid_width() + hud.PANEL_GAP)
+        self.assertEqual((window.special("NumLock", False), window.special("NumLock", True)), ("Layer key", "Held"))
+        self.assertEqual((window.special("Enter", True), window.special("Enter", False)), ("Key map", None))
+        window.set_alpha(1.0)
+        picture = window.grab()
+        self.assertEqual((picture.width(), picture.height()), (window.width(), window.height()))
+        window.on_message({"event": "hud", "on": True, "opacity": 80, "keys": {}, "base": {"1": "Lock screen"},
+                           "layer_key": "NumLock", "combo_key": "Enter"})
+        self.assertEqual((window.base, window.layer_key, window.combo_key), ({"1": "Lock screen"}, "NumLock", "Enter"))
 
     def test_it_never_takes_focus_or_clicks(self):
         from PySide6.QtCore import Qt

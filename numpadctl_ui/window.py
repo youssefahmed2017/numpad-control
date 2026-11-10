@@ -12,8 +12,8 @@ from PySide6.QtWidgets import (
 import numpadctl
 from numpadctl import actions, config, devices, keys, presets, profile_io, stickers, ui_common
 from numpadctl.platform import IS_WINDOWS
-from .checkbox import CheckBox
-from . import dialogs, effects, motion, sticker_image, theme, tokens, tools, welcome
+from .checkbox import Switch
+from . import dialogs, effects, icons, motion, sticker_image, theme, tokens, tools, welcome
 from .snackbar import Snackbar
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, SpinBox, ToolButton, _Morph
 from .picker import ActionPicker
@@ -24,6 +24,15 @@ KEY_RADIUS = 20
 KEY_HOVER_RADIUS = 30
 KEY_PRESSED_RADIUS = 10
 DEFAULTS_LOOK = {"appearance": "auto", "accent": tokens.DEFAULT_ACCENT, "contrast": "standard"}
+
+
+def icon_button(symbol, tip):
+    """An M3 standard icon button: a 40 px circle with one Material Symbol, no text (its menu opens on click)."""
+    button = ToolButton(toolTip=tip)
+    button.setObjectName("icon")
+    button.setAccessibleName(tip)
+    icons.set_symbol(button, symbol, 24)
+    return button
 
 
 class KeyButton(_Morph, QPushButton):
@@ -198,12 +207,17 @@ class MainWindow(QMainWindow):
         row.addStretch()
         self.dirty_label = label("", "dim")
         row.addWidget(self.dirty_label)
-        self.learn = ToolButton(text="⌨ Learn")
+        self.learn = ToolButton(text="Learn")
+        self.learn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        icons.set_symbol(self.learn, "keyboard")   # filled while Learn is on (buttons.py)
         self.learn.setCheckable(True)
         self.learn.setToolTip("Learn mode: press a numpad key to select it here (its action won't run)")
         self.learn.toggled.connect(self.on_learn_toggled)
         row.addWidget(self.learn)
-        extra = ToolButton(text="Tools ▾")
+        extra = ToolButton(text="Tools")
+        extra.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        extra.setLayoutDirection(Qt.RightToLeft)   # the arrow after the word, like Google's menu buttons
+        icons.set_symbol(extra, "arrow_drop_down")
         extra.setPopupMode(QToolButton.InstantPopup)
         menu = Menu(extra)
         menu.addAction("Key tester…", self.open_tester)
@@ -251,7 +265,7 @@ class MainWindow(QMainWindow):
         self.profile_combo = ComboBox()
         self.profile_combo.currentIndexChanged.connect(self.on_profile_changed)
         profiles.addWidget(self.profile_combo, 1)
-        menu_button = ToolButton(text="⋯", toolTip="Profiles: different keys per app")
+        menu_button = icon_button("more_vert", "Profiles: different keys per app")
         menu_button.setPopupMode(QToolButton.InstantPopup)
         menu = Menu(menu_button)
         menu.addAction("New profile…", lambda: self.profile_dialog(None))
@@ -275,7 +289,7 @@ class MainWindow(QMainWindow):
         self.device_combo = ComboBox()
         self.device_combo.currentIndexChanged.connect(self.on_device_changed)
         devices.addWidget(self.device_combo, 1)
-        device_button = ToolButton(text="⋯", toolTip="Use a keyboard as an extra pad")
+        device_button = icon_button("more_vert", "Use a keyboard as an extra pad")
         device_button.setPopupMode(QToolButton.InstantPopup)
         device_menu = Menu(device_button)
         device_menu.addAction("Add a keyboard…", self.add_device)
@@ -679,7 +693,7 @@ class MainWindow(QMainWindow):
         if pix:
             preview.setPixmap(pix)
         else:
-            preview.setText("🖼")
+            preview.setPixmap(icons.pixmap("image", theme.current.get("onSurfaceVariant", "#888888"), 32))
         preview.setAccessibleName("Sticker preview")
         row.addWidget(preview)
         text = ("A picture shown on this key." if not shown else
@@ -746,14 +760,15 @@ class MainWindow(QMainWindow):
         if action.id != "none":
             add_param_widgets(layout, action, binding["params"], self, self.on_param_changed)
             if slot == "hold" and not action.confirm:
-                rapid = CheckBox("Rapid-fire after holding 2 s")
+                rapid = Switch("Rapid-fire after holding 2 s")
                 rapid.setToolTip("Fires once, then keeps firing if you hold 2 more seconds")
                 rapid.setChecked(actions.rapid_fire(binding))
                 rapid.toggled.connect(lambda on: (binding.__setitem__("rapid", on), self.mark_dirty()))
                 layout.addWidget(rapid)
             if slot == "tap" and not action.confirm:
                 self._turbo_row(layout, key, binding)
-            test = PushButton("▶ Test now")
+            test = PushButton("Test now")
+            icons.set_symbol(test, "play_arrow")
             test.clicked.connect(lambda: self.test(slot))
             layout.addWidget(test)
         return frame
@@ -762,7 +777,7 @@ class MainWindow(QMainWindow):
         """Turbo: keep firing the Press action while the key is held, N times a second."""
         others = any(actions.is_set(self.slot_binding(key, slot)) for slot in ("hold", "double") if slot in self.slots_for(key))
         row = QHBoxLayout()
-        turbo = CheckBox("Turbo: repeat while held")
+        turbo = Switch("Turbo: repeat while held")
         turbo.setToolTip("Fires once, then keeps firing as fast as you choose for as long as the key is down")
         rate = SpinBox()
         rate.setRange(1, actions.TURBO_MAX)

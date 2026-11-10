@@ -62,8 +62,6 @@ def style_colors(accent, dark, contrast="standard"):
         c[name + "Pressed"] = tokens.blend(c[base], c[content], pressed)
     c["stateHover"] = tokens.rgba(c["onSurface"], hover)       # over transparent: text buttons, menu items
     c["statePressed"] = tokens.rgba(c["onSurface"], pressed)
-    # a barely-there tonal gradient (lighter at the top) for the app bar and the primary button
-    c["barTop"], c["primaryTop"] = tokens.blend(c["surfaceContainer"], c["onSurface"], 0.06), tokens.blend(c["primary"], "#ffffff", 0.14)
     c["primaryHover"] = tokens.rgba(c["primary"], hover)
     c["primaryPressed"] = tokens.rgba(c["primary"], pressed)
     return c
@@ -74,8 +72,13 @@ def _draw_images(c):
     folder = paths.state_dir() / "qt-theme"
     folder.mkdir(parents=True, exist_ok=True)
     images = {}
-    for name, color, points in (("arrow", c["onSurfaceVariant"], [(3, 6), (8, 11), (13, 6)]),
-                                ("check", c["onPrimary"], [(3.5, 8.5), (6.5, 11.5), (12.5, 4.5)])):
+    load_fonts()
+    from . import icons
+    file = folder / f"arrow-{c['onSurfaceVariant'].strip('#')}.png"
+    if not file.exists():   # drop-downs use Material's own arrow_drop_down, like Google's menus
+        icons.pixmap("arrow_drop_down", c["onSurfaceVariant"], 24, ratio=2.0).save(str(file))
+    images["arrow"] = file.as_posix()
+    for name, color, points in (("check", c["onPrimary"], [(3.5, 8.5), (6.5, 11.5), (12.5, 4.5)]),):
         pixmap = QPixmap(32, 32)  # drawn at 2x for sharp edges on HiDPI
         pixmap.fill(Qt.transparent)
         painter = QPainter(pixmap)
@@ -196,7 +199,7 @@ QLabel#ok { background: ${okContainer}; color: ${onOkContainer}; }
 QLabel#warn { background: ${warnContainer}; color: ${onWarnContainer}; }
 QLabel#bad { background: ${errorContainer}; color: ${onErrorContainer}; }
 
-QFrame#appbar { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 ${barTop}, stop:1 ${surfaceContainer}); border-radius: ${r_xl}; }
+QFrame#appbar { background: ${surfaceContainer}; border-radius: ${r_xl}; }  /* M3 bars are flat: tone, not gradients */
 QFrame#card { background: ${surfaceContainer}; border: none; border-radius: ${r_xl}; }
 QFrame#banner { background: ${errorContainer}; border-radius: ${r_m}; }
 QFrame#banner QLabel { color: ${onErrorContainer}; }
@@ -223,7 +226,10 @@ QLabel#keyname { font-size: ${titleLarge_size}; font-weight: 600; color: ${onSur
 QLabel#keyaction { font-size: ${bodySmall_size}; color: ${onSurfaceVariant}; }
 
 QToolButton { color: ${primary}; padding: 8px 14px; font-size: ${labelLarge_size}; font-weight: ${labelLarge_weight}; }
-QToolButton:checked { color: ${onTertiaryContainer}; }
+QToolButton:checked { color: ${onSecondaryContainer}; }
+QToolButton#icon { padding: 0; min-width: 40px; max-width: 40px; min-height: 40px; max-height: 40px; }
+QPushButton#picker { text-align: left; padding: 0 16px; min-height: 56px; color: ${onSurface};
+    font-size: ${bodyLarge_size}; font-weight: ${bodyLarge_weight}; }
 QToolButton::menu-indicator { image: none; }
 
 QLineEdit, QPlainTextEdit, QComboBox, QSpinBox, QListWidget { background: transparent; color: ${onSurface};
@@ -232,8 +238,8 @@ QLineEdit, QPlainTextEdit, QComboBox, QSpinBox, QListWidget { background: transp
 QLineEdit:hover, QPlainTextEdit:hover, QComboBox:hover, QSpinBox:hover { border-color: ${onSurface}; }
 QLineEdit:focus, QPlainTextEdit:focus, QComboBox:focus, QSpinBox:focus, QListWidget:focus {
     border: 2px solid ${primary}; padding: 7px 13px; }
-QComboBox::drop-down { border: none; width: 28px; }
-QComboBox::down-arrow { image: url("${arrow}"); width: 12px; height: 12px; }
+QComboBox::drop-down { border: none; width: 36px; }
+QComboBox::down-arrow { image: url("${arrow}"); width: 24px; height: 24px; }
 QComboBox QAbstractItemView { background: ${surfaceContainerHigh}; color: ${onSurface}; border: none;
     border-radius: ${r_s}; padding: 6px; outline: none; }
 QComboBox QAbstractItemView::item { padding: 10px 14px; border-radius: ${r_s}; min-height: 24px; }
@@ -246,6 +252,8 @@ QListWidget::item:selected { background: ${secondaryContainer}; color: ${onSecon
 
 QCheckBox { spacing: 12px; color: ${onSurface}; }
 QCheckBox::indicator { width: 18px; height: 18px; border: none; background: transparent; image: none; }  /* numpadctl_ui/checkbox.py draws it */
+QCheckBox[switch="true"] { spacing: 16px; min-height: 40px; }
+QCheckBox[switch="true"]::indicator { width: 52px; height: 32px; }   /* checkbox.Switch draws the M3 switch */
 
 QScrollBar:vertical { background: transparent; width: 12px; margin: 2px; }
 QScrollBar:horizontal { background: transparent; height: 12px; margin: 2px; }

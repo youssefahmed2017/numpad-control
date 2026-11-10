@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget)
 
 from numpadctl import config, desktop, devices, keys, modes, obs, presets, ui_common
-from .checkbox import CheckBox
+from .checkbox import Switch
 from . import tokens
 from .buttons import ComboBox, PushButton, SmoothScrollArea, SpinBox
 from .widgets import card, label
@@ -42,7 +42,7 @@ class SettingsDialog(QDialog):
         self.detect_button.clicked.connect(self.detect)
         row.addWidget(self.detect_button)
         box.addLayout(row)
-        self.grab = CheckBox("Stop numpad from typing (keys only trigger actions)")
+        self.grab = Switch("Stop numpad from typing (keys only trigger actions)")
         self.grab.setChecked(cfg["grab"])
         box.addWidget(self.grab)
         layout.addWidget(frame)
@@ -63,7 +63,7 @@ class SettingsDialog(QDialog):
         current = cfg.get("numpad_layout") if cfg.get("numpad_layout") in ui_common.LAYOUTS else "standard"
         self.numpad_layout.setCurrentIndex(self.layout_ids.index(current))
         box.addWidget(self.numpad_layout)
-        self.feedback = CheckBox("On-screen confirmations (e.g. “Recording” when OBS starts recording)")
+        self.feedback = Switch("On-screen confirmations (e.g. “Recording” when OBS starts recording)")
         self.feedback.setChecked(cfg.get("feedback", True))
         box.addWidget(self.feedback)
         box.addWidget(label("Appearance of this window", "small"))
@@ -94,13 +94,32 @@ class SettingsDialog(QDialog):
 
         frame, box = card()
         box.addWidget(label("Key map overlay", "heading"))
-        box.addWidget(label("Hold the layer key and a see-through copy of your numpad fades onto the screen, "
-                            "showing what each key does in the layer. It never takes focus or catches clicks.",
-                            "dim", wrap=True))
+        box.addWidget(label("A see-through copy of your numpad fades onto the screen, showing what each key does: "
+                            "normally on the left, with the layer key held on the right. It never takes focus or "
+                            "catches clicks.", "dim", wrap=True))
         hud = config.hud_settings(cfg)
-        self.hud_enabled = CheckBox("Show the key map while the layer key is held")
+        self.hud_enabled = Switch("Show the key map")
         self.hud_enabled.setChecked(hud["enabled"])
         box.addWidget(self.hud_enabled)
+        # How it opens (issue #12): Layer + a key toggles it (the default, so Layer + 1 etc. don't flash it up),
+        # or the old way, for as long as the layer key is held. Index i < len(HUD_KEYS) means "Layer + HUD_KEYS[i]".
+        trigger_row = QHBoxLayout()
+        trigger_row.addWidget(label("Open it with", "small"))
+        self.hud_keys = [k for k, *_ in ui_common.LAYOUT if k not in config.TAP_ONLY_KEYS]
+        self.hud_trigger = ComboBox()
+        self.hud_trigger.addItems([f"Layer + {ui_common.KEY_LABELS.get(k, k)}" for k in self.hud_keys]
+                                  + ["Holding the layer key"])
+        self.hud_trigger.setAccessibleName("How the key map opens")
+        self.hud_trigger.setCurrentIndex(len(self.hud_keys) if hud["trigger"] == "hold" else
+                                         self.hud_keys.index(hud["key"]) if hud["key"] in self.hud_keys else
+                                         self.hud_keys.index(config.HUD_DEFAULT_KEY))
+        trigger_row.addWidget(self.hud_trigger, 1)
+        box.addLayout(trigger_row)
+        self.hud_note = label("", "small", wrap=True)   # says when the combo is taken (see _check_hud_combo)
+        box.addWidget(self.hud_note)
+        self.hud_trigger.currentIndexChanged.connect(self._check_hud_combo)
+        self.layer_key.currentIndexChanged.connect(self._check_hud_combo)
+        self._check_hud_combo()
         row = QHBoxLayout()
         row.addWidget(label("Opacity", "small"))
         self.hud_opacity = SpinBox()
@@ -198,7 +217,7 @@ class SettingsDialog(QDialog):
         state = modes.states()
         for name in self.mode_names:
             row = QHBoxLayout()
-            switch = CheckBox(name)
+            switch = Switch(name)
             switch.setChecked(state.get(name, False))
             switch.toggled.connect(lambda on, n=name: modes.set_mode(n, on))
             remove = PushButton("Remove")
@@ -235,6 +254,30 @@ class SettingsDialog(QDialog):
             self.obs_result.setText(str(error) if error else f"Connected to OBS {version}")
         ui_common.run_in_background(lambda: obs.test_connection(settings), done, self.window.dispatch)
 
+    def hud_choice(self):
+        """("combo", key) or ("hold", key the combo would use) from the "Open it with" list."""
+        index = self.hud_trigger.currentIndex()
+        if index >= len(self.hud_keys):
+            return "hold", config.hud_settings(self.window.cfg)["key"]
+        return "combo", self.hud_keys[index]
+
+    def _check_hud_combo(self, *_):
+        """Explain what the chosen combo costs: the overlay takes it, so an action bound there won't run."""
+        trigger, key = self.hud_choice()
+        layer = self.layer_choices[self.layer_key.currentIndex()]
+        name = ui_common.KEY_LABELS.get(key, key)
+        if trigger == "hold":
+            text = "It shows while the layer key is held, and also pops up when you press Layer + another key."
+        elif not layer:
+            text = "Choose a layer key (above) first: the key map opens with Layer + a key."
+        elif key == layer:
+            text = f"{name} is the layer key itself: pick another key for the key map."
+        else:
+            taken = [p["name"] for p in self.window.cfg["profiles"] if key in p.get("layer_bindings", {})]
+            text = (f"Layer + {name} opens and closes the key map, so what it does in {', '.join(taken)} won't run."
+                    if taken else f"Press Layer + {name} to open the key map, again (or let go of the layer key) to close it.")
+        self.hud_note.setText(text)
+
     def preview_hud(self):
         if not self.window.link.connected:
             self.window.toast("The background service isn't running.")
@@ -247,7 +290,8 @@ class SettingsDialog(QDialog):
 
     def values(self):
         return {"device": self.device, "grab": self.grab.isChecked(),
-                "hud": {"enabled": self.hud_enabled.isChecked(), "opacity": self.hud_opacity.value()},
+                "hud": {"enabled": self.hud_enabled.isChecked(), "opacity": self.hud_opacity.value(),
+                        "trigger": self.hud_choice()[0], "key": self.hud_choice()[1]},
                 "layer_key": self.layer_choices[self.layer_key.currentIndex()],
                 "numpad_layout": self.layout_ids[self.numpad_layout.currentIndex()],
                 "feedback": self.feedback.isChecked(),
@@ -379,7 +423,7 @@ class AddDeviceDialog(QDialog):
         self.name.setPlaceholderText("Name shown in the window")
         self.name.setAccessibleName("Keyboard name")
         layout.addWidget(self.name)
-        self.grab = CheckBox("Stop this keyboard typing (its keys only run actions)")
+        self.grab = Switch("Stop this keyboard typing (its keys only run actions)")
         self.grab.setChecked(True)
         layout.addWidget(self.grab)
         layout.addWidget(label("Hold Ctrl+Alt+Esc on it to give it back if you ever need to type with it.", "small", wrap=True))

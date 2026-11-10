@@ -131,6 +131,7 @@ class Daemon:
         self.run_action = run_action or self._submit
         self.presses = {}
         self.layer_held = False
+        self.hud_open = False       # "combo" overlay (config.hud_settings): opened with Layer + its key
         self.zero_events = []
         self.zero_timer = None
         self.numpad = None
@@ -268,12 +269,29 @@ class Daemon:
         if key == self.cfg.get("layer_key"):
             if self.layer_held != down:
                 self.layer_held = down
-                self.broadcast(self.hud_message(down))  # the key map overlay shows while it is held
+                if config.hud_settings(self.cfg)["trigger"] == "hold":
+                    self.broadcast(self.hud_message(down))  # the old way: the key map shows while it is held
+                elif not down and self.hud_open:   # "combo": letting go of the layer key also closes it
+                    self.hud_open = False
+                    self.broadcast(self.hud_message(False))
+            return
+        if down and self.hud_combo(key):
             return
         if down:
             self.press(key)
         else:
             self.release(key)
+
+    def hud_combo(self, key):
+        """Layer + the overlay key opens the key map, pressing it again closes it. True when `key` was that
+        combo, so it runs no action: the combo belongs to the overlay (Settings says so next to the choice).
+        Its release finds no press to finish (release() ignores it), so nothing fires on the way up either."""
+        hud = config.hud_settings(self.cfg)
+        if not (self.layer_held and hud["enabled"] and hud["trigger"] == "combo" and key == hud["key"]):
+            return False
+        self.hud_open = not self.hud_open
+        self.broadcast(self.hud_message(self.hud_open))
+        return True
 
     # ------------------------------------------------------------ tap / hold / double
     def press(self, key):
@@ -358,22 +376,26 @@ class Daemon:
         self.presses.clear()
         if self.layer_held:  # the numpad went away with the layer key down: take the key map off the screen
             self.layer_held = False
+            self.hud_open = False
             self.broadcast(self.hud_message(False))
         self.layer_held = False
+        self.hud_open = False
         self.zero_events = []
         if self.zero_timer:
             self.zero_timer.cancel()
             self.zero_timer = None
 
     # ------------------------------------------------------------ the key map overlay
-    def hud_keys(self, window=None):
-        """{key: short text} of what every key does while the layer key is held (for the focused app's profile)."""
+    def hud_keys(self, window=None, layer=True):
+        """{key: short text} of what every key does (for the focused app's profile): with the layer key held
+        (layer=True), or on its own (layer=False, the overlay's "Normal" half)."""
         if window is None:
             window = active_window_class() if len(self.cfg["profiles"]) > 1 else ""
-        every = {key for profile in self.cfg["profiles"] for key in profile["layer_bindings"]}
+        kind = "layer_bindings" if layer else "bindings"
+        every = {key for profile in self.cfg["profiles"] for key in profile.get(kind, {})}
         shown = {}
         for key in sorted(every):
-            text = actions.slot_summary(config.resolve(self.cfg, key, True, window))
+            text = actions.slot_summary(config.resolve(self.cfg, key, layer, window))
             if text:
                 shown[key] = text
         return shown
@@ -384,10 +406,17 @@ class Daemon:
         return {key: name for key, name in found.items() if name}
 
     def hud_message(self, on):
+        """What the overlay shows. "keys" is the layer half (as before, so an older overlay still works);
+        "base" is the Normal half. The layer key and the combo key are named so the overlay can mark them."""
         window = active_window_class() if on and len(self.cfg["profiles"]) > 1 else ""
         shown = self.hud_keys(window) if on else {}
-        return {"event": "hud", "on": on, "opacity": config.hud_settings(self.cfg)["opacity"],
-                "keys": shown, "stickers": self.hud_stickers(shown, window) if on else {}}
+        base = self.hud_keys(window, layer=False) if on else {}
+        hud = config.hud_settings(self.cfg)
+        return {"event": "hud", "on": on, "opacity": hud["opacity"], "keys": shown, "base": base,
+                "stickers": self.hud_stickers(shown, window) if on else {},
+                "base_stickers": self.hud_stickers(base, window) if on else {},
+                "layer_key": self.cfg.get("layer_key") or "",
+                "combo_key": hud["key"] if hud["trigger"] == "combo" else ""}
 
     def hud_preview(self):
         """Show the key map for a few seconds (the settings window's Preview button), starting the overlay if needed."""
@@ -398,10 +427,14 @@ class Daemon:
         loop = asyncio.get_running_loop()
         loop.call_later(HUD_PREVIEW_DELAY, lambda: self.broadcast(self.hud_message(True)))
         loop.call_later(HUD_PREVIEW_DELAY + HUD_PREVIEW_SECONDS,
-                        lambda: self.layer_held or self.broadcast(self.hud_message(False)))
+                        lambda: self.hud_held() or self.broadcast(self.hud_message(False)))
+
+    def hud_held(self):
+        """The key map is open because of the numpad (not a preview): opened with the combo, or held ("hold")."""
+        return self.layer_held and (self.hud_open or config.hud_settings(self.cfg)["trigger"] == "hold")
 
     def hud_showing(self):
-        return self.layer_held or time.monotonic() < self.hud_show_until
+        return self.hud_held() or time.monotonic() < self.hud_show_until
 
     def hud_wanted(self):
         shown = bool(self.cfg.get("layer_key")) or time.monotonic() < self.hud_preview_until

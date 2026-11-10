@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 
 from numpadctl import actions, sandbox, ui_common
 from .checkbox import CheckBox
-from . import theme
+from . import icons, theme
 from .buttons import ComboBox, Menu, PushButton, ToolButton
 from .picker import ActionPicker
 
@@ -97,7 +97,9 @@ class TextField(QWidget):
         self.get_params = lambda: {}  # set by the editor: the other fields' values
 
     def _picker(self, suggest, window):
-        button = ToolButton(text="☰", toolTip="Pick from a list")
+        button = ToolButton(toolTip="Pick from a list")
+        button.setObjectName("icon")
+        icons.set_symbol(button, "list", 24)
         button.setPopupMode(QToolButton.InstantPopup)
         menu = Menu(button)
         button.setMenu(menu)
@@ -226,7 +228,9 @@ class StepCard(QFrame):
         layout.setContentsMargins(10, 6, 10, 6)
 
         header = QHBoxLayout()
-        self.toggle = ToolButton(text="▾" if owner.expanded == index else "▸")
+        self.toggle = ToolButton(toolTip="Show or hide this step's settings")
+        self.toggle.setObjectName("icon")
+        icons.set_symbol(self.toggle, "expand_more" if owner.expanded == index else "chevron_right", 24)
         self.toggle.clicked.connect(lambda: owner.expand(None if owner.expanded == index else index))
         header.addWidget(self.toggle)
         titles = QVBoxLayout()
@@ -295,7 +299,8 @@ class StepList(QWidget):
         buttons = QHBoxLayout()
         add = PushButton("＋ Add action")
         add.clicked.connect(lambda: self.add("open_browser"))
-        wait = PushButton("⏱ Add wait")
+        wait = PushButton("Add wait")
+        icons.set_symbol(wait, "timer")
         wait.clicked.connect(lambda: self.add("wait"))
         buttons.addWidget(add)
         buttons.addWidget(wait)

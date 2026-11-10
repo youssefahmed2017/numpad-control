@@ -323,11 +323,16 @@ keyboard in the window also removes the actions set on its keys.
   Settings files from before sets work as they were: your profiles become one set called
   "Default". In `config.json` they are the `sets` list (`"sets": [{"name": "Coding",
   "profiles": [...]}]`); which one is active is saved next to the modes state.
-- **Key map overlay (the "Ghost HUD").** Hold the layer key and a see-through copy of your numpad
-  fades onto the middle of the screen, showing what each key does in the layer (for the app you are
-  in: its profile first, Default for the rest; a key with more than one action shows "+1"); let go
-  and it fades away. It never takes focus and lets every click through. Settings → *Key map
-  overlay* switches it off, sets the opacity (30 to 100 %), and has a **Preview** button. It only
+- **Key map overlay (the "Ghost HUD").** Press **Layer + Enter** and a see-through copy of your numpad
+  fades onto the middle of the screen, twice: what each key does normally on the left, and with the
+  layer key held on the right (for the app you are in: its profile first, Default for the rest; a key
+  with more than one action shows "+1"). Press Layer + Enter again, or let go of the layer key, and it
+  fades away. Holding the layer key alone no longer shows it, so Layer + 1 and friends don't flash it up.
+  The combo belongs to the overlay: an action bound to Layer + that key doesn't run (Settings warns
+  you). It never takes focus and lets every click through. Settings → *Key map overlay* switches it off,
+  picks the combo key (*Open it with: Layer + …*), or brings back the old way (*Holding the layer key*:
+  it shows for as long as the layer key is held), sets the opacity (30 to 100 %), and has a **Preview**
+  button. In `config.json`: `"hud": {"trigger": "combo" or "hold", "key": "Enter"}`. It only
   runs when a layer key is set: it is a small separate process the service starts and stops by
   itself, so it costs nothing without one. On Linux it is drawn through XWayland (Wayland itself
   doesn't let an ordinary window float above the others without taking focus, XWayland does), so
@@ -550,6 +555,15 @@ the Windows installer), then **sign it on your own computer**:
 uploads `source.zip` and `release.sig` to the release. Until then, installed copies see the release
 but refuse to install it.
 
+**Not released yet** (on `main`):
+- **Key map overlay, both halves ([#12](https://github.com/youssefahmed2017/numpad-control/issues/12)):** it opens
+  with Layer + Enter (configurable) instead of popping up whenever the layer key is held, and shows the normal keys
+  next to the layer keys. *Holding the layer key* in Settings brings back the old behaviour.
+- **Looks more like a Google app:** Material Symbols icons (Google's own, bundled, 12 KB) instead of text symbols;
+  buttons are full pills that squeeze when pressed, like Material 3 Expressive; on/off settings are Material 3
+  switches; the action fields are Material drop-down fields; the "⋯" buttons are round icon buttons; the
+  selected Normal / Layer segment has a tick; the app bar is flat.
+
 **0.3.1:** share profiles, a different key layout, and honest USB advice.
 - **Import and export profiles:** *Profile ⋯ → Export profile…* saves one profile (keys, actions and window match,
   nothing else) as a small file; *Import profile…* adds one you were sent. The file is checked strictly, and you
@@ -767,5 +781,6 @@ The icon and banner are in [`assets/`](assets/): `icon.svg`, PNGs from 16 to 512
 (Windows), `banner.png` and `social-preview.png` (1280x640, for GitHub's link preview).
 `banner.txt` is the picture `setup.sh` and `setup.ps1` draw when they start (plain letters: `p` tile, `w` key,
 `l` lettering; the header in the file says so), so the installers' logo can be edited as text.
-The UI fonts (Google Sans, JetBrains Mono) is in `assets/fonts/`.
+The UI fonts (Google Sans, JetBrains Mono) and the icons (Material Symbols Rounded, Apache 2.0, cut down with
+`tools/subset-icons.py`) are in `assets/fonts/`.
 The website uses the same icon as its favicon and `site/img/og.png` as its link preview.

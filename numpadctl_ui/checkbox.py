@@ -100,3 +100,110 @@ class CheckBox(QCheckBox):
             painter.setBrush(Qt.NoBrush)
             painter.drawPath(tick_path(ticked, box))
         painter.end()
+
+
+# ---------------------------------------------------------------- the M3 switch
+TRACK_W, TRACK_H = 52.0, 32.0
+THUMB_OFF, THUMB_ON, THUMB_PRESSED = 16.0, 24.0, 28.0   # M3: the thumb grows when on and again while held
+HALO = 40.0                                             # the hover / press state-layer circle around the thumb
+
+
+class Switch(QCheckBox):
+    """Google's Material 3 switch, for settings that are simply on or off.
+
+    Off: an outlined track with a small thumb on the left. On: a filled accent track, a bigger thumb on
+    the right with a check mark in it. The thumb slides on a spring (it overshoots a hair and settles,
+    like Android's) and swells while the pointer holds it. It is still a QCheckBox underneath, so
+    isChecked(), toggled and the text work exactly the same as for CheckBox.
+    """
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setProperty("switch", True)   # the stylesheet makes the indicator room 52 x 32
+        self._pos = 1.0 if self.isChecked() else 0.0     # 0 = off (left) .. 1 = on (right)
+        self._hover = 0.0
+        self._held = False
+        self._slide = motion.Spring(self, "fast_spatial", self._set_pos)
+        self._glow = motion.Spring(self, "default_effects", self._set_hover)
+        self.toggled.connect(self._on_toggled)
+
+    def position(self):
+        return self._pos
+
+    def _set_pos(self, value):
+        self._pos = float(value)
+        self.update()
+
+    def _set_hover(self, value):
+        self._hover = float(value)
+        self.update()
+
+    def _on_toggled(self, checked):
+        if not self.isVisible():
+            self._slide.stop()
+            self._set_pos(1.0 if checked else 0.0)
+        else:
+            self._slide.go(self._pos, 1.0 if checked else 0.0)
+
+    def enterEvent(self, event):
+        if self.isEnabled():
+            self._glow.go(self._hover, 1.0)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._glow.go(self._hover, 0.0)
+        super().leaveEvent(event)
+
+    def mousePressEvent(self, event):
+        self._held = True
+        self.update()
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        self._held = False
+        self.update()
+        super().mouseReleaseEvent(event)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)   # the text; the stylesheet leaves the indicator area empty
+        c = theme.current
+        if not c:
+            return
+        option = QStyleOptionButton()
+        self.initStyleOption(option)
+        room = QRectF(self.style().subElementRect(QStyle.SE_CheckBoxIndicator, option, self))
+        track = QRectF(room.left(), room.center().y() - TRACK_H / 2, TRACK_W, TRACK_H)
+        on = max(0.0, min(1.0, self._pos))   # the spring may overshoot: colours stay in range
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        if not self.isEnabled():
+            painter.setOpacity(DISABLED_OPACITY)
+        # track: outlined surface when off, filled primary when on (cross-faded while it moves)
+        fill = QColor(tokens.blend(c["surfaceContainerHighest"], c["primary"], on))
+        border = QColor(c["outline"])
+        border.setAlphaF(1.0 - on)
+        painter.setPen(QPen(border, BORDER) if on < 1.0 else Qt.NoPen)
+        painter.setBrush(fill)
+        painter.drawRoundedRect(track.adjusted(1, 1, -1, -1), TRACK_H / 2 - 1, TRACK_H / 2 - 1)
+        # thumb: its centre slides from the left end to the right end of the track
+        size = THUMB_PRESSED if self._held and self.isEnabled() else THUMB_OFF + (THUMB_ON - THUMB_OFF) * on
+        x = track.left() + TRACK_H / 2 + (TRACK_W - TRACK_H) * self._pos
+        centre = QPointF(x, track.center().y())
+        if self._hover > 0 and self.isEnabled():
+            halo = QColor(c["primary"] if self.isChecked() else c["onSurface"])
+            halo.setAlphaF((tokens.STATE["pressed"] if self._held else tokens.STATE["hover"]) * self._hover)
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(halo)
+            painter.drawEllipse(centre, HALO / 2, HALO / 2)
+        thumb_off = c["onSurfaceVariant"] if self._hover > 0.5 else c["outline"]
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(tokens.blend(thumb_off, c["onPrimary"], on)))
+        painter.drawEllipse(centre, size / 2, size / 2)
+        if on > 0.5:   # the check mark fades in on the on-thumb (M3's "with icon" switch)
+            tick = QRectF(centre.x() - 8, centre.y() - 8, 16, 16)
+            pen = QColor(c["onPrimaryContainer"])
+            pen.setAlphaF((on - 0.5) * 2)
+            painter.setPen(QPen(pen, 2.0, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawPath(tick_path(1.0, tick))
+        painter.end()

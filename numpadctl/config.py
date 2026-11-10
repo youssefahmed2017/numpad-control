@@ -152,14 +152,25 @@ def profile_matches(profile, window_class):
     return bool(window_class) and window_class.lower() in classes
 
 
+HUD_TRIGGERS = ("combo", "hold")
+HUD_DEFAULT_KEY = "Enter"   # Layer + Enter: the biggest key, easy to find without looking
+
+
 def hud_settings(cfg):
-    """The key map overlay settings, always complete: {"enabled": bool, "opacity": 30..100}."""
+    """The key map overlay settings, always complete:
+    {"enabled": bool, "opacity": 30..100, "trigger": "combo" | "hold", "key": a numpad key}.
+
+    trigger "combo" (the default since issue #12): Layer + `key` opens the overlay and pressing it again, or
+    letting go of the layer key, closes it, so Layer + 1 and friends no longer flash it up every time.
+    "hold" is the old way: it shows for as long as the layer key is held. `key` only matters for "combo"."""
     hud = cfg.get("hud") if isinstance(cfg.get("hud"), dict) else {}
     try:
         opacity = max(30, min(100, int(hud.get("opacity", 90))))
     except (TypeError, ValueError):
         opacity = 90
-    return {"enabled": bool(hud.get("enabled", True)), "opacity": opacity}
+    trigger = hud.get("trigger") if hud.get("trigger") in HUD_TRIGGERS else "combo"
+    key = hud.get("key") if isinstance(hud.get("key"), str) and hud.get("key") else HUD_DEFAULT_KEY
+    return {"enabled": bool(hud.get("enabled", True)), "opacity": opacity, "trigger": trigger, "key": key}
 
 
 def resolve(cfg, key, layer, window_class):
