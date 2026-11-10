@@ -18,10 +18,13 @@ Goal: 10 models, cheap ones first (AliExpress / local shops, wired and wireless)
 
 ## Games with anti-cheat
 
-While one of these runs, NumpadControl lets go of the numpad by itself (no keyboard
-hook at all) and takes it back when the game closes (`numpadctl/games.py`). The test is
-that the game starts and plays normally with NumpadControl running, the tray shows
-"Paused while … runs", and nothing is flagged in the days after.
+While one of these runs, NumpadControl takes its keyboard hook DLL out by itself (the numpad
+is reopened without it; Raw Input keeps reading it, so the actions still work) and puts the hook
+back when the game closes (`numpadctl/games.py`, setting `pause_for_games`: `"hook"` is the
+default on Windows, `"full"` lets go of the numpad completely). The test is that the game starts and
+plays normally with NumpadControl running, the tray shows "Keys type through while … runs (actions
+still work)", a numpad action (volume, a profile switch) still runs in the game, and nothing is
+flagged in the days after. Needs real hardware: anti-cheat refuses virtual machines.
 
 | Game | Anti-cheat | Free to play | Tested by | Result |
 |---|---|---|---|---|
@@ -45,6 +48,6 @@ Most of these games are tens of gigabytes. You don't need to install them all yo
 - **Let the beta testers do the rest.** Phase 1's closed beta (200 users, section 8) is
   mostly streamers and gamers who already have these games installed. Ask each one to
   send a "Game with anti-cheat test" report; one report per game, from anyone, counts.
-- **Watch for a game not being recognised.** If the tray doesn't say "Paused while …
-  runs" during a game, the report form asks for the game's program name (Task Manager →
+- **Watch for a game not being recognised.** If the tray doesn't say "Keys type
+  through while … runs" during a game, the report form asks for the game's program name (Task Manager →
   Details), which then goes into `games.py`.

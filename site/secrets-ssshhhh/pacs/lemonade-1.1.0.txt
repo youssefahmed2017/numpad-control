@@ -1,9 +1,0 @@
-lemonade 1.1.0: a recipe (makes 1 jug)
-
-  - 4 lemons, juiced
-  - 150 g sugar
-  - 1 litre cold water
-  - ice
-
-  Stir the sugar into half the water until it disappears, add the juice and the rest of the water, then the ice.
-  Taste it. Add more sugar if your face does the thing.

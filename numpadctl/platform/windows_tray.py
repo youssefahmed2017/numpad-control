@@ -100,6 +100,8 @@ class TrayApp:
             return "Paused"
         if getattr(self.daemon, "paused_for", None):
             return f"Paused while {self.daemon.paused_for} runs"
+        if getattr(self.daemon, "hook_off_for", None):
+            return f"Keys type through while {self.daemon.hook_off_for} runs (actions still work)"
         return "Numpad connected" if self.daemon.numpad is not None else "Numpad not found - plug it in"
 
     def refresh(self):

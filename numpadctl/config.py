@@ -43,7 +43,7 @@ DEFAULT_CONFIG = {
     "contrast": "standard",  # settings window: "standard", "medium" or "high" (Material 3 contrast levels)
     "appearance": "auto",  # settings window: "auto" (follow the system), "light" or "dark"
     "updates": "auto",          # install new releases by themselves; "notify" only says so; "off"
-    "pause_for_games": "auto",  # let go of the numpad while a game with anti-cheat runs (auto: on Windows)
+    "pause_for_games": "auto",  # with a game with anti-cheat running: "hook" = drop only the keyboard hook, "full" = let go of the numpad (auto: hook on Windows)
     "protected_games": [],      # more program names for that, e.g. ["MyGame.exe"] (games.py has the list)
     "welcomed": False,  # the first-run welcome has been seen
     "hud": {"enabled": True, "opacity": 90},  # the key map shown while the layer key is held (opacity in %)

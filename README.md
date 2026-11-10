@@ -80,15 +80,6 @@ action, Save. What the installers do, and their options:
 - **Find it in your launcher.** The menu entry answers to "NumpadControl", "Numpad Control", its old name "NumpadPilot", and "numpad". Its icon is installed in
   your icon theme (`~/.local/share/icons/hicolor`), so launchers that ignore file paths show it too. (The
   setup also adds the theme's `index.theme` there if missing: hyprlauncher skips icon folders without one.)
-- **Secrets.** With the settings window in front, the Konami code on the numpad (`8 8 2 2 4 6 4 6`)
-  puts a giant KONAMI on screen, and there is a second, better hidden one (it takes the numpad *and*
-  the keyboard). They only work while keys are being selected (window in front), so they never run
-  your real actions. Where the second one leads, the way out is typed, not clicked (the third Esc or close click also leaves). Something in there is locked.
-- **soda.** `tools/soda` is a tiny package manager written in bash for fun. Its packages are plain
-  files listed in an index (`site/secrets-ssshhhh/soda-pacs.json`); it downloads them over https,
-  checks their sha256 and keeps them in `~/.local/share/soda`. It never runs or extracts what it
-  downloads, never needs sudo and touches nothing outside that folder. `tools/soda --help` lists
-  what it does.
 
 ## How it works
 - A **background service** (systemd user service) reads the numpad directly with
@@ -641,11 +632,17 @@ the standard numpad); a Key tester and Diagnostics; starter presets; Windows fix
 ## Games with anti-cheat
 On Windows, while a game with anti-cheat runs (Valorant, Fortnite, Call of Duty,
 Battlefield, Apex Legends and others, or any game using Easy Anti-Cheat, BattlEye or EA
-Javelin), NumpadControl lets go of the numpad completely, so nothing is hooked, and
-takes it back when the game closes. The tray shows "Paused while … runs". Settings:
-`"pause_for_games"` (`"auto"`: Windows only, `true`, `false`) and `"protected_games"`
-for more program names. Tested games and numpad models: [docs/compatibility.md](docs/compatibility.md);
-test a numpad with `python -m numpadctl check`.
+Javelin), NumpadControl takes its keyboard hook out of the game's way: the numpad is
+reopened without the hook DLL (the only part that Windows loads into other programs), so
+**your actions keep working**, but the numpad's keys also type into the game until it
+closes. Running programs are checked twice a second, launcher programs included, so the hook is
+usually out before the game loads it. The hook comes back by itself when the game closes. The tray shows "Keys type
+through while … runs (actions still work)". Settings: `"pause_for_games"` (`"auto"`: the
+hook mode on Windows only; `"hook"`; `"full"` or `true`: let go of the numpad completely,
+it then types like a normal keyboard and nothing is read; `false`: never) and
+`"protected_games"` for more program names. This is not tested against real anti-cheat yet
+(a VM can't do it: anti-cheat refuses them). Tested games and numpad models:
+[docs/compatibility.md](docs/compatibility.md); test a numpad with `python -m numpadctl check`.
 
 ## Privacy and crash reports
 NumpadControl collects nothing: no telemetry, no usage statistics, no account. If a part

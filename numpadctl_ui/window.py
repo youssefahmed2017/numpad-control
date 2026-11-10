@@ -13,7 +13,7 @@ import numpadctl
 from numpadctl import actions, config, devices, keys, presets, profile_io, stickers, ui_common
 from numpadctl.platform import IS_WINDOWS
 from .checkbox import CheckBox
-from . import dialogs, effects, egg, motion, secret, sticker_image, theme, tokens, tools, welcome
+from . import dialogs, effects, motion, sticker_image, theme, tokens, tools, welcome
 from .snackbar import Snackbar
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, SpinBox, ToolButton, _Morph
 from .picker import ActionPicker
@@ -143,10 +143,6 @@ class MainWindow(QMainWindow):
         self.first_run = not config.CONFIG_PATH.exists()  # a new install gets the welcome
         self.cfg = config.load()
         self.tour = None  # the open WelcomeDialog
-        self.egg_keys = egg.Matcher()
-        self.combo = egg.Combo()  # numpad then keyboard: opens the secret panel
-        self.secret = None  # the open SecretPanel
-        self.last_key_press = None
         self.profile_index, self.layer, self.selected = 0, False, None
         self.device = ""  # the id of the keyboard shown on the left ("" is the numpad)
         self.dirty = False
@@ -186,7 +182,6 @@ class MainWindow(QMainWindow):
         self.refresh_layer_switch()
         self.select("1")
         self.link = ui_common.ServiceLink(self.on_service_message, self.dispatch)
-        QApplication.instance().installEventFilter(self)
 
     # ---------------------------------------------------------------- layout
     def _build_header(self):
@@ -999,29 +994,6 @@ class MainWindow(QMainWindow):
     def open_diagnostics(self):
         tools.DiagnosticsDialog(self).exec()
 
-    def open_secret(self):
-        if self.secret is None:
-            secret.SecretPanel(self).show()  # not modal: other windows can sit above it
-
-    def eventFilter(self, obj, event):
-        """Letters typed on the keyboard count towards the secret combo, and towards "out" once the console is open
-        (while one of our windows is in front)."""
-        if (event.type() == QEvent.KeyPress and not event.isAutoRepeat()
-                and (self.isActiveWindow() or (self.secret is not None and self.secret.isActiveWindow()))):
-            # Qt hands the same key press to the window and then to each widget it passes through: count it once.
-            once = (event.timestamp(), event.nativeScanCode(), event.key())
-            if once == self.last_key_press:
-                return super().eventFilter(obj, event)
-            self.last_key_press = once
-            letter = egg.letter_of(event)
-            if letter and self.secret is not None:
-                self.secret.on_letter(letter)
-            elif letter and self.combo.press("key", letter):
-                QTimer.singleShot(0, self.open_secret)
-            elif letter and self.combo.progress > 3:
-                self.toast(f"secret: {self.combo.progress - 3}/5")
-        return super().eventFilter(obj, event)
-
     def open_welcome(self):
         if self.tour is None:
             welcome.WelcomeDialog(self).exec()
@@ -1074,14 +1046,6 @@ class MainWindow(QMainWindow):
                 self.set_device("")
             if self.tour:
                 self.tour.on_key(message["key"])
-            if self.secret:
-                self.secret.on_pad_key(message["key"])
-            elif self.combo.press("pad", message["key"]):
-                QTimer.singleShot(0, self.open_secret)
-            elif self.combo.progress == 3:
-                self.toast("secret: now the keyboard")
-            if self.egg_keys.press(message["key"]):
-                egg.Confetti(self.centralWidget(), text="KONAMI")
             button = self.key_buttons.get(message["key"])
             if button:
                 button.flash()
@@ -1118,7 +1082,7 @@ class MainWindow(QMainWindow):
     def sync_capture(self):
         """Keep the service in step: in Learn mode, or while this window is in front, keys report but don't run."""
         learn = self.learn.isChecked()
-        self.link.send({"cmd": "capture", "on": learn or self.following_keys() or bool(self.tour and self.tour.wants_capture()) or self.secret is not None,
+        self.link.send({"cmd": "capture", "on": learn or self.following_keys() or bool(self.tour and self.tour.wants_capture()),
                         "learn": learn})
 
     def changeEvent(self, event):

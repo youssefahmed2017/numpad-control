@@ -28,7 +28,8 @@ REPEAT_DELAY = 0.4        # repeating actions start after this...
 REPEAT_INTERVAL = 0.08    # ...and then run this often
 RAPID_DELAY = 2.0         # a Hold action with rapid-fire on starts repeating after this much more holding
 TURBO_DELAY = 0.2         # a Press slot with turbo on starts repeating after this long, so a normal tap is still one press
-GAME_CHECK_SECONDS = 3    # how often the running programs are checked for a game with anti-cheat
+GAME_CHECK_SECONDS = 0.5  # how often the running programs are checked for a game with anti-cheat (a snapshot takes
+                          # milliseconds; the keyboard hook DLL must be out before the game loads it, so be quick)
 MISSING_NOTICE = 5        # seconds the numpad must stay missing before saying so (not for a wobbly plug)
 RETRY_DELAYS = (1, 2, 5, 10, 30)  # seconds before reopening a numpad whose reader keeps failing at once
 QUICK_FAILURE = 5         # a reader that fails within this many seconds counts as failing at once
@@ -134,7 +135,8 @@ class Daemon:
         self.zero_timer = None
         self.numpad = None
         self.paused = False  # Windows tray "Pause": keys are still captured, but do nothing
-        self.paused_for = None  # name of the game with anti-cheat the numpad is let go for
+        self.paused_for = None  # name of the game with anti-cheat the numpad is let go for ("full" mode)
+        self.hook_off_for = None  # name of the game the keyboard hook is dropped for ("hook" mode: actions still work)
         self.missing_notified = False  # told the user the numpad is missing (so say when it's back)
         self.restart = restart or _restart_in_place  # after an update (the Windows tray brings its own)
         self.quit = quit or self.restart  # after starting the Windows Setup, which starts the new copy itself (the tray brings its own)
@@ -449,7 +451,7 @@ class Daemon:
     # ------------------------------------------------------------ settings window link
     def status(self):
         return {"event": "status", "connected": self.numpad is not None,
-                "devices": self.numpad.names if self.numpad else [], "paused_for": self.paused_for,
+                "devices": self.numpad.names if self.numpad else [], "paused_for": self.paused_for, "hook_off_for": self.hook_off_for,
                 "extra": {dev_id: {"connected": item["pad"] is not None, "released": dev_id in self.released}
                           for dev_id, item in self.extra.items()}}
 
@@ -573,7 +575,8 @@ class Daemon:
             if self.paused_for or dev_id in self.released:
                 await asyncio.sleep(DEVICE_CHECK_SECONDS)
                 continue
-            pad = numpad_input.open_device(spec, spec.get("grab", True))
+            unhooked = bool(self.hook_off_for)
+            pad = numpad_input.open_device(spec, spec.get("grab", True) and not unhooked)
             if pad is None:
                 await asyncio.sleep(DEVICE_CHECK_SECONDS)
                 continue
@@ -581,7 +584,8 @@ class Daemon:
             self.broadcast(self.status())
             try:
                 reader = asyncio.create_task(self.read_device(dev_id, pad))
-                while not reader.done() and not self.paused_for and dev_id not in self.released:
+                while not reader.done() and not self.paused_for and dev_id not in self.released \
+                        and bool(self.hook_off_for) == unhooked:
                     await asyncio.sleep(1)
                 if reader.done() and reader.exception():
                     log.info("device %s disconnected: %s", dev_id, reader.exception())
@@ -640,20 +644,26 @@ class Daemon:
             return None
         return games.protected_game(self.cfg, running)
 
-    async def watch_games(self):
-        """Return when a game with anti-cheat starts, so the numpad is let go."""
+    async def watch_games(self, current):
+        """Return when the game with anti-cheat that's running changes (starts, closes), from `current`."""
         while True:
             await asyncio.sleep(GAME_CHECK_SECONDS)
-            if await self.protected_game():
+            if await self.protected_game() != current:
                 return
 
-    def set_paused_for(self, game):
-        if game == self.paused_for:
+    def set_paused_for(self, game, hook_only=False):
+        """Record the game the numpad is let go for (full) or only unhooked for (hook_only); None for neither."""
+        full, hook = (None, game) if hook_only else (game, None)
+        if (full, hook) == (self.paused_for, self.hook_off_for):
             return
-        self.paused_for = game
-        if game:
-            log.info("%s is running: the numpad is let go until it closes", game)
-            actions.notify("Numpad paused", f"{game} is running, so the numpad types normally until it closes.")
+        self.paused_for, self.hook_off_for = full, hook
+        if full:
+            log.info("%s is running: the numpad is let go until it closes", full)
+            actions.notify("Numpad paused", f"{full} is running, so the numpad types normally until it closes.")
+        elif hook:
+            log.info("%s is running: the keyboard hook is dropped until it closes (actions still work)", hook)
+            actions.notify("Numpad hook off", f"{hook} is running: your actions still work, but the numpad's keys also type "
+                           "into the game until it closes.")
         else:
             log.info("the game closed: taking the numpad back")
             actions.notify("Numpad back", "The game closed; your numpad keys run their actions again.")
@@ -737,11 +747,12 @@ class Daemon:
         while True:
             self.reload_if_changed()
             game = await self.protected_game()
-            self.set_paused_for(game)
-            if game:
+            hook_only = games.mode(self.cfg) == "hook"
+            self.set_paused_for(game, hook_only)
+            if game and not hook_only:
                 await asyncio.sleep(GAME_CHECK_SECONDS)
                 continue
-            numpad = numpad_input.open_numpad(self.cfg["device"], self.cfg["grab"])
+            numpad = numpad_input.open_numpad(self.cfg["device"], self.cfg["grab"] and not game)
             if numpad is None:
                 if not waiting_logged:
                     log.info("numpad %s:%s not found (unplugged, or udev rule missing?)",
@@ -762,7 +773,7 @@ class Daemon:
             tasks = [asyncio.create_task(self.read(numpad)),
                      asyncio.create_task(self.watch_device_settings())]
             if games.enabled(self.cfg):
-                tasks.append(asyncio.create_task(self.watch_games()))
+                tasks.append(asyncio.create_task(self.watch_games(game)))
             done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             for task in pending:
                 task.cancel()

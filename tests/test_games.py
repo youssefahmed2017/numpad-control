@@ -15,6 +15,8 @@ class GamesTest(unittest.TestCase):
         self.assertEqual(games.protected_game({}, {"explorer.exe", "valorant-win64-shipping.exe"}), "Valorant")
         self.assertEqual(games.protected_game({}, {"beservice.exe"}), "a game with BattlEye")
         self.assertIsNone(games.protected_game({}, {"explorer.exe", "obs64.exe"}))
+        self.assertEqual(games.protected_game({}, {"fortnitelauncher.exe"}), "Fortnite", "the launcher stub starts first")
+        self.assertEqual(games.protected_game({}, {"valorant.exe"}), "Valorant")
 
     def test_extra_games_from_the_settings(self):
         cfg = {"protected_games": ["MyGame.exe"]}
@@ -27,6 +29,20 @@ class GamesTest(unittest.TestCase):
             self.assertFalse(games.enabled({}))
             self.assertTrue(games.enabled({"pause_for_games": True}))
         self.assertFalse(games.enabled({"pause_for_games": False}))
+
+    def test_the_game_check_is_quick(self):
+        self.assertLessEqual(daemon.GAME_CHECK_SECONDS, 1, "the hook must be out before the game loads it")
+
+    def test_modes(self):
+        with mock.patch.object(games, "IS_WINDOWS", True):
+            self.assertEqual(games.mode({}), "hook", "the default on Windows only drops the hook")
+            self.assertEqual(games.mode({"pause_for_games": "auto"}), "hook")
+            self.assertEqual(games.mode({"pause_for_games": "nonsense"}), "hook")
+        with mock.patch.object(games, "IS_WINDOWS", False):
+            self.assertEqual(games.mode({}), "off")
+            self.assertEqual(games.mode({"pause_for_games": "hook"}), "hook")
+        for setting, expected in (("hook", "hook"), ("full", "full"), (True, "full"), (False, "off")):
+            self.assertEqual(games.mode({"pause_for_games": setting}), expected, setting)
 
 
 class LinuxProcessesTest(unittest.TestCase):
@@ -94,6 +110,42 @@ class ServicePausesForGamesTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(opened), 2, "taken back after the game closed")
             loop.cancel()
         self.assertEqual([c.args[0] for c in notify.call_args_list], ["Numpad paused", "Numpad back"])
+
+    async def test_hook_mode_keeps_the_numpad_but_drops_the_hook_while_the_game_runs(self):
+        running = [set()]
+        opened = []
+
+        def open_numpad(spec, grab):
+            opened.append((FakeNumpad(), grab))
+            return opened[-1][0]
+
+        with mock.patch.object(daemon, "GAME_CHECK_SECONDS", 0.02), \
+                mock.patch.object(daemon.processes, "running", lambda: running[0]), \
+                mock.patch.object(daemon.numpad_input, "open_numpad", open_numpad), \
+                mock.patch.object(daemon.actions, "notify") as notify, \
+                mock.patch.object(daemon.Daemon, "reload_if_changed", lambda self: None):
+            d = daemon.Daemon(run_action=lambda *a: None)
+            d.cfg = dict(d.cfg, pause_for_games="hook", grab=True)
+            loop = asyncio.create_task(d._device_loop())
+            await asyncio.sleep(0.1)
+            self.assertEqual([grab for _, grab in opened], [True], "hooked before any game")
+
+            running[0] = {"easyanticheat_eos.exe"}
+            await asyncio.sleep(0.2)
+            self.assertTrue(opened[0][0].closed, "the hooked reader is closed")
+            self.assertEqual([grab for _, grab in opened], [True, False], "reopened without the hook")
+            self.assertIsNotNone(d.numpad, "the numpad is still read: its actions keep working")
+            self.assertIsNone(d.paused_for)
+            self.assertEqual(d.hook_off_for, "a game with Easy Anti-Cheat")
+            self.assertEqual(d.status()["hook_off_for"], "a game with Easy Anti-Cheat")
+            self.assertEqual(len(opened), 2, "not reopened again while the game runs")
+
+            running[0] = set()
+            await asyncio.sleep(0.2)
+            self.assertIsNone(d.hook_off_for)
+            self.assertEqual([grab for _, grab in opened], [True, False, True], "hooked again after the game closed")
+            loop.cancel()
+        self.assertEqual([c.args[0] for c in notify.call_args_list], ["Numpad hook off", "Numpad back"])
 
     async def test_off_means_no_checks(self):
         d = daemon.Daemon(run_action=lambda *a: None)

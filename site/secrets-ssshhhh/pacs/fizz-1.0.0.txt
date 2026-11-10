@@ -1,5 +1,0 @@
-        ____
-       | ## |
-       | ## |   fizz 1.0.0
-       | ## |   the first package ever installed with soda.
-       |____|   it is a file. it does nothing. it fizzes quietly.
