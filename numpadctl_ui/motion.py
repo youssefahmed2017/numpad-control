@@ -131,6 +131,18 @@ def overshoot(damping):
     return math.exp(-math.pi * damping / math.sqrt(1.0 - damping * damping)) if damping < 1.0 else 0.0
 
 
+# ---------------------------------------------------------------- the user's motion settings
+# Settings → Appearance (config.look_settings): "animations" off makes every move jump to its end at once
+# (its done-callbacks still run, so nothing waits for an animation that never comes); "speed" scales every
+# duration (2.0 = twice as fast). Springs keep their shape: only the clock they run on is sped up or slowed.
+SETTINGS = {"enabled": True, "speed": 1.0}
+
+
+def configure(enabled=True, speed=1.0):
+    SETTINGS["enabled"] = bool(enabled)
+    SETTINGS["speed"] = max(0.25, min(3.0, float(speed)))
+
+
 # ---------------------------------------------------------------- moving values
 class _Move:
     """Moves a value from one number to another, calling apply(value) every frame. Retarget with go()."""
@@ -138,6 +150,8 @@ class _Move:
     def __init__(self, parent, ms, apply):
         self._apply = apply
         self._from = self._to = 0.0
+        self._base = ms           # the token's duration; the running one is scaled by SETTINGS["speed"]
+        self._done = []
         self._animation = QVariantAnimation(parent, startValue=0.0, endValue=1.0)
         self._animation.setDuration(ms)
         self._animation.valueChanged.connect(lambda progress, move=self: move._step(progress))
@@ -157,6 +171,12 @@ class _Move:
         """Move from `current` to `target`, starting now (also fine in the middle of a move)."""
         self._animation.stop()
         self._from, self._to = float(current), float(target)
+        if not SETTINGS["enabled"]:   # animations off: straight to the end, and say it's done
+            self._step(1.0)
+            for callback in list(self._done):
+                callback()
+            return
+        self._animation.setDuration(max(1, round(self._base / SETTINGS["speed"])))
         self._animation.start()
 
     def stop(self):
@@ -164,6 +184,7 @@ class _Move:
 
     def when_done(self, callback):
         """Call callback() each time a move ends."""
+        self._done.append(callback)
         self._animation.finished.connect(callback)
 
     def set_time(self, ms):
@@ -201,9 +222,10 @@ class Spring(_Move):
     def set_spring(self, name):
         """Follow another spring from now on (a button squeezes with one and bounces back with another)."""
         self.damping, self.stiffness = SPRINGS[name]
-        self._animation.setDuration(spring_duration(self.damping, self.stiffness))
+        self._base = spring_duration(self.damping, self.stiffness)
+        self._animation.setDuration(self._base)
 
     def fraction(self, progress):
         if progress >= 1.0:
             return 1.0
-        return spring_value(self.damping, self.stiffness, progress * self.duration / 1000.0)
+        return spring_value(self.damping, self.stiffness, progress * self._base / 1000.0)   # the spring's own time

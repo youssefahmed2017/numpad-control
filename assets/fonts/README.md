@@ -8,3 +8,8 @@ Windows (where it otherwise fell back to a pixelated bitmap font) and Linux.
 window uses with `tools/subset-icons.py` (weight 400, grade 0, size 24 fixed; the FILL axis kept). Its
 `codepoints.json` maps each icon name to its character. To add an icon, add its name to the list and run the
 tool again on the full font (see `numpadctl_ui/icons.py`).
+
+`../brands/` holds two brand logos for the built-in key icons (numpadctl_ui/action_icons.py): OBS Studio and
+Python, from Simple Icons (https://simpleicons.org, CC0 1.0, see `LICENSE-SimpleIcons.md` there), rendered once
+into 128 px single-colour masks with `rsvg-convert` (the trimmed Qt has no SVG support) and tinted at runtime.
+The logos are their owners' trademarks; they are shown only to say "this action works with OBS / Python".

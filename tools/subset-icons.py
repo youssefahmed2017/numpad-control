@@ -19,12 +19,20 @@ from fontTools import subset
 from fontTools.ttLib import TTFont
 from fontTools.varLib import instancer
 
-ICONS = ["add", "arrow_back", "arrow_drop_down", "arrow_forward", "bolt", "build", "celebration", "check",
-         "check_circle", "chevron_right", "circle", "close", "content_copy", "dark_mode", "data_object", "delete",
-         "download", "drag_indicator", "edit", "error", "expand_less", "expand_more", "folder_open", "help", "image",
-         "info", "keyboard", "layers", "light_mode", "link", "list", "mic", "more_vert", "open_in_new", "palette",
-         "play_arrow", "radio_button_unchecked", "refresh", "remove", "save", "search", "settings", "stop", "sync",
-         "timer", "tune", "undo", "upload", "volume_up", "warning"]
+ICONS = ["add", "add_circle", "alt_route", "apps", "arrow_back", "arrow_drop_down", "arrow_forward", "bedtime",
+         "bolt", "build", "celebration", "check", "check_circle", "chevron_right", "circle", "close", "code",
+         "content_copy", "dangerous", "dark_mode", "data_object", "delete", "do_not_disturb_on", "download",
+         "drag_indicator", "edit", "error", "expand_less", "expand_more", "fiber_manual_record", "filter_alt",
+         "folder_open", "fullscreen", "headphones", "help", "image", "info", "keyboard", "keyboard_alt",
+         "keyboard_keys", "layers", "light_mode", "link", "list", "lock", "mic", "mic_off", "more_vert",
+         "move_group", "music_note", "music_off", "notifications", "open_in_new", "palette", "pause",
+         "picture_in_picture", "play_arrow", "play_pause", "power_settings_new", "privacy_tip", "public",
+         "radio_button_checked", "radio_button_unchecked", "record_voice_over", "refresh", "remove", "replay",
+         "restart_alt", "rocket_launch", "save", "screenshot_monitor", "screenshot_region", "search",
+         "select_window", "sensors", "sensors_off", "settings", "settings_backup_restore", "skip_next",
+         "skip_previous", "space_dashboard", "speaker", "speaker_group", "stack", "stop", "stop_circle",
+         "swap_horiz", "sync", "timer", "toggle_off", "toggle_on", "tune", "undo", "upload", "videocam",
+         "visibility", "voice_over_off", "volume_down", "volume_off", "volume_up", "warning"]
 OUT = Path(__file__).resolve().parent.parent / "assets" / "fonts" / "MaterialSymbolsRounded.ttf"
 
 

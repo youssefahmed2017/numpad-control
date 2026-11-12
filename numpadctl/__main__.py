@@ -1,4 +1,4 @@
-"""numpadctl [gui [--hidden]|run|tray|detect [--json]|list|check|update|usb-info]"""
+"""numpadctl [gui [--hidden]|run|tray|detect [--json]|list|check|update|usb-info|actions|templates]"""
 
 import logging
 import sys
@@ -52,6 +52,16 @@ def main():
                     break
             except OSError:
                 continue
+    elif command == "actions":
+        # For template writers (numpadctl/templates.py): every action id and its settings.
+        from . import templates
+        print(templates.describe_actions())
+    elif command == "templates":
+        # Where your templates are, and what each one is (read without running them).
+        from . import templates
+        print(f"Templates folder: {templates.folder()}")
+        for t in templates.list_templates():
+            print(f"  {t.path.name}: {t.name}" + (f"  ({t.problem})" if t.problem else f": {t.description}"))
     else:
         print(__doc__)
         sys.exit(1)

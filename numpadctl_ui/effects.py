@@ -9,7 +9,7 @@ from PySide6.QtCore import QEvent, QObject, QRectF, Qt
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPalette
 from PySide6.QtWidgets import QAbstractButton, QCheckBox, QGraphicsDropShadowEffect, QGraphicsOpacityEffect, QWidget
 
-from . import motion
+from . import motion, theme
 
 RIPPLE_MS = motion.LONG1
 RIPPLE_ALPHA = 0.16      # a bit above the 10% "pressed" state layer, fading out as it spreads
@@ -72,7 +72,8 @@ class RippleFilter(QObject):
     def eventFilter(self, obj, event):
         kind = event.type()
         if kind == QEvent.MouseButtonPress and isinstance(obj, QAbstractButton) \
-                and not isinstance(obj, QCheckBox) and obj.isEnabled() and event.button() == Qt.LeftButton:
+                and not isinstance(obj, QCheckBox) and obj.isEnabled() and event.button() == Qt.LeftButton \
+                and theme.material() and theme.look.get("ripples", True):   # Settings → Appearance
             layer = obj.findChild(Ripple, options=Qt.FindDirectChildrenOnly) or Ripple(obj)
             layer.show()
             layer.start(event.position())

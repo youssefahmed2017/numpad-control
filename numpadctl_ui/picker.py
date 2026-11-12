@@ -219,8 +219,8 @@ class ActionPicker(PushButton):
         return FIELD_RADIUS   # the ripple is clipped to the field's corners (no pill morph for a field)
 
     def paintEvent(self, event):
-        c = theme.current
-        if not c:
+        c = theme.painted()
+        if not c:   # Material 3 off: a classic push button with the action's name
             return super().paintEvent(event)
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -238,8 +238,10 @@ class ActionPicker(PushButton):
         thick = 2 if active else 1
         painter.fillRect(QRectF(0, rect.height() - thick, rect.width(), thick), line)
         content = c["onSurface"] if self.isEnabled() else c["onSurfaceVariant"]
-        arrow = icons.pixmap("arrow_drop_down", c["primary"] if active else c["onSurfaceVariant"], 24)
-        painter.drawPixmap(QRectF(rect.width() - 12 - 24, (rect.height() - 24) / 2, 24, 24), arrow, QRectF(arrow.rect()))
+        size = icons.ICON_BUTTON
+        arrow = icons.pixmap("arrow_drop_down", c["primary"] if active else c["onSurfaceVariant"], size)
+        painter.drawPixmap(QRectF(rect.width() - 14 - size, (rect.height() - size) / 2, size, size), arrow,
+                           QRectF(arrow.rect()))
         painter.setFont(self.font())
         painter.setPen(QColor(content))
         text_rect = QRectF(16, 0, rect.width() - 16 - 48, rect.height())

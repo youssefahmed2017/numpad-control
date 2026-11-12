@@ -341,6 +341,41 @@ keyboard in the window also removes the actions set on its keys.
   and tries again, slower each time. Restarting or stopping
   the service takes the overlay with it (and a crashed service's leftover is ended by the next one), so there is only ever one.
 
+## Appearance (make it yours)
+Settings → **Appearance** changes how the window looks and moves, and shows every change at once (kept with
+Save, like everything else):
+- **Material 3 design** on or off. Off is Qt's classic look (plain buttons, checkboxes, tabs), still in your
+  colours. The key map overlay always stays Material.
+- **Shape:** round (Material 3 Expressive pills), rounded or square corners everywhere.
+- **Colours:** light, dark or follow the system, then where the colours come from:
+  - a **built-in accent**;
+  - **any colour you pick**: Google's own maths turns it into a whole Material You theme;
+  - **a picture**, like your wallpaper: the colour is picked the way Android picks it;
+  - **pywal**: follows `~/.cache/wal/colors.json`, so `wal -i <picture>` re-colours NumpadControl too;
+  - **a theme file**: a [Material Theme Builder](https://material-foundation.github.io/material-theme-builder/)
+    export, [matugen](https://github.com/InioX/matugen)'s JSON, or a plain `{"primary": "#..."}`. Roles the file
+    leaves out are made from its primary colour.
+
+  The picture, pywal's file and the theme file are watched: when a wallpaper script rewrites them, the window
+  (and the key map overlay) re-colours by itself. **Scheme style** picks how one colour becomes a theme (tonal
+  spot like Android, vibrant, expressive, fidelity, content, neutral, monochrome, rainbow, fruit salad), and
+  **Contrast** standard, medium or high. **Export theme…** saves the colours in use (light and dark) as a
+  Theme Builder-style JSON file to share or tweak.
+- **Icons for actions on keys:** every action has a built-in icon on its key and on the key map: OBS's logo with a
+  red dot for *Start recording* and a square for *Stop recording*, Python's logo with ▶ for *Run Python*, a chain
+  for a macro, a split path for *If a mode is on…*, a moon for sleep, speakers for volume, and so on (Google's
+  Material Symbols; the OBS and Python logos from Simple Icons). A sticker you chose for a key wins; the switch
+  turns them all off.
+- **Motion:** animations on or off, their speed (slower to faster), ripples on presses.
+- **Window:** opacity (60 to 100 %; below 100 your desktop shows through, blurred if your compositor blurs:
+  KDE, Hyprland; on X11 it needs a compositor), the font (any installed one, or the built-in Google Sans) and the
+  text size (85 to 130 %).
+
+In `config.json` these are under `"look"` (light/dark, accent and contrast stay where they were):
+`"look": {"material": true, "source": "file", "file": "~/.cache/matugen/colors.json", "variant": "vibrant",
+"shape": "round", "opacity": 90, "animations": true, "speed": 1.0, "ripples": true, "font": "", "font_scale": 100}`.
+Sources are `accent`, `color` (with `"seed": "#rrggbb"`), `image` (with `"image": "<picture>"`), `pywal` and `file`.
+
 ## Modes and if / otherwise
 **Modes** are named on/off switches, e.g. "Stream mode" or "Gaming", created in
 Settings → Modes. Each has a live switch there, and the Toggle / Turn on / Turn off
@@ -511,6 +546,44 @@ a common job: *Streaming (OBS)*, *Media and volume*, *Editing*, *Windows and des
 Keys that already do something are never changed, and you can edit everything after.
 (`numpadctl/presets.py`)
 
+
+## Your own templates (Python)
+Four starter presets aren't enough for every pad, so you can write your own, all inside the app: Profile ⋯ →
+**Add a starter preset…** lists your templates after the built-in presets, with **New template…**, **Edit…**,
+**Import…** (a `.py` someone shared with you) and **Delete**. The editor shows the code with Python colours and
+every action on the right: search ("obs rec", "volume") and double-click one to insert a ready line such as
+`pad.tap("1", "volume_up")`. **Try it** runs the template and lists what it would add (or the mistake and its
+line) without changing anything; **Save** keeps it. Like a preset, a template only fills keys that have nothing
+yet. (The files live in `~/.config/numpad-control/templates/` on Linux, if you'd rather use your own editor.)
+
+```python
+NAME = "Streaming pro"
+DESCRIPTION = "Scenes on 1-3, mute on 0, copy-paste on the layer."
+
+def build(pad):
+    for n in range(1, 4):
+        pad.tap(str(n), "obs_set_scene", scene=f"Scene {n}")
+    pad.tap("0", "mic_mute")
+    pad.hold("0", "obs_toggle_streaming")
+    pad.layer.tap("1", "press_keys", keys="ctrl+c")
+    pad.macro("5", [step("press_keys", keys="ctrl+a"), step("press_keys", keys="ctrl+c")])
+    pad.if_mode("8", "Stream mode", [step("mic_mute")], [step("media_play_pause")])
+    if pad.platform == "linux":
+        pad.note("Shown after the keys are added.")
+```
+
+- `pad.tap / hold / double(key, action, setting=value...)`, `pad.set(key, slot, action, ...)` (with `rapid=` and
+  `turbo=` too), `pad.macro(key, steps)` and `pad.if_mode(key, mode, then, otherwise)` fill the normal keys;
+  the same on `pad.layer` fill the layer keys. `step(action, setting=value...)` is one macro step.
+- It can read: `pad.keys`, `pad.platform`, `pad.desktop`, `pad.profile`, `pad.layer_key`, `pad.modes`,
+  `pad.actions` (every action id and its settings) and `pad.bound` / `pad.layer_bound` (keys already in use).
+- The editor's action list (or `python -m numpadctl actions`) shows every action id with its settings and their
+  defaults; settings you leave out get the default.
+- **Safety:** the list is made by reading `NAME` and `DESCRIPTION` without running anything. A template only
+  runs when you pick it, in its own process with a 10-second limit (on Linux it also can't write files or start
+  programs), and everything it asks for is checked like an imported profile file: unknown actions, bad settings
+  and modes you don't have are left out and listed. It is still a program on your computer that can read files,
+  so only keep templates you trust in that folder.
 ## When something doesn't work
 - **No sound from the microphone** (in OBS, a call, anywhere): run `tools/mic-level`, a live meter for the default
   microphone (`tools/mic-level SOURCE_NAME` for another; names from `pactl list short sources`). Stay quiet for the
@@ -559,6 +632,16 @@ but refuse to install it.
 - **Key map overlay, both halves ([#12](https://github.com/youssefahmed2017/numpad-control/issues/12)):** it opens
   with Layer + Enter (configurable) instead of popping up whenever the layer key is held, and shows the normal keys
   next to the layer keys. *Holding the layer key* in Settings brings back the old behaviour.
+- **Icons for actions on keys** (Settings → Appearance): every action has one, on the keys and on the key map,
+  e.g. the OBS logo with a red dot for Start recording; your stickers still win.
+- **Your own templates in Python**, written and tested inside the app (Profile ⋯ → Add a starter preset… →
+  New template…): an editor with every action to insert and "Try it"; import and delete templates there too.
+  They fill a profile's keys with loops, macros and if/otherwise, run in a limited process and are checked like
+  a profile file.
+- **Appearance tab in Settings:** Material 3 on/off, shapes, your own colours (any colour, your wallpaper,
+  pywal, Material Theme Builder / matugen theme files, followed live), scheme styles, motion speed or none,
+  ripples, window transparency, any font and text size; export your theme. Needs the new `materialyoucolor`
+  package (the installers add it).
 - **Looks more like a Google app:** Material Symbols icons (Google's own, bundled, 12 KB) instead of text symbols;
   buttons are full pills that squeeze when pressed, like Material 3 Expressive; on/off settings are Material 3
   switches; the action fields are Material drop-down fields; the "⋯" buttons are round icon buttons; the
@@ -658,8 +741,37 @@ it then types like a normal keyboard and nothing is read; `false`: never) and
 (a VM can't do it: anti-cheat refuses them). Tested games and numpad models:
 [docs/compatibility.md](docs/compatibility.md); test a numpad with `python -m numpadctl check`.
 
+## NumpadControl Cloud (optional)
+Settings → **Cloud** connects this PC to NumpadControl Cloud, a separate online service that keeps your profiles in
+step between your PCs. **It is in development: the service isn't open yet, so the tab can't connect.** NumpadControl
+itself stays free and works exactly the same without it; nothing is sent anywhere until you pair a PC.
+- **Pair this PC:** the tab shows a code like `ABCD-2345`; you sign in at the cloud's dashboard and type it there.
+  This PC makes its own secret token and sends only a hash of it, so the server never holds a token that could act
+  as this PC. You can remove a PC in the dashboard at any time, and it is cut off at once.
+- **Vault:** the first PC asks for a passphrase and shows a **recovery key** once (a vault can't be reset by anyone,
+  not even us); the next PCs ask for the passphrase (or the recovery key).
+- **Sync now:** sends profiles that changed here and brings in the ones that changed elsewhere. **Profiles to sync**
+  has a switch per profile, because the free plan syncs 1 profile (paid plans with more are planned); a profile
+  switched off stays on this PC and is taken out of the cloud.
+- **Disconnect this PC:** forgets the token and the key here. Profiles stay on this PC and in the cloud.
+
+What keeps it safe (a profile can contain macro code, so a synced profile is code that runs on your PC):
+- Every profile is encrypted on this PC (AES-256-GCM; the key is wrapped by your passphrase with Argon2id) before it
+  leaves it. The server stores only ciphertext, so it can't read a profile, and it can't forge one: its id and
+  revision are part of the encryption, so it can't hand one profile back as another.
+- What comes back is treated like an imported file: checked, and shown to you first when it brings actions that run
+  programs, press keys or power the PC off. An older version than this PC already had is refused, and when a profile
+  changed in two places nothing is overwritten: the cloud's version is kept as "Name (from cloud)".
+- Settings such as the OBS password are not part of a profile and never leave this PC.
+- This PC's token and the vault key are kept in `cloud.json` next to `config.json`, readable only by you on Linux
+  (Windows: ordinary file permissions don't restrict it the same way).
+
+(`numpadctl/cloud_crypto.py`, `cloud_api.py`, `cloud_sync.py`, `numpadctl_ui/cloud_page.py`; the protocol is written down in
+the cloud project's `docs/SYNC-PROTOCOL.md`, and `tests/fixtures/cloud-test-vectors.json` holds the vectors both sides must match.)
+
 ## Privacy and crash reports
-NumpadControl collects nothing: no telemetry, no usage statistics, no account. If a part
+NumpadControl collects nothing: no telemetry, no usage statistics, no account (the optional
+[NumpadControl Cloud](#numpadcontrol-cloud-optional) is the one exception, and only once you pair a PC). If a part
 of it crashes, a plain system dialog asks whether to report that crash; **Yes** opens a
 pre-filled GitHub issue in your browser, so you read everything before sending it, and
 **No** sends nothing. The report (the error and where it happened, the version, the
@@ -670,6 +782,8 @@ system; your user name and home folder taken out) is also kept in
 The only other times it uses the network: once a day it asks GitHub whether a new version exists (turn it off or
 set it to only tell you with `"updates": "off"` / `"notify"` in `config.json`), and **Profile ⋯ → Browse library…**
 downloads the profile list and the profile you pick from GitHub, only when you open it. Nothing about you is sent.
+If you pair a PC with NumpadControl Cloud, your profiles (encrypted on your PC first) and the PC's name go to its server, and
+the PC contacts it when you press Sync now.
 Stickers never leave your computer. The same text is on the [privacy page](https://youssefahmed2017.github.io/numpad-control/privacy.html).
 
 ![The crash dialog on Linux (xmessage, the most basic of the dialogs it can use)](docs/screenshots/crash-dialog-linux.png)
@@ -696,6 +810,8 @@ Stickers never leave your computer. The same text is on the [privacy page](https
 - `numpadctl/profile_sets.py`: which profile set is active (a small state file, like `modes.py`)
 - `numpadctl/stickers.py`: key pictures: their names, where they live, which one a profile shows (`numpadctl_ui/sticker_image.py` makes them from a picture file)
 - `numpadctl/library.py`: the profile library (Browse library…): reads its index and fetches a profile to import
+- `numpadctl/cloud_crypto.py`, `cloud_api.py`, `cloud_sync.py`: NumpadControl Cloud: the encryption, the HTTPS calls and the sync
+  (pairing, conflicts, what is checked before a profile is applied); `numpadctl_ui/cloud_page.py` is Settings → Cloud
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
 - `numpadctl/platform/`: everything that differs between operating systems, so a
   future Windows version only has to add its own versions of these:

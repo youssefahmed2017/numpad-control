@@ -16,7 +16,7 @@ from PySide6.QtWidgets import QApplication, QWidget
 
 from numpadctl import config, ui_common
 
-from . import motion, sticker_image, theme, tokens
+from . import action_icons, motion, sticker_image, theme, tokens
 from .widgets import Dispatcher
 
 CELL_W, CELL_H, GAP, PAD, TITLE_H = 104, 70, 8, 20, 34
@@ -24,6 +24,7 @@ PANEL_GAP = 24  # between the Normal and the Layer half
 GONE_AFTER = 5  # status messages saying the service is gone, 2 s apart, before the overlay quits too
 ROWS, COLUMNS = 5, 4
 STICKER = 28   # a sticker's size on the overlay, where the key's name would be
+ICON = 24      # a built-in action icon's size on the overlay
 
 
 class Hud(QWidget):
@@ -38,6 +39,8 @@ class Hud(QWidget):
         self.keys, self.stickers, self.opacity, self.alpha = {}, {}, 0.9, 0.0
         self.base, self.base_stickers = None, {}   # None: an older service sent only the layer half
         self.layer_key = self.combo_key = ""
+        self.icons, self.base_icons = {}, {}   # {key: action id} for the built-in icons (action_icons.py)
+        self._icon_cache = {}
         self._size_for(halves=2)
         self.cells = ui_common.LAYOUT
         self.gone = 0
@@ -64,12 +67,15 @@ class Hud(QWidget):
         if self.alpha <= 0.0:
             self.hide()
 
-    def show_keys(self, keys, opacity, stickers=None, base=None, base_stickers=None, layer_key="", combo_key=""):
+    def show_keys(self, keys, opacity, stickers=None, base=None, base_stickers=None, layer_key="", combo_key="",
+                  icons=None, base_icons=None):
         self.keys, self.opacity = dict(keys), max(30, min(100, int(opacity))) / 100
         self.stickers = dict(stickers) if isinstance(stickers, dict) else {}
         self.base = dict(base) if isinstance(base, dict) else None
         self.base_stickers = dict(base_stickers) if isinstance(base_stickers, dict) else {}
         self.layer_key, self.combo_key = layer_key or "", combo_key or ""
+        self.icons = dict(icons) if isinstance(icons, dict) else {}
+        self.base_icons = dict(base_icons) if isinstance(base_icons, dict) else {}
         self._size_for(halves=1 if self.base is None else 2)
         self.cells = ui_common.layout_for(config.load())   # read again each time: the layout can change in Settings
         screen = QGuiApplication.screenAt(QCursor.pos()) or QGuiApplication.primaryScreen()
@@ -88,7 +94,8 @@ class Hud(QWidget):
             if message.get("on"):
                 self.show_keys(message.get("keys", {}), message.get("opacity", 90), message.get("stickers"),
                                message.get("base"), message.get("base_stickers"),
-                               message.get("layer_key", ""), message.get("combo_key", ""))
+                               message.get("layer_key", ""), message.get("combo_key", ""),
+                               message.get("icons"), message.get("base_icons"))
             else:
                 self.hide_keys()
         elif event == "status":
@@ -106,7 +113,15 @@ class Hud(QWidget):
             return "Key map"
         return None
 
-    def draw_half(self, painter, colour, left, title, keys, stickers, layer):
+    def icon(self, action, ink, behind):
+        """An action's icon, drawn once per colour (the overlay repaints every frame while it fades)."""
+        key = (action, ink, behind)
+        if key not in self._icon_cache:
+            self._icon_cache[key] = action_icons.pixmap(action, ink, ICON, behind=behind,
+                                                        record=theme.current.get("error", "#e53935"))
+        return self._icon_cache[key]
+
+    def draw_half(self, painter, colour, left, title, keys, stickers, layer, icons=None):
         """One numpad: a title (M3 title-medium in the accent colour), then the keys in the layout's places."""
         title_font = QFont(self.font())
         title_font.setPointSizeF(max(9.0, title_font.pointSizeF() + 1))
@@ -140,7 +155,17 @@ class Hud(QWidget):
             painter.setPen(colour(text if used else "onSurface" if special else "onSurfaceVariant",
                                   1.0 if used or special else 0.7))
             sticker = sticker_image.pixmap(stickers.get(key), STICKER) if used else None
-            if sticker:   # the key's picture instead of its name
+            action = (icons or {}).get(key) if used and not sticker else None
+            if action and action_icons.has_icon(action) and theme.look.get("action_icons", True):
+                # the icon where the name was, the key's name small in the top-left corner
+                painter.drawPixmap(QPointF(x + (CELL_W - ICON) / 2, y + 7),
+                                   self.icon(action, theme.current[text], theme.current[fill]))
+                small = QFont(name_font)
+                small.setPointSizeF(max(7.0, name_font.pointSizeF() - 3))
+                painter.setFont(small)
+                painter.drawText(QRectF(x + 9, y + 5, 30, 16), Qt.AlignLeft | Qt.AlignTop,
+                                 ui_common.KEY_LABELS.get(key, key))
+            elif sticker:   # the key's picture instead of its name
                 logical = sticker.deviceIndependentSize()
                 painter.drawPixmap(QPointF(x + (CELL_W - logical.width()) / 2, y + 4 + (STICKER - logical.height()) / 2),
                                    sticker)
@@ -171,13 +196,15 @@ class Hud(QWidget):
         painter.setBrush(colour("surfaceContainer", self.opacity))
         painter.drawRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), 28, 28)
 
-        halves = [("Layer", self.keys, self.stickers, True)]
+        halves = [("Layer", self.keys, self.stickers, True, self.icons)]
         if self.base is not None:
             layer_name = ui_common.KEY_LABELS.get(self.layer_key, self.layer_key)
-            halves = [("Normal", self.base, self.base_stickers, False),
-                      (f"Layer  ·  hold {layer_name}" if layer_name else "Layer", self.keys, self.stickers, True)]
-        for index, (title, keys, stickers, layer) in enumerate(halves):
-            self.draw_half(painter, colour, PAD + index * (self.grid_width() + PANEL_GAP), title, keys, stickers, layer)
+            halves = [("Normal", self.base, self.base_stickers, False, self.base_icons),
+                      (f"Layer  ·  hold {layer_name}" if layer_name else "Layer", self.keys, self.stickers, True,
+                       self.icons)]
+        for index, (title, keys, stickers, layer, icons) in enumerate(halves):
+            self.draw_half(painter, colour, PAD + index * (self.grid_width() + PANEL_GAP), title, keys, stickers, layer,
+                           icons)
         painter.end()
 
 
@@ -186,8 +213,11 @@ def run():
     app.setApplicationName("NumpadControl key map")
     app.setQuitOnLastWindowClosed(False)
     cfg = config.load()
+    # the overlay takes your colours, font and motion, but always draws its Material keys (it has no classic look)
+    look = {**config.look_settings(cfg), "material": True}
     theme.apply(app, cfg.get("appearance", "auto"), cfg.get("accent", tokens.DEFAULT_ACCENT),
-                cfg.get("contrast", "standard"))
+                cfg.get("contrast", "standard"), look)
+    theme.watch_look(app, config.load)
     hud = Hud()
     dispatch = Dispatcher()
     hud.link = ui_common.ServiceLink(hud.on_message, dispatch)  # kept alive by the HUD for as long as the app runs

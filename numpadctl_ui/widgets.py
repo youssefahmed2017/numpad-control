@@ -99,7 +99,7 @@ class TextField(QWidget):
     def _picker(self, suggest, window):
         button = ToolButton(toolTip="Pick from a list")
         button.setObjectName("icon")
-        icons.set_symbol(button, "list", 24)
+        icons.set_symbol(button, "list", icons.ICON_BUTTON)
         button.setPopupMode(QToolButton.InstantPopup)
         menu = Menu(button)
         button.setMenu(menu)
@@ -230,7 +230,7 @@ class StepCard(QFrame):
         header = QHBoxLayout()
         self.toggle = ToolButton(toolTip="Show or hide this step's settings")
         self.toggle.setObjectName("icon")
-        icons.set_symbol(self.toggle, "expand_more" if owner.expanded == index else "chevron_right", 24)
+        icons.set_symbol(self.toggle, "expand_more" if owner.expanded == index else "chevron_right", icons.ICON_BUTTON)
         self.toggle.clicked.connect(lambda: owner.expand(None if owner.expanded == index else index))
         header.addWidget(self.toggle)
         titles = QVBoxLayout()

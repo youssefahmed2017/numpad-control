@@ -18,7 +18,8 @@ FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
 FAMILY = "Material Symbols Rounded"
 CODEPOINTS = {name: chr(int(code, 16)) for name, code in
               json.loads((FONT_DIR / "MaterialSymbolsRounded.codepoints.json").read_text()).items()}
-SIZE = 20          # M3: 18 px in small buttons, 20 in buttons, 24 in icon buttons and lists
+SIZE = 18          # in buttons (M3's small size: next to 14 px labels a 20-24 px icon looked too heavy)
+ICON_BUTTON = 20   # alone in a round icon button, and the drop-down arrows of fields
 _loaded = []
 
 

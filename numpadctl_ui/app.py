@@ -57,11 +57,12 @@ def run(args=()):
     settings = config.load()
     app.installEventFilter(ripples := effects.RippleFilter(app))  # ripples on every button press
     theme.apply(app, settings.get("appearance", "auto"), settings.get("accent", tokens.DEFAULT_ACCENT),
-                settings.get("contrast", "standard"))
+                settings.get("contrast", "standard"), config.look_settings(settings))
     icon = draw_icon()
     app.setWindowIcon(icon)
     window = MainWindow(keep_running=not IS_WINDOWS)
     theme.follow_system(app, lambda: window.cfg)
+    window.rewatch_look = theme.watch_look(app, lambda: window.cfg)   # a theme file / wallpaper changed: re-colour
 
     def show():
         window.show()

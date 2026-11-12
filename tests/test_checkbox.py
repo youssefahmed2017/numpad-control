@@ -80,3 +80,51 @@ class CheckBoxTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SwitchTest(unittest.TestCase):
+    """The M3 switch: nothing on it changes in one frame (thumb, halo and colours all move over time)."""
+
+    def frames(self, move, setter_value, count=12):
+        """Values of `setter_value()` at `count` evenly spread moments of the spring `move`."""
+        values = []
+        for i in range(count + 1):
+            move.set_time(move.duration * i // count)
+            values.append(round(setter_value(), 3))
+        return values
+
+    def test_pressing_swells_the_thumb_and_halo_over_many_frames(self):
+        from PySide6.QtCore import QEvent, QPointF, Qt
+        from PySide6.QtGui import QMouseEvent
+        switch = checkbox.Switch("x")
+        switch.resize(200, 40)
+        switch.show()
+        press = QMouseEvent(QEvent.MouseButtonPress, QPointF(20, 20), QPointF(20, 20), Qt.LeftButton,
+                            Qt.LeftButton, Qt.NoModifier)
+        switch.mousePressEvent(press)
+        self.assertTrue(switch._squeeze.running(), "a press starts a move, not a jump")
+        values = self.frames(switch._squeeze, lambda: switch._press)
+        self.assertEqual(values[0], 0.0)
+        self.assertGreater(len(set(values)), 8, "the swell spans many frames")
+        self.assertAlmostEqual(values[-1], 1.0, delta=0.01)
+        switch.render(QImage(switch.size(), QImage.Format_ARGB32))   # drawing mid-press works
+
+    def test_hover_fades_the_halo_in(self):
+        switch = checkbox.Switch("x")
+        switch.show()
+        switch._glow.go(0.0, 1.0)
+        values = self.frames(switch._glow, lambda: switch._hover)
+        self.assertGreater(len(set(values)), 8)
+
+    def test_set_before_it_is_shown_it_is_already_on(self):
+        switch = checkbox.Switch("x")
+        switch.setChecked(True)
+        self.assertEqual(switch.position(), 1.0)
+
+    def test_flipping_it_slides_the_thumb(self):
+        switch = checkbox.Switch("x")
+        switch.show()
+        switch.setChecked(True)
+        values = self.frames(switch._slide, switch.position)
+        self.assertGreater(len(set(values)), 8)
+        self.assertAlmostEqual(values[-1], 1.0, delta=0.01)

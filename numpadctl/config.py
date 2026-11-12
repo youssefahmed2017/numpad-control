@@ -152,6 +152,52 @@ def profile_matches(profile, window_class):
     return bool(window_class) and window_class.lower() in classes
 
 
+LOOK_DEFAULTS = {
+    "material": True,      # Material 3 design; off: Qt's classic Fusion look, still in the theme's colours
+    "source": "accent",    # where the colours come from: accent | color | image | pywal | file (custom_theme.py)
+    "seed": "#6750a4",     # "color": the seed colour
+    "image": "",           # "image": the picture (a wallpaper) the seed colour is taken from
+    "file": "",            # "file": a Material Theme Builder / matugen JSON theme
+    "variant": "tonal_spot",   # how a seed becomes a scheme: tonal_spot, vibrant, expressive, fidelity...
+    "opacity": 100,        # the window's background, 60..100 % (below 100 the compositor's blur shows through)
+    "animations": True,    # every move and fade; off: things change at once
+    "speed": 1.0,          # animation speed: 0.5 (half as fast) .. 2.0 (twice as fast)
+    "ripples": True,       # the ripple spreading from where a button is pressed
+    "shape": "round",      # round (M3 Expressive pills) | rounded | square
+    "font": "",            # the UI font family; "" = the bundled Google Sans
+    "font_scale": 100,     # text size, 85..130 %
+    "action_icons": True,  # a built-in icon for each key's action (window and key map); your stickers win
+}
+LOOK_CHOICES = {"source": ("accent", "color", "image", "pywal", "file"), "shape": ("round", "rounded", "square"),
+                "variant": ("tonal_spot", "vibrant", "expressive", "fidelity", "content", "neutral", "monochrome",
+                            "rainbow", "fruit_salad")}
+LOOK_RANGES = {"opacity": (60, 100), "speed": (0.25, 3.0), "font_scale": (85, 130)}
+
+
+def look_settings(cfg):
+    """The appearance settings (Settings → Appearance), always complete and in range: LOOK_DEFAULTS filled in
+    with what "look" in config.json has. Light/dark, the accent and the contrast stay where they always were
+    ("appearance", "accent", "contrast" at the top level), so older settings files keep their look."""
+    raw = cfg.get("look") if isinstance(cfg.get("look"), dict) else {}
+    look = dict(LOOK_DEFAULTS)
+    for key, default in LOOK_DEFAULTS.items():
+        value = raw.get(key, default)
+        if isinstance(default, bool):
+            value = bool(value)
+        elif isinstance(default, (int, float)):
+            try:
+                low, high = LOOK_RANGES[key]
+                value = type(default)(max(low, min(high, float(value))))
+            except (TypeError, ValueError):
+                value = default
+        elif not isinstance(value, str):
+            value = default
+        if key in LOOK_CHOICES and value not in LOOK_CHOICES[key]:
+            value = default
+        look[key] = value
+    return look
+
+
 HUD_TRIGGERS = ("combo", "hold")
 HUD_DEFAULT_KEY = "Enter"   # Layer + Enter: the biggest key, easy to find without looking
 

@@ -1,30 +1,37 @@
 """Settings and profile dialogs."""
 
+from pathlib import Path
+
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QDialog, QDialogButtonBox, QHBoxLayout, QLineEdit, QListWidget, QListWidgetItem, QMessageBox,
+    QDialog, QDialogButtonBox, QHBoxLayout, QTabWidget, QLineEdit, QListWidget, QListWidgetItem, QMessageBox,
     QVBoxLayout, QWidget)
 
-from numpadctl import config, desktop, devices, keys, modes, obs, presets, ui_common
+from numpadctl import config, desktop, devices, keys, modes, obs, presets, templates, ui_common
 from .checkbox import Switch
-from . import tokens
+from . import theme
 from .buttons import ComboBox, PushButton, SmoothScrollArea, SpinBox
+from .appearance import APPEARANCES, AppearancePage  # noqa: F401 (APPEARANCES: older imports)
+from .cloud_page import CloudPage
 from .widgets import card, label
 
-APPEARANCES = [("auto", "Follow the system"), ("light", "Light"), ("dark", "Dark")]
 
 
 class SettingsDialog(QDialog):
-    """Device, keys, appearance, modes and OBS. Read the result with values()."""
+    """Two tabs: General (device, keys, the key map overlay, modes, OBS) and Appearance (appearance.py).
+    Read the result with values(). Appearance changes show on the whole app at once (MainWindow.preview_look)."""
 
     def __init__(self, window):
         super().__init__(window)
         self.window = window
         cfg = window.cfg
         self.setWindowTitle("Settings")
-        self.resize(560, 720)
+        self.resize(580, 760)
         outer = QVBoxLayout(self)
+        self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)   # M3 primary tabs: no frame, an indicator under the chosen one
+        outer.addWidget(self.tabs)
         scroll = SmoothScrollArea()
         scroll.setWidgetResizable(True)
         page = QWidget()
@@ -66,30 +73,6 @@ class SettingsDialog(QDialog):
         self.feedback = Switch("On-screen confirmations (e.g. “Recording” when OBS starts recording)")
         self.feedback.setChecked(cfg.get("feedback", True))
         box.addWidget(self.feedback)
-        box.addWidget(label("Appearance of this window", "small"))
-        self.appearance = ComboBox()
-        self.appearance.addItems([text for _, text in APPEARANCES])
-        self.appearance.setCurrentIndex([k for k, _ in APPEARANCES].index(cfg.get("appearance", "auto")))
-        box.addWidget(self.appearance)
-        box.addWidget(label("Accent colour", "small"))
-        self.accent = ComboBox()
-        for name, seed in tokens.SEEDS.items():
-            swatch = QPixmap(16, 16)
-            swatch.fill(Qt.transparent)
-            painter = QPainter(swatch)
-            painter.setRenderHint(QPainter.Antialiasing)
-            painter.setBrush(QColor(seed))
-            painter.setPen(Qt.NoPen)
-            painter.drawEllipse(0, 0, 16, 16)
-            painter.end()
-            self.accent.addItem(QIcon(swatch), name)
-        self.accent.setCurrentText(cfg.get("accent", tokens.DEFAULT_ACCENT))
-        box.addWidget(self.accent)
-        box.addWidget(label("Contrast", "small"))
-        self.contrast = ComboBox()
-        self.contrast.addItems(["Standard", "Medium", "High"])
-        self.contrast.setCurrentIndex(tokens.CONTRASTS.index(cfg.get("contrast", "standard")))
-        box.addWidget(self.contrast)
         layout.addWidget(frame)
 
         frame, box = card()
@@ -180,7 +163,33 @@ class SettingsDialog(QDialog):
         layout.addStretch()
 
         scroll.setWidget(page)
-        outer.addWidget(scroll)
+        self.tabs.addTab(scroll, "General")
+        self.look_page = AppearancePage(cfg)
+        self.appearance, self.accent, self.contrast = (self.look_page.appearance, self.look_page.accent,
+                                                       self.look_page.contrast)
+        look_scroll = SmoothScrollArea()
+        look_scroll.setWidgetResizable(True)
+        holder = QWidget()
+        holder_layout = QVBoxLayout(holder)
+        holder_layout.addWidget(self.look_page)
+        holder_layout.addStretch()
+        look_scroll.setWidget(holder)
+        self.tabs.addTab(look_scroll, "Appearance")
+        self.cloud_page = CloudPage(window)
+        cloud_scroll = SmoothScrollArea()
+        cloud_scroll.setWidgetResizable(True)
+        cloud_holder = QWidget()
+        cloud_layout = QVBoxLayout(cloud_holder)
+        cloud_layout.addWidget(self.cloud_page)
+        cloud_layout.addStretch()
+        cloud_scroll.setWidget(cloud_holder)
+        self.tabs.addTab(cloud_scroll, "Cloud")
+        self.finished.connect(self.cloud_page.shutdown)     # closing Settings stops a pairing that is waiting
+        # a burst of changes (scrolling through a list, typing an opacity) is shown once, when it settles
+        self._preview_timer = QTimer(self, singleShot=True, interval=120)
+        self._preview_timer.timeout.connect(self.preview_look)
+        self.look_page.changed.connect(self._preview_timer.start)
+        self.look_page.show_status()
         buttons = QDialogButtonBox()
         buttons.addButton(PushButton("Close"), QDialogButtonBox.RejectRole)
         buttons.rejected.connect(self.accept)
@@ -278,6 +287,14 @@ class SettingsDialog(QDialog):
                     if taken else f"Press Layer + {name} to open the key map, again (or let go of the layer key) to close it.")
         self.hud_note.setText(text)
 
+    def preview_look(self):
+        """Show the Appearance tab's choices on the whole app now (kept or dropped with Save, like the rest)."""
+        self.previewed = True
+        preview = getattr(self.window, "preview_look", None)
+        if preview:
+            preview(self.look_page.values())
+        self.look_page.show_status()
+
     def preview_hud(self):
         if not self.window.link.connected:
             self.window.toast("The background service isn't running.")
@@ -288,6 +305,12 @@ class SettingsDialog(QDialog):
         self.window.link.send({"cmd": "hud"})
         self.window.toast("Showing the key map for a few seconds (saved settings).")
 
+    def done(self, result):
+        if self._preview_timer.isActive():   # closed right after a change: show it before the window reads values()
+            self._preview_timer.stop()
+            self.preview_look()
+        super().done(result)
+
     def values(self):
         return {"device": self.device, "grab": self.grab.isChecked(),
                 "hud": {"enabled": self.hud_enabled.isChecked(), "opacity": self.hud_opacity.value(),
@@ -295,9 +318,7 @@ class SettingsDialog(QDialog):
                 "layer_key": self.layer_choices[self.layer_key.currentIndex()],
                 "numpad_layout": self.layout_ids[self.numpad_layout.currentIndex()],
                 "feedback": self.feedback.isChecked(),
-                "appearance": APPEARANCES[self.appearance.currentIndex()][0],
-                "accent": self.accent.currentText(),
-                "contrast": tokens.CONTRASTS[self.contrast.currentIndex()],
+                **self.look_page.values(),
                 "modes": self.mode_names, "obs": self.obs_values()}
 
 
@@ -361,38 +382,125 @@ class ProfileDialog(QDialog):
 
 
 class PresetDialog(QDialog):
-    """Pick a starter setup; it fills only the keys that have nothing yet."""
+    """Pick a starter setup: a built-in preset or one of your Python templates (numpadctl/templates.py).
+    Either fills only the keys that have nothing yet."""
 
     def __init__(self, parent, profile_name):
         super().__init__(parent)
         self.setWindowTitle("Starter preset")
-        self.setMinimumWidth(460)
+        self.setMinimumWidth(500)
         layout = QVBoxLayout(self)
         layout.addWidget(label("Starter preset", "title"))
         layout.addWidget(label(f"Fills the empty keys of “{profile_name}”. Keys that already do something are kept.",
                                "dim", wrap=True))
         self.list = QListWidget()
-        for preset in presets.PRESETS:
-            self.list.addItem(preset.name)
         layout.addWidget(self.list)
         self.description = label("", "small", wrap=True)
         layout.addWidget(self.description)
-        self.list.currentRowChanged.connect(
-            lambda row: self.description.setText(presets.PRESETS[row].description if row >= 0 else ""))
-        self.list.setCurrentRow(0)
-        self.list.itemDoubleClicked.connect(lambda _: self.accept())
+        row = QHBoxLayout()
+        self.template_buttons = {}
+        for text, tip, handler in (
+                ("New template…", "Write your own template (Python) in the built-in editor", self.new_template),
+                ("Edit…", "Open the selected template in the editor", self.edit_template),
+                ("Import…", "Add a template file (.py) someone shared with you", self.import_template),
+                ("Delete", "Remove the selected template", self.delete_template)):
+            button = PushButton(text)
+            button.setObjectName("flat")
+            button.setToolTip(tip)
+            button.clicked.connect(handler)
+            row.addWidget(button)
+            self.template_buttons[text] = button
+        row.addStretch()
+        layout.addLayout(row)
+        self.list.currentRowChanged.connect(self._describe)
+        self.list.itemDoubleClicked.connect(lambda _: self.chosen() and self.accept())
         buttons = QDialogButtonBox()
-        ok = PushButton("Add keys")
-        ok.setObjectName("primary")
-        ok.setDefault(True)
-        buttons.addButton(ok, QDialogButtonBox.AcceptRole)
+        self.ok = PushButton("Add keys")
+        self.ok.setObjectName("primary")
+        self.ok.setDefault(True)
+        buttons.addButton(self.ok, QDialogButtonBox.AcceptRole)
         buttons.addButton(PushButton("Cancel"), QDialogButtonBox.RejectRole)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+        self.fill()
+
+    def fill(self):
+        """The built-in presets, then your templates (listed by reading them, not running them)."""
+        self.entries = list(presets.PRESETS) + templates.list_templates()
+        self.list.clear()
+        for entry in self.entries:
+            if isinstance(entry, templates.Template):
+                item = QListWidgetItem(f"{entry.name}   ·   your template")
+                if entry.problem:   # still selectable, so Edit… can fix it; Add keys stays off
+                    item.setText(f"{entry.name}   ·   {entry.path.name} {entry.problem}")
+                    item.setForeground(QColor(theme.current.get("error", "#c62828")))
+            else:
+                item = QListWidgetItem(entry.name)
+            self.list.addItem(item)
+        self.list.setCurrentRow(0)
+
+    def _describe(self, row):
+        entry = self.entries[row] if 0 <= row < len(self.entries) else None
+        if isinstance(entry, templates.Template):
+            text = (entry.description or "No DESCRIPTION in the file.") + f"\n{entry.path}"
+        else:
+            text = entry.description if entry else ""
+        self.description.setText(text)
+        self.ok.setEnabled(self.chosen() is not None)
+        mine = isinstance(entry, templates.Template)
+        for name in ("Edit…", "Delete"):
+            self.template_buttons[name].setEnabled(mine)
 
     def chosen(self):
-        return presets.PRESETS[self.list.currentRow()]
+        row = self.list.currentRow()
+        entry = self.entries[row] if 0 <= row < len(self.entries) else None
+        if isinstance(entry, templates.Template) and entry.problem:
+            return None
+        return entry
+
+    def selected_template(self):
+        row = self.list.currentRow()
+        entry = self.entries[row] if 0 <= row < len(self.entries) else None
+        return entry if isinstance(entry, templates.Template) else None
+
+    def _select(self, path):
+        self.fill()
+        paths = [getattr(e, "path", None) for e in self.entries]
+        if path in paths:
+            self.list.setCurrentRow(paths.index(path))
+
+    def _edit(self, path=None):
+        from .template_editor import TemplateEditor
+        editor = TemplateEditor(self, self.parent(), path)
+        if editor.exec() == QDialog.Accepted:
+            self._select(editor.path)
+
+    def new_template(self):
+        self._edit()
+
+    def edit_template(self):
+        template = self.selected_template()
+        if template:
+            self._edit(template.path)
+
+    def import_template(self, path=None):
+        from PySide6.QtWidgets import QFileDialog
+        path = path or QFileDialog.getOpenFileName(self, "Import a template", str(Path.home()),
+                                                   "Python templates (*.py)")[0]
+        if not path:
+            return
+        try:
+            self._select(templates.import_template(path))
+        except templates.TemplateError as e:
+            QMessageBox.warning(self, "Import template", str(e))
+
+    def delete_template(self):
+        template = self.selected_template()
+        if template and QMessageBox.question(self, "Delete template",
+                                             f"Delete “{template.name}” ({template.path.name})?") == QMessageBox.Yes:
+            templates.delete_template(template.path)
+            self.fill()
 
     @classmethod
     def ask(cls, parent, profile_name):

@@ -74,8 +74,8 @@ class _Morph:
 
     def current_radius(self):
         """A full pill at rest, small corners while pressed: used for painting and the ripple's clip."""
-        full = self.height() / 2
-        return full + (min(PRESSED_RADIUS, full) - full) * self._press
+        rest = theme.button_radius(self.height())   # a full pill, or the shape setting's radius
+        return rest + (min(PRESSED_RADIUS, rest) - rest) * self._press
 
     def _sync_icon(self, content):
         """Draw the button's Material Symbol (set_symbol) in its content colour; a selected segment shows a tick."""
@@ -119,8 +119,9 @@ class _Morph:
         return c["secondaryContainer"], c["onSecondaryContainer"]
 
     def paintEvent(self, event):
-        c = theme.current
-        if not c:
+        c = theme.painted()
+        if not c:   # Material 3 off: Qt's classic button, but keep its icon (in the text colour)
+            self._sync_icon(self.palette().color(self.foregroundRole()).name())
             return super().paintEvent(event)
         self._update_press()
         container, content = self._look()

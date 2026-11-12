@@ -10,10 +10,10 @@ from PySide6.QtWidgets import (
     QPushButton, QSizePolicy, QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
 import numpadctl
-from numpadctl import actions, config, devices, keys, presets, profile_io, stickers, ui_common
+from numpadctl import actions, config, devices, keys, presets, profile_io, stickers, templates, ui_common
 from numpadctl.platform import IS_WINDOWS
 from .checkbox import Switch
-from . import dialogs, effects, icons, motion, sticker_image, theme, tokens, tools, welcome
+from . import action_icons, dialogs, effects, icons, motion, sticker_image, theme, tokens, tools, welcome
 from .snackbar import Snackbar
 from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, SpinBox, ToolButton, _Morph
 from .picker import ActionPicker
@@ -31,7 +31,7 @@ def icon_button(symbol, tip):
     button = ToolButton(toolTip=tip)
     button.setObjectName("icon")
     button.setAccessibleName(tip)
-    icons.set_symbol(button, symbol, 24)
+    icons.set_symbol(button, symbol, icons.ICON_BUTTON)
     return button
 
 
@@ -55,17 +55,20 @@ class KeyButton(_Morph, QPushButton):
         layout.setSpacing(0)
         self.name = label(name or ui_common.KEY_LABELS.get(key, key), "keyname")
         self.action = label("", "keyaction")
-        self.picture = QLabel()   # the key's sticker, in place of its name (sticker_image.py)
+        self.picture = QLabel()   # the key's sticker in place of its name, or its action's icon under a small name
         self.picture.setVisible(False)
-        layout.addWidget(self.picture)
+        for part in (self.name, self.picture, self.action):
+            layout.addWidget(part)
         for part in (self.name, self.action):
             part.setAlignment(Qt.AlignCenter)
             part.setAttribute(Qt.WA_TransparentForMouseEvents)
-            layout.addWidget(part)
         self.picture.setAlignment(Qt.AlignCenter)
         self.picture.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.action.setVisible(not compact)
         self.sticker = ""
+        self.icon_action = None   # the action whose built-in icon shows (action_icons.py), when there's no sticker
+        self._icon_key = None     # (action, colour, background) the icon was last drawn with
+        self._mode = None         # "sticker", "icon" or None: what the picture label shows right now
 
     def set_sticker(self, name):
         """Show the sticker `name` instead of the key's name ("" for none)."""
@@ -73,9 +76,38 @@ class KeyButton(_Morph, QPushButton):
             return
         pix = sticker_image.pixmap(name, 18 if self.compact else 30) if name else None
         self.sticker = name if pix else ""
-        self.picture.setPixmap(pix) if pix else self.picture.clear()
-        self.picture.setVisible(bool(pix))
-        self.name.setVisible(not pix)
+        self._sticker_pix = pix
+        self._show()
+
+    def set_icon(self, action_id):
+        """The built-in icon of `action_id` (None: no icon). A sticker always wins over it."""
+        if action_id == self.icon_action:
+            return
+        self.icon_action = action_id
+        self._show()
+
+    def wants_icon(self):
+        return (bool(self.icon_action) and action_icons.has_icon(self.icon_action) and not self.compact
+                and theme.look.get("action_icons", True) and bool(theme.painted()))
+
+    def _show(self):
+        """Sticker (big, the name hidden), else icon (the name small above it), else just the name."""
+        mode = "sticker" if self.sticker else "icon" if self.wants_icon() else None
+        if mode == self._mode and mode != "sticker":
+            return
+        self._mode = mode
+        if mode == "sticker":
+            self.picture.setPixmap(self._sticker_pix)
+        elif mode is None:
+            self.picture.clear()
+        self._icon_key = None   # drawn in paintEvent, in the key's own colours
+        self.picture.setVisible(mode is not None)
+        self.name.setVisible(mode != "sticker")
+        if bool(self.name.property("small")) != (mode == "icon"):
+            self.name.setProperty("small", mode == "icon")
+            self.name.style().unpolish(self.name)
+            self.name.style().polish(self.name)
+        self.update()
 
     def _animation(self, apply):
         return motion.Spring(self, "default_effects", lambda value: (apply(value), self.update()))
@@ -105,6 +137,7 @@ class KeyButton(_Morph, QPushButton):
         """Rounded tile at rest, rounder on hover, squeezed while pressed (like the other buttons)."""
         radius = KEY_RADIUS + (KEY_HOVER_RADIUS - KEY_RADIUS) * self._hover
         radius += (KEY_PRESSED_RADIUS - radius) * self._press
+        radius *= theme.shape_factor()   # Settings → Appearance → Shape
         return radius * 0.35 if self.compact else radius
 
     def ripple_color(self):
@@ -113,8 +146,10 @@ class KeyButton(_Morph, QPushButton):
 
     def paintEvent(self, event):
         """The tile: tonal container, state layers that fade in and out, a selected look that cross-fades."""
-        c = theme.current
+        c = theme.painted()
         if not c:
+            if self._mode == "icon":   # Material switched off: the classic key has no icons
+                QTimer.singleShot(0, self._show)
             return super().paintEvent(event)
         resting = c["tertiaryContainer"] if self.property("layer") else c["surfaceContainerHigh"]
         content = c["onTertiaryContainer"] if self.property("layer") else c["onSurface"]
@@ -140,6 +175,18 @@ class KeyButton(_Morph, QPushButton):
             painter.setPen(QPen(QColor(c["primary"]), 2.5))
             painter.setBrush(Qt.NoBrush)
             painter.drawRoundedRect(rect.adjusted(1, 1, -1, -1), radius - 1, radius - 1)
+        painter.end()
+        if (self.wants_icon() and not self.sticker) != (self._mode == "icon"):
+            QTimer.singleShot(0, self._show)   # the setting or the theme changed: re-arrange after this paint
+        elif self._mode == "icon":   # the icon in the key's current text colour, its badge cut out of the key colour
+            chosen_now = self._sel > 0.5   # resting or selected colours only: never redrawn per animation frame
+            ink = c["onPrimaryContainer"] if chosen_now else content
+            behind = c["primaryContainer"] if chosen_now else resting
+            key = (self.icon_action, ink, behind)
+            if key != self._icon_key:
+                self._icon_key = key
+                self.picture.setPixmap(action_icons.pixmap(self.icon_action, ink, 26, behind=behind,
+                                                           record=c["error"]))
 
 
 class MainWindow(QMainWindow):
@@ -615,6 +662,8 @@ class MainWindow(QMainWindow):
             if button.action.text() != elided:
                 button.action.setText(elided)
             button.set_sticker(stickers.lookup(self.cfg["profiles"], key, index=self.profile_index))
+            button.set_icon(None if key == layer_key else
+                            action_icons.action_of({s: self.slot_binding(key, s) for s in ("tap", "hold", "double")}))
             button.set_selected(key == self.selected)
 
     def select(self, key):
@@ -693,7 +742,7 @@ class MainWindow(QMainWindow):
         if pix:
             preview.setPixmap(pix)
         else:
-            preview.setPixmap(icons.pixmap("image", theme.current.get("onSurfaceVariant", "#888888"), 32))
+            preview.setPixmap(icons.pixmap("image", theme.current.get("onSurfaceVariant", "#888888"), 24))
         preview.setAccessibleName("Sticker preview")
         row.addWidget(preview)
         text = ("A picture shown on this key." if not shown else
@@ -867,12 +916,34 @@ class MainWindow(QMainWindow):
         preset = dialogs.PresetDialog.ask(self, self.profile["name"])
         if preset is None:
             return
+        if isinstance(preset, templates.Template):
+            return self.apply_template(preset)
         added, kept = presets.apply(preset, self.keymap())
         if added:
             self.mark_dirty()
             self.refresh_pad()
             self.build_editor()
         self.toast(f"{preset.name}: {added} key actions added" + (f", {kept} kept as they were" if kept else ""))
+
+    def apply_template(self, template):
+        """Run one of your Python templates (numpadctl/templates.py) and fill this profile's empty keys with it."""
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            result = templates.run(template, self.cfg, self.profile)
+        except templates.TemplateError as e:
+            QMessageBox.warning(self, "Template", str(e))
+            return
+        finally:
+            QApplication.restoreOverrideCursor()
+        added, kept = templates.apply(result, self.profile)
+        if added:
+            self.mark_dirty()
+            self.refresh_pad()
+            self.build_editor()
+        self.toast(f"{template.name}: {added} key actions added" + (f", {kept} kept as they were" if kept else ""))
+        lines = result.notes + ([f"Left out ({len(result.dropped)}):"] + result.dropped[:15] if result.dropped else [])
+        if lines:
+            QMessageBox.information(self, template.name, "\n".join(lines))
 
     def delete_profile(self):
         if self.profile_index == 0:
@@ -993,7 +1064,8 @@ class MainWindow(QMainWindow):
         new = dialog.values()
         if any(self.cfg.get(k) != v for k, v in new.items()):
             look = ("appearance", "accent", "contrast")
-            look_changed = any(new[k] != self.cfg.get(k, DEFAULTS_LOOK[k]) for k in look)
+            look_changed = any(new[k] != self.cfg.get(k, DEFAULTS_LOOK[k]) for k in look) \
+                or new["look"] != config.look_settings(self.cfg)
             self.cfg.update(new)
             self.arrange_keys()
             self.mark_dirty()
@@ -1001,9 +1073,19 @@ class MainWindow(QMainWindow):
             self.refresh_pad()
             self.build_editor()
             if look_changed:
-                from . import theme
-                from PySide6.QtWidgets import QApplication
-                theme.apply(QApplication.instance(), new["appearance"], new["accent"], new["contrast"])
+                self.preview_look(new)
+                if getattr(self, "rewatch_look", None):   # a new theme file or picture to watch (app.py)
+                    self.rewatch_look()
+        elif getattr(dialog, "previewed", False):
+            self.preview_look(self.cfg)   # previewed, then put back as it was: show the look you have again
+
+    def preview_look(self, values):
+        """Show an appearance on the whole app now (Settings → Appearance previews every change with this).
+        `values`: "appearance", "accent", "contrast" and "look" (config.look_settings), as in the config."""
+        from PySide6.QtWidgets import QApplication
+        theme.apply(QApplication.instance(), values.get("appearance", "auto"),
+                    values.get("accent", tokens.DEFAULT_ACCENT), values.get("contrast", "standard"),
+                    config.look_settings(values))
 
     # ---------------------------------------------------------------- tools
     def open_diagnostics(self):

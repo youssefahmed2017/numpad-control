@@ -72,10 +72,13 @@ class LayerMessagesTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.huds(), [{"event": "hud", "on": True, "opacity": 60,
                                         "keys": {"7": "Mute / unmute microphone", "8": "Hold: Full screen"},
                                         "base": {"1": "Lock screen"}, "stickers": {}, "base_stickers": {},
+                                        "icons": {"7": "mic_mute", "8": "screenshot_full"},
+                                        "base_icons": {"1": "lock_screen"},
                                         "layer_key": ".", "combo_key": ""}])
         self.d.on_key(".", False)
         self.assertEqual(self.huds()[-1], {"event": "hud", "on": False, "opacity": 60, "keys": {}, "base": {},
-                                           "stickers": {}, "base_stickers": {}, "layer_key": ".", "combo_key": ""})
+                                           "stickers": {}, "base_stickers": {}, "icons": {}, "base_icons": {},
+                                           "layer_key": ".", "combo_key": ""})
         self.assertEqual(len(self.huds()), 2)
 
     def test_combo_mode_holding_the_layer_key_alone_shows_nothing(self):

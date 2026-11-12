@@ -75,8 +75,8 @@ class CheckBox(QCheckBox):
 
     def paintEvent(self, event):
         super().paintEvent(event)   # the text (the stylesheet leaves the indicator itself empty)
-        c = theme.current
-        if not c:
+        c = theme.painted()
+        if not c:   # Material 3 off: Qt's own indicator (drawn by super().paintEvent above)
             return
         option = QStyleOptionButton()
         self.initStyleOption(option)
@@ -122,9 +122,10 @@ class Switch(QCheckBox):
         self.setProperty("switch", True)   # the stylesheet makes the indicator room 52 x 32
         self._pos = 1.0 if self.isChecked() else 0.0     # 0 = off (left) .. 1 = on (right)
         self._hover = 0.0
-        self._held = False
+        self._press = 0.0                                   # 0..1, animated: nothing on the switch jumps in one frame
         self._slide = motion.Spring(self, "fast_spatial", self._set_pos)
         self._glow = motion.Spring(self, "default_effects", self._set_hover)
+        self._squeeze = motion.Spring(self, "fast_spatial", self._set_press)   # the thumb swells with a little bounce
         self.toggled.connect(self._on_toggled)
 
     def position(self):
@@ -136,6 +137,10 @@ class Switch(QCheckBox):
 
     def _set_hover(self, value):
         self._hover = float(value)
+        self.update()
+
+    def _set_press(self, value):
+        self._press = float(value)
         self.update()
 
     def _on_toggled(self, checked):
@@ -155,19 +160,18 @@ class Switch(QCheckBox):
         super().leaveEvent(event)
 
     def mousePressEvent(self, event):
-        self._held = True
-        self.update()
+        if self.isEnabled():
+            self._squeeze.go(self._press, 1.0)
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
-        self._held = False
-        self.update()
+        self._squeeze.go(self._press, 0.0)
         super().mouseReleaseEvent(event)
 
     def paintEvent(self, event):
         super().paintEvent(event)   # the text; the stylesheet leaves the indicator area empty
-        c = theme.current
-        if not c:
+        c = theme.painted()
+        if not c:   # Material 3 off: Qt's own indicator (drawn by super().paintEvent above)
             return
         option = QStyleOptionButton()
         self.initStyleOption(option)
@@ -186,16 +190,21 @@ class Switch(QCheckBox):
         painter.setBrush(fill)
         painter.drawRoundedRect(track.adjusted(1, 1, -1, -1), TRACK_H / 2 - 1, TRACK_H / 2 - 1)
         # thumb: its centre slides from the left end to the right end of the track
-        size = THUMB_PRESSED if self._held and self.isEnabled() else THUMB_OFF + (THUMB_ON - THUMB_OFF) * on
+        press = max(0.0, self._press) if self.isEnabled() else 0.0   # may overshoot past 1: the thumb bounces
+        rest = THUMB_OFF + (THUMB_ON - THUMB_OFF) * on
+        size = rest + (THUMB_PRESSED - rest) * press
         x = track.left() + TRACK_H / 2 + (TRACK_W - TRACK_H) * self._pos
         centre = QPointF(x, track.center().y())
-        if self._hover > 0 and self.isEnabled():
-            halo = QColor(c["primary"] if self.isChecked() else c["onSurface"])
-            halo.setAlphaF((tokens.STATE["pressed"] if self._held else tokens.STATE["hover"]) * self._hover)
+        strength = max(self._hover, min(1.0, press))   # a press without hover (keyboard, touch) still shows it
+        if strength > 0 and self.isEnabled():
+            # every part fades: the colour follows the thumb's position, the strength goes hover -> pressed
+            halo = QColor(tokens.blend(c["onSurface"], c["primary"], on))
+            level = tokens.STATE["hover"] + (tokens.STATE["pressed"] - tokens.STATE["hover"]) * min(1.0, press)
+            halo.setAlphaF(level * strength)
             painter.setPen(Qt.NoPen)
             painter.setBrush(halo)
             painter.drawEllipse(centre, HALO / 2, HALO / 2)
-        thumb_off = c["onSurfaceVariant"] if self._hover > 0.5 else c["outline"]
+        thumb_off = tokens.blend(c["outline"], c["onSurfaceVariant"], max(0.0, min(1.0, self._hover)))
         painter.setPen(Qt.NoPen)
         painter.setBrush(QColor(tokens.blend(thumb_off, c["onPrimary"], on)))
         painter.drawEllipse(centre, size / 2, size / 2)

@@ -400,6 +400,18 @@ class Daemon:
                 shown[key] = text
         return shown
 
+    def hud_icons(self, shown, window, layer):
+        """{key: action id} for the built-in icons on the overlay: each key's Press action, else Hold, else Double."""
+        icons = {}
+        for key in shown:
+            slots = config.resolve(self.cfg, key, layer, window)
+            for slot in ("tap", "hold", "double"):
+                action = (slots.get(slot) or {}).get("action")
+                if action and action != "none":
+                    icons[key] = action
+                    break
+        return icons
+
     def hud_stickers(self, shown, window):
         """{key: sticker file name} for the keys the overlay shows (the focused app's profile, then Default)."""
         found = {key: stickers.lookup(self.cfg["profiles"], key, window) for key in shown}
@@ -415,6 +427,8 @@ class Daemon:
         return {"event": "hud", "on": on, "opacity": hud["opacity"], "keys": shown, "base": base,
                 "stickers": self.hud_stickers(shown, window) if on else {},
                 "base_stickers": self.hud_stickers(base, window) if on else {},
+                "icons": self.hud_icons(shown, window, True) if on else {},
+                "base_icons": self.hud_icons(base, window, False) if on else {},
                 "layer_key": self.cfg.get("layer_key") or "",
                 "combo_key": hud["key"] if hud["trigger"] == "combo" else ""}
 
@@ -449,7 +463,8 @@ class Daemon:
     def ensure_hud(self):
         """Start, restart or stop the key map overlay process so it runs exactly when it can be needed (a layer key
         is set and it is on, or a preview), restart it when the look changes, and back off when it keeps dying."""
-        look = (self.cfg.get("appearance"), self.cfg.get("accent"), self.cfg.get("contrast"))
+        look = (self.cfg.get("appearance"), self.cfg.get("accent"), self.cfg.get("contrast"),
+                json.dumps(config.look_settings(self.cfg), sort_keys=True))   # Settings → Appearance too
         alive = self.hud_proc is not None and self.hud_proc.poll() is None
         now = time.monotonic()
         if self.hud_proc is not None and not alive:  # it ended by itself
