@@ -31,6 +31,7 @@ class FakeApi(FakeCloud):
     def __init__(self):
         super().__init__()
         self.vault, self.statuses, self.token_hashes = None, ["paired"], []
+        self.plan, self.plan_info = "free", True
 
     def pair_start(self, name, token_hash):
         self.token_hashes.append((name, token_hash))
@@ -38,6 +39,12 @@ class FakeApi(FakeCloud):
 
     def pair_poll(self, token_hash):
         return self.statuses.pop(0) if len(self.statuses) > 1 else self.statuses[0]
+
+    def me(self):
+        limit = None if self.limit >= 10_000 else self.limit
+        info = {"id": "d", "name": "this pc", "plan": self.plan, "profile_count": len(self.items), "profile_limit": limit,
+                "history_versions": 0}
+        return info if self.plan_info else {"id": "d", "name": "this pc"}
 
     def get_vault(self):
         if self.vault is None:
@@ -325,6 +332,53 @@ class SyncTest(PageCase):
         self.assertEqual(answers, ["Tools"])
         self.assertIs(threads[0], threading.main_thread())
         self.assertEqual([p["name"] for p in everything(self.window.cfg)], ["Tools"])
+
+
+class PlanTest(PageCase):
+    def test_the_plan_is_shown_when_connected_and_after_each_sync(self):
+        self.cloud.limit = 1
+        page = self.connected(profile("Streaming"))
+        self.assertEqual(page.plan_label.text(), "Free plan: 0 of 1 profile synced, no version history.")
+        page.sync_button.click()
+        self.assertEqual(page.plan_label.text(), "Free plan: 1 of 1 profile synced, no version history.")
+
+    def test_a_server_that_does_not_report_a_plan_shows_nothing(self):
+        self.cloud.plan_info = False
+        page = self.connected()
+        self.assertEqual(page.plan_label.text(), "")
+
+    def test_the_plan_not_loading_is_not_an_error_on_screen(self):
+        page = self.connected()
+        self.cloud.me = mock.Mock(side_effect=CloudError("couldn't reach NumpadControl Cloud (offline). Are you online?"))
+        page.refresh_plan()
+        self.assertEqual(page.plan_label.text(), "")
+        self.assertEqual(page.stack.currentIndex(), READY)
+
+    def test_a_removed_pc_is_noticed_while_reading_the_plan(self):
+        page = self.connected()
+        self.cloud.me = mock.Mock(side_effect=CloudError("removed", status=401, code="unauthorized"))
+        page.refresh_plan()
+        self.assertEqual(page.stack.currentIndex(), INTRO)
+
+
+class DescribePlanTest(unittest.TestCase):
+    def test_wording(self):
+        d = cloud_sync.describe_plan
+        self.assertEqual(d({"plan": "free", "profile_count": 0, "profile_limit": 1, "history_versions": 0}),
+                         "Free plan: 0 of 1 profile synced, no version history.")
+        self.assertEqual(d({"plan": "pro", "profile_count": 3, "profile_limit": None, "history_versions": 50}),
+                         "Pro plan: 3 profiles synced (no limit), the last 50 versions of each are kept.")
+        self.assertEqual(d({"plan": "team", "profile_count": 1, "profile_limit": None, "history_versions": 200}),
+                         "Team plan: 1 profile synced (no limit), the last 200 versions of each are kept.")
+        self.assertEqual(d({"plan": "free", "profile_count": 2, "profile_limit": 5}), "Free plan: 2 of 5 profiles synced.")
+
+    def test_anything_odd_shows_nothing_or_only_the_plan(self):
+        d = cloud_sync.describe_plan
+        for junk in (None, [], "free", {}, {"plan": "gold"}, {"plan": 5}):
+            self.assertEqual(d(junk), "")
+        self.assertEqual(d({"plan": "pro"}), "Pro plan.")
+        self.assertEqual(d({"plan": "free", "profile_count": True, "profile_limit": "1"}), "Free plan.")
+        self.assertEqual(d({"plan": "free", "profile_count": -1}), "Free plan.")
 
 
 class LeavingTest(PageCase):

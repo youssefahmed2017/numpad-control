@@ -228,6 +228,8 @@ class CloudPage(QWidget):
         self.ready_title = box.itemAt(0).widget()
         self.ready_info = label("", "small", wrap=True)
         box.addWidget(self.ready_info)
+        self.plan_label = label("", "dim", wrap=True)
+        box.addWidget(self.plan_label)
         row = QHBoxLayout()
         self.sync_button = PushButton("Sync now")
         self.sync_button.setObjectName("primary")
@@ -269,6 +271,16 @@ class CloudPage(QWidget):
         self.ready_info.setText(f"{self.state['url']}. Your profiles are encrypted before they leave this PC.")
         self.refresh_switches()
         self.stack.setCurrentIndex(READY)
+        self.refresh_plan()
+
+    def refresh_plan(self):
+        """Ask the cloud which plan this account is on and how much of it is used (shown under the PC's name)."""
+        self.background(lambda: self.api().me(), lambda info: self.plan_label.setText(cloud_sync.describe_plan(info)),
+                        self.plan_failed)
+
+    def plan_failed(self, error):
+        if not self.removed_by_server(error):
+            self.plan_label.setText("")     # the plan is a nicety: when it can't be read, show nothing rather than an error
 
     def refresh_switches(self):
         while self.switches_holder.count():
@@ -497,6 +509,7 @@ class CloudPage(QWidget):
         self.say(self.sync_status, text)
         self.window.toast("Synced with NumpadControl Cloud" if report.changed() else "Already up to date")
         self.refresh_switches()
+        self.refresh_plan()                 # the number of profiles synced may have changed
 
     def adopt(self, cfg, state):
         """Take the synced copy of the profiles and the sync bookkeeping, save both, and redraw the main window."""

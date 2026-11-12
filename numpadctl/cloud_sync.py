@@ -99,6 +99,32 @@ def set_synced(state, set_name, name, on):
         state["excluded"].append(entry)
 
 
+PLAN_NAMES = {"free": "Free", "pro": "Pro", "team": "Team"}
+
+
+def _count(value):
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def describe_plan(info):
+    """One line about the account from the cloud's answer to `Api.me()`: "Free plan: 0 of 1 profile synced."
+    Empty when the answer has no plan in it (an older server), so the screen simply shows nothing."""
+    name = PLAN_NAMES.get(info.get("plan")) if isinstance(info, dict) else None
+    if name is None:
+        return ""
+    used, limit, history = _count(info.get("profile_count")), _count(info.get("profile_limit")), _count(info.get("history_versions"))
+    if used is None:
+        return f"{name} plan."
+    plural = lambda n: f"{n} profile{'' if n == 1 else 's'}"
+    text = f"{name} plan: {used} of {limit} profile{'' if limit == 1 else 's'} synced" if limit is not None \
+        else f"{name} plan: {plural(used)} synced (no limit)"
+    if history:
+        text += f", the last {history} versions of each are kept"
+    elif history == 0:
+        text += ", no version history"
+    return text + "."
+
+
 def default_device_name():
     name = profile_io._CONTROL.sub(" ", socket.gethostname()).strip()[:60]
     return name or "My PC"
