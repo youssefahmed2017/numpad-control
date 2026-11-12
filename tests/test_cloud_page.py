@@ -361,6 +361,15 @@ class PlanTest(PageCase):
         self.assertEqual(page.stack.currentIndex(), INTRO)
 
 
+class UpgradeButtonTest(PageCase):
+    def test_the_plan_button_opens_the_dashboard_where_plans_are_bought_and_managed(self):
+        opened = []
+        page = self.connected()
+        page.open_url = opened.append
+        page.plan_button.click()
+        self.assertEqual(opened, [page.state["url"] + "/dashboard"])
+
+
 class DescribePlanTest(unittest.TestCase):
     def test_wording(self):
         d = cloud_sync.describe_plan
