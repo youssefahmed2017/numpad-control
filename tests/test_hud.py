@@ -445,7 +445,10 @@ class HudWindowTest(unittest.TestCase):
         theme.apply(cls.app, "dark", tokens.DEFAULT_ACCENT, "standard")
 
     def test_it_fades_in_with_the_keys_and_fades_out_and_hides(self):
-        from PySide6.QtTest import QTest
+        try:
+            from PySide6.QtTest import QTest
+        except ImportError:   # the pruned venv from setup.sh has no QtTest
+            self.skipTest("PySide6.QtTest is not installed")
         from numpadctl_ui import hud
         window = hud.Hud()
         self.addCleanup(window.deleteLater)

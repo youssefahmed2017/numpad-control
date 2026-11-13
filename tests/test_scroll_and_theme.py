@@ -9,7 +9,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QPoint, QPointF, Qt  # noqa: E402
 from PySide6.QtGui import QWheelEvent  # noqa: E402
-from PySide6.QtTest import QTest  # noqa: E402
+try:
+    from PySide6.QtTest import QTest  # noqa: E402
+except ImportError:   # the pruned venv from setup.sh has no QtTest
+    raise unittest.SkipTest("PySide6.QtTest is not installed")
 from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget  # noqa: E402
 
 from numpadctl_ui import buttons, theme  # noqa: E402

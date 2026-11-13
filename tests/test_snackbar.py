@@ -6,7 +6,10 @@ from unittest import mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtGui import QImage
-from PySide6.QtTest import QTest
+try:
+    from PySide6.QtTest import QTest
+except ImportError:   # the pruned venv from setup.sh has no QtTest
+    raise unittest.SkipTest("PySide6.QtTest is not installed")
 from PySide6.QtWidgets import QApplication, QWidget
 
 from numpadctl_ui import motion, snackbar, theme, tokens
