@@ -25,7 +25,7 @@ services. The engine and the backend are open; the user interface is closed.
 | Profile library | Your own server (self-host the open backend), or import profile files by hand | Built in, on the official hosted library |
 | Profile sync between computers | Your own server | Included |
 | Support | GitHub issues, community Discord | Priority support, refund guarantee |
-| Price | Free | Free tier (1 device, 1 profile, 9 keys), Pro unlock 9.99 USD (launch 6.99, local prices 3.99–5.99) |
+| Price | Free | Free tier (1 device, 1 profile, 9 keys), Pro unlock 9.99 USD (launch 6.99, local prices 3.99-5.99) |
 
 The paid app keeps section 6's Free / Pro tiers: the free download has the limits, and
 a Pro license key unlocks them. The open edition has no limits, but also no polished UI.
@@ -87,7 +87,7 @@ is exactly what is being sold.
 
 | Phase (section 8) | Addition |
 |---|---|
-| 0. Technical de-risking | Done: Windows reads the numpad without a driver; the UI moved to the private repository (`private-numpadctl-ui`); the engine–app API is documented ([ipc-api.md](ipc-api.md)). |
+| 0. Technical de-risking | Done: Windows reads the numpad without a driver; the UI moved to the private repository (`private-numpadctl-ui`); the engine-app API is documented ([ipc-api.md](ipc-api.md)). |
 | 1. Demand validation | Landing page shows both editions; GitHub stars and open-edition downloads count as demand signals. |
 | 2. Productisation | Build the wizard, HUD and licensing in the closed app only. |
 | 3. Public launch | Launch on Hacker News / Reddit with the open source story ("audit what reads your keyboard"), alongside the paid app. |

@@ -345,7 +345,7 @@ class ProfileDialog(QDialog):
         if windows:
             layout.addWidget(label("Add an open window", "small"))
             picker = ComboBox()
-            picker.addItems(["—"] + [f"{t[:40]}  ({c})" for c, t in windows])
+            picker.addItems(["-"] + [f"{t[:40]}  ({c})" for c, t in windows])
             picker.currentIndexChanged.connect(lambda i: i > 0 and self._add_class(windows[i - 1][0]))
             layout.addWidget(picker)
         buttons = QDialogButtonBox()

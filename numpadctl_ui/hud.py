@@ -179,7 +179,7 @@ class Hud(QWidget):
                 painter.drawText(QRectF(x, y + 8, CELL_W, 24), Qt.AlignHCenter | Qt.AlignVCenter,
                                  ui_common.KEY_LABELS.get(key, key))
             painter.setFont(action_font)
-            words = special or keys.get(key, "—")
+            words = special or keys.get(key, "-")
             elided = QFontMetrics(action_font).elidedText(words, Qt.ElideRight, CELL_W - 14)
             painter.setPen(colour("primary" if special else text if used else "onSurfaceVariant",
                                   1.0 if used or special else 0.45))

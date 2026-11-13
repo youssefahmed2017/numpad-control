@@ -683,11 +683,11 @@ class MainWindow(QMainWindow):
             else:
                 tap = actions.BY_ID.get(self.slot_binding(key, "tap")["action"], actions.BY_ID["none"])
                 extra = sum(actions.is_set(self.slot_binding(key, s)) for s in ("hold", "double"))
-                text = "—" if tap.id == "none" else tap.label
+                text = "-" if tap.id == "none" else tap.label
                 if extra:
                     text = ("" if tap.id == "none" else text + " ") + f"+{extra}"
             if button.compact:
-                button._set("bound", text != "—" and key != layer_key)
+                button._set("bound", text != "-" and key != layer_key)
                 tip = f"{button.name.text()}: {text}"
                 if button.toolTip() != tip:
                     button.setToolTip(tip)

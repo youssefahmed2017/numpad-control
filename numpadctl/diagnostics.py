@@ -92,7 +92,7 @@ def collect(cfg, status):
         out += ["", f"USB: the kernel failed {usb[1]} times to set up a device this boot (cable, port or hardware?):",
                 *usb[0],
                 "  If it is the numpad and it works after you unplug and replug it, try another USB port or a USB 2.0 hub:",
-                "  a software replug can't fix it (see the README, \"Numpads that need replugging\")."]
+                "  a software replug can't fix it (see docs/install.md, \"Numpads that need replugging\")."]
     problems = binding_problems(cfg)
     out += ["", f"Key problems: {len(problems)}" if problems else "Key problems: none", *problems]
     out += ["", f"Last {LOG_LINES} log lines:", *log_tail()]
