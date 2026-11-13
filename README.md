@@ -868,6 +868,10 @@ NumpadControl is free and stays free: every key, every action, no ads, no accoun
 like to say thanks, you can leave a tip on **[Ko-fi](https://ko-fi.com/youssefahmedabdou)** (or use the Sponsor button at the top of this page).
 It is optional and unlocks nothing. A tip link is also in Settings, next to Close.
 
+Optional extras are in the **[Ko-fi shop](https://ko-fi.com/youssefahmedabdou/shop)**: key sticker packs and action icon packs
+(Graphite and Bone) that restyle the pad (see Sticker packs and Icon packs above). They are only pictures; nothing in the app
+is locked behind them, and you can make your own with `tools/make-sticker-pack.py` and `tools/make-icon-pack.py`.
+
 ## License
 NumpadControl is free software under the [GNU General Public License v3.0](LICENSE)
 (GPL-3.0): the service, the settings window (`numpadctl_ui/`), the future cloud backend in
