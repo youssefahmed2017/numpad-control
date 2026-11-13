@@ -17,16 +17,8 @@ class StickerError(Exception):
     """The picture can't be used; the message says why, in plain words."""
 
 
-def png_bytes(path, side=None):
-    """The picture file `path` as PNG bytes, at most `side` (default: sticker size) pixels wide and high. Raises StickerError."""
-    side = side or stickers.SIZE
-    try:
-        size = os.path.getsize(path)
-    except OSError as e:
-        raise StickerError(f"Couldn't read the file: {e.strerror or e}") from None
-    if size > stickers.MAX_SOURCE_BYTES:
-        raise StickerError("That file is too big to be a sticker (over 20 MB).")
-    reader = QImageReader(str(path))
+def _read_scaled(reader, side):
+    """Decode `reader`'s picture at most `side` pixels wide and high. Raises StickerError."""
     reader.setAutoTransform(True)                # photos taken sideways
     full = reader.size()
     if not full.isValid():
@@ -40,6 +32,25 @@ def png_bytes(path, side=None):
     image = reader.read()
     if image.isNull():
         raise StickerError("That doesn't look like a picture NumpadControl can open.")
+    return image
+
+
+def png_bytes(path, side=None):
+    """The picture file `path` as PNG bytes, at most `side` (default: sticker size) pixels wide and high. Raises StickerError."""
+    side = side or stickers.SIZE
+    try:
+        size = os.path.getsize(path)
+    except OSError as e:
+        raise StickerError(f"Couldn't read the file: {e.strerror or e}") from None
+    if size > stickers.MAX_SOURCE_BYTES:
+        raise StickerError("That file is too big to be a sticker (over 20 MB).")
+    reader = QImageReader(str(path))
+    try:
+        image = _read_scaled(reader, side)
+    finally:
+        device = reader.device()         # Windows can't delete the file while the reader still holds it open
+        if device is not None:
+            device.close()
     image = image.convertToFormat(QImage.Format_ARGB32)
     data = QByteArray()
     buffer = QBuffer(data)

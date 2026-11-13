@@ -21,21 +21,21 @@ class WhereItAppearsTest(unittest.TestCase):
 
     def test_the_same_page_everywhere(self):
         name = ui_common.SUPPORT_URL.rsplit("/", 1)[1]
-        self.assertIn(f"ko_fi: {name}", (ROOT / ".github" / "FUNDING.yml").read_text())
-        self.assertIn(ui_common.SUPPORT_URL, (ROOT / "README.md").read_text())
-        self.assertIn(ui_common.SUPPORT_URL, (ROOT / "site" / "assets" / "site.js").read_text())
-        self.assertIn(ui_common.SUPPORT_URL, (ROOT / "site" / "pricing.html").read_text())
+        self.assertIn(f"ko_fi: {name}", (ROOT / ".github" / "FUNDING.yml").read_text(encoding="utf-8"))
+        self.assertIn(ui_common.SUPPORT_URL, (ROOT / "README.md").read_text(encoding="utf-8"))
+        self.assertIn(ui_common.SUPPORT_URL, (ROOT / "site" / "assets" / "site.js").read_text(encoding="utf-8"))
+        self.assertIn(ui_common.SUPPORT_URL, (ROOT / "site" / "pricing.html").read_text(encoding="utf-8"))
 
     def test_the_wording_says_it_is_optional_and_unlocks_nothing(self):
-        readme = (ROOT / "README.md").read_text()
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
         section = readme[readme.index("## Support the project"):].split("\n## ", 1)[0]
         self.assertIn("optional", section)
         self.assertIn("unlocks nothing", section)
-        self.assertRegex((ROOT / "site" / "pricing.html").read_text(), r"optional and unlocks nothing")
+        self.assertRegex((ROOT / "site" / "pricing.html").read_text(encoding="utf-8"), r"optional and unlocks nothing")
 
     def test_no_other_payment_or_affiliate_link_slipped_in(self):
         for path in (ROOT / "README.md", ROOT / "site" / "assets" / "site.js", ROOT / "site" / "pricing.html"):
-            text = path.read_text()
+            text = path.read_text(encoding="utf-8")
             self.assertNotRegex(text, r"(?i)amzn\.to|tag=[a-z0-9-]+-20|aliexpress\.com/.*aff|paypal\.me")
 
 
