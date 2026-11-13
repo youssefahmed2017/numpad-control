@@ -314,6 +314,15 @@ keyboard in the window also removes the actions set on its keys.
   belongs to a key of one profile, and a profile with none for a key shows the Default profile's, like it does for
   actions. Pictures are shrunk to at most 128 px and kept in the `stickers` folder of the settings directory; saving
   deletes the ones no profile uses any more. They stay on your computer: exporting a profile leaves them out.
+- **Sticker packs.** A pack gives the whole pad its pictures in one go: **Profile ⋯ → Apply sticker pack…**, pick a `.zip`,
+  see what will change, confirm. A pack is a zip (or a folder) with one picture per key named after it: `0.png` … `9.png`,
+  `000.png`, `dot.png`, `plus.png`, `minus.png`, `star.png`, `slash.png`, `enter.png`, `numlock.png`, `backspace.png`
+  (PNG, JPG, GIF, WebP, BMP or SVG), and optionally a `pack.json` with the pack's `name`, `author` and `license`, shown when
+  you apply it. It is only a shortcut for choosing 19 pictures by hand, so nothing in it can do more than that, and it is
+  read strictly: at most 64 files, 5 MB a picture, 40 MB in all, and names inside the zip never reach the file system.
+  To make one, put your pictures in a folder (square, 256 px or more, transparent background) and run
+  `python tools/make-sticker-pack.py my-pictures --name "My pack" --author "You" --license "Personal use only"`: it checks them,
+  says which keys are missing and writes the zip. Anyone may make, share or sell packs; the app stays free either way.
 - **Profile sets.** A set is a whole separate setup (its own Default and its own
   per-app profiles), for example "Coding", "Streaming" and "Gaming". Only the active set
   does anything, and a set never borrows keys from another one. Put **Switch to a profile
@@ -778,6 +787,7 @@ Stickers never leave your computer. The same text is on the [privacy page](https
 - `numpadctl/release_key.py`: the public key releases must be signed with; `tools/sign-release` makes the key and signs releases
 - `numpadctl/profile_sets.py`: which profile set is active (a small state file, like `modes.py`)
 - `numpadctl/stickers.py`: key pictures: their names, where they live, which one a profile shows (`numpadctl_ui/sticker_image.py` makes them from a picture file)
+- `numpadctl/sticker_packs.py`: reads a sticker pack (a zip or folder of key pictures) strictly; `tools/make-sticker-pack.py` checks and zips one
 - `numpadctl/library.py`: the profile library (Browse library…): reads its index and fetches a profile to import
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
 - `numpadctl/platform/`: everything that differs between operating systems, so a

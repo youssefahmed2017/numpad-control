@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QPushButton, QSizePolicy, QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
 import numpadctl
-from numpadctl import actions, config, devices, keys, presets, profile_io, stickers, templates, ui_common
+from numpadctl import actions, config, devices, keys, presets, profile_io, sticker_packs, stickers, templates, ui_common
 from numpadctl.platform import IS_WINDOWS
 from .checkbox import Switch
 from . import action_icons, dialogs, effects, icons, motion, sticker_image, theme, tokens, tools, welcome
@@ -321,6 +321,7 @@ class MainWindow(QMainWindow):
         menu.addAction("Delete profile", self.delete_profile)
         menu.addSeparator()
         menu.addAction("Add a starter preset…", self.add_preset)
+        menu.addAction("Apply sticker pack…", self.apply_sticker_pack)
         menu.addSeparator()
         menu.addAction("Export profile…", self.export_profile)
         menu.addAction("Import profile…", self.import_profile)
@@ -772,6 +773,62 @@ class MainWindow(QMainWindow):
             return False
         self.set_sticker(key, name)
         return True
+
+    def apply_sticker_pack(self, path=None, confirm=None):
+        """Give this profile's keys the pictures in a sticker pack (a zip, see sticker_packs.py). True when it was applied.
+
+        `confirm(pack, keys, replacing)` says yes or no after showing what will change (the tests pass their own)."""
+        if path is None:
+            path, _ = QFileDialog.getOpenFileName(self, "Choose a sticker pack", "", "Sticker packs (*.zip);;All files (*)")
+            if not path:
+                return False
+        try:
+            pack = sticker_packs.read_pack(path)
+        except sticker_packs.PackError as e:
+            QMessageBox.warning(self, "Sticker pack", f"This pack can't be used: {e}.")
+            return False
+        here = [key for key in pack.files if key in self.key_buttons]    # the pack may have a key this pad doesn't show
+        if not here:
+            QMessageBox.warning(self, "Sticker pack", "None of this pack's pictures is for a key on this pad.")
+            return False
+        replacing = [key for key in here if key in self.profile.get("stickers", {})]
+        if not (confirm or self.confirm_sticker_pack)(pack, here, replacing):
+            return False
+        made, failed = {}, []
+        for key in here:
+            extension, data = pack.files[key]
+            try:
+                made[key] = sticker_image.make_from_bytes(data, extension)
+            except sticker_image.StickerError as e:
+                failed.append(f"key {key}: {e}")
+        if not made:
+            QMessageBox.warning(self, "Sticker pack", "None of the pictures could be used.\n\n" + "\n".join(failed[:5]))
+            return False
+        self.profile.setdefault("stickers", {}).update(made)
+        self.mark_dirty()
+        self.refresh_pad()
+        self.build_editor()
+        self.toast(f"Applied {len(made)} stickers" + (f" from “{pack.name}”" if pack.name else "")
+                   + (f". {len(failed)} picture(s) couldn't be used" if failed else ""))
+        return True
+
+    def confirm_sticker_pack(self, pack, keys_here, replacing):
+        box = QMessageBox(self)
+        box.setWindowTitle("Apply sticker pack")
+        box.setText(f"Apply {('“' + pack.name + '”') if pack.name else 'this sticker pack'} to the profile “{self.profile['name']}”?")
+        lines = [f"{len(keys_here)} keys get a new picture."]
+        if replacing:
+            lines.append(f"{len(replacing)} of them already have one, which is replaced.")
+        if pack.author:
+            lines.append(f"By {pack.author}.")
+        if pack.license:
+            lines.append(f"License: {pack.license}.")
+        lines.append("The pictures stay on this computer, and you can change any key's sticker afterwards.")
+        box.setInformativeText("\n".join(lines))
+        box.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
+        box.button(QMessageBox.Ok).setText("Apply")
+        box.setDefaultButton(QMessageBox.Cancel)
+        return box.exec() == QMessageBox.Ok
 
     def set_sticker(self, key, name):
         """Give `key` the sticker `name` in this profile ("" takes it away)."""

@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import tempfile
 
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QSize, Qt
 from PySide6.QtGui import QImage, QImageReader, QPixmap
@@ -53,6 +54,15 @@ def make(path):
     except OSError as e:
         raise StickerError(f"Couldn't keep the sticker: {e.strerror or e}") from None
     return name
+
+
+def make_from_bytes(data, extension):
+    """Like make(), for a picture that is only in memory (one from a sticker pack). `extension` is its file type."""
+    with tempfile.TemporaryDirectory() as folder:
+        path = os.path.join(folder, "picture" + extension)     # a name we choose: nothing from the pack reaches the file system
+        with open(path, "wb") as f:
+            f.write(data)
+        return make(path)
 
 
 _cache = {}
