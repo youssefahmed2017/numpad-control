@@ -74,8 +74,8 @@ class TemplatesTest(unittest.TestCase):
         self.assertEqual(result.layer_bindings["7"]["tap"]["action"], "volume_up")
         self.assertEqual([s["action"] for s in result.bindings["9"]["tap"]["params"]["steps"]], ["press_keys"] * 2)
         self.assertEqual(result.bindings["8"]["tap"]["params"]["mode"], "Stream mode")
-        self.assertEqual(result.notes, [f"made for Default on {'linux' if sys.platform.startswith('linux') else sys.platform}"
-                                        ", layer key NumLock"])
+        platform = "windows" if sys.platform == "win32" else "linux" if sys.platform.startswith("linux") else sys.platform   # the app's own names
+        self.assertEqual(result.notes, [f"made for Default on {platform}, layer key NumLock"])
         self.assertEqual(result.dropped, [])
 
     def test_what_a_profile_file_couldnt_have_is_left_out_with_reasons(self):
