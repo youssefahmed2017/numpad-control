@@ -20,14 +20,13 @@ key (its public half is in `numpadctl/release_key.py`): the signature names the 
 and is checked before anything on disk changes or anything is run. A tag moved after signing, a swapped download or an unsigned release is refused
 with the reason. [`SECURITY.md`](../SECURITY.md) says what that does and doesn't protect.
 
-To publish a release: set `__version__` in `numpadctl/__init__.py`, commit, push the
-matching tag (`git tag v0.3.0 && git push --tags`; the Release workflow makes the release and
-the Windows installer), then **sign it on your own computer**:
-`tools/sign-release sign v0.3.0 --key <your key file>`. Wait for the Release workflow to finish first
-(it attaches the Windows installer). The tool checks the tag is the same commit on GitHub, builds
-`source.zip` from that commit, hashes the installer CI built, shows you what it will sign, and
-uploads `source.zip` and `release.sig` to the release. Until then, installed copies see the release
-but refuse to install it.
+To publish a release, run `tools/release 1.2.3 --key <your key file>` on your own computer. It checks that CI is
+green, sets `__version__`, pushes the commit and the tag, waits for the Release workflow (GitHub release, the
+Windows installer, then the winget update through Komac and the AUR update when their secrets are set), and
+finally signs the release with your offline key: it shows what it will sign and you type the tag to confirm.
+Until it is signed, installed copies see the release but refuse to install it. The secrets are `WINGET_TOKEN`
+(a personal access token with `public_repo`) and `AUR_SSH_KEY` (the AUR account's private key); a job without
+its secret is skipped. The first winget version of a package is submitted by hand.
 
 **1.0.0:** a control deck that looks and feels like a finished app.
 - **More desktops (Linux):** XFCE and other X11 desktops, and GNOME on Wayland (through GNOME's own shortcuts),

@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""Make a NumpadControl release with one command.
+
+    tools/release 1.2.3 --key KEYFILE [--yes] [--dry-run]
+
+It does, and stops at the first thing that is wrong:
+  1. checks you are on a clean `main` that matches GitHub, and that CI is green on this commit;
+  2. sets __version__ in numpadctl/__init__.py, commits "Release 1.2.3" and pushes;
+  3. pushes the tag v1.2.3, which starts the Release workflow (GitHub release, Windows installer,
+     the winget update through Komac, the AUR update, when their secrets exist);
+  4. waits for the release and the installer, then signs it with the offline key (tools/sign-release).
+The key stays on your computer: signing is the one step CI can never do.
+"""
+
+import argparse
+import re
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+INIT = ROOT / "numpadctl" / "__init__.py"
+VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
+
+
+def fail(message):
+    print(f"error: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
+def run(*argv, check=True, **kwargs):
+    done = subprocess.run(argv, cwd=ROOT, capture_output=True, text=True, **kwargs)
+    if check and done.returncode != 0:
+        fail(f"{' '.join(argv)} failed: {(done.stderr or done.stdout).strip()}")
+    return done.stdout.strip()
+
+
+def current_version():
+    return re.search(r'^__version__ = "([^"]+)"', INIT.read_text(), re.M).group(1)
+
+
+def newer(a, b):
+    return tuple(map(int, a.split("."))) > tuple(map(int, b.split(".")))
+
+
+def say(text):
+    print(f"==> {text}", flush=True)
+
+
+def wait_for_run(workflow, sha, what, minutes=25):
+    """Wait until the newest run of `workflow` for commit `sha` has finished; return its conclusion."""
+    deadline = time.time() + minutes * 60
+    while time.time() < deadline:
+        out = run("gh", "run", "list", "--workflow", workflow, "--commit", sha, "--limit", "1",
+                  "--json", "status,conclusion", "-q", '.[0]|"\\(.status) \\(.conclusion)"', check=False)
+        if out.startswith("completed"):
+            return out.split()[1]
+        time.sleep(20)
+    fail(f"{what} did not finish in {minutes} minutes")
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("version", help="the new version, e.g. 1.2.3")
+    ap.add_argument("--key", required=True, help="the offline release key file (see tools/sign-release keygen)")
+    ap.add_argument("--yes", action="store_true", help="don't ask before pushing")
+    ap.add_argument("--dry-run", action="store_true", help="run the checks only; change and push nothing")
+    args = ap.parse_args()
+    version, tag = args.version, f"v{args.version}"
+
+    if not VERSION.match(version):
+        fail("the version looks like 1.2.3")
+    if not newer(version, current_version()):
+        fail(f"{version} is not newer than the current {current_version()}")
+    if not Path(args.key).is_file():
+        fail(f"key file {args.key} not found")
+    if run("git", "branch", "--show-current") != "main":
+        fail("releases are made from main")
+    if run("git", "status", "--porcelain", "--untracked-files=no"):
+        fail("there are uncommitted changes")
+    run("git", "fetch", "origin", "main", "--tags")
+    if run("git", "rev-parse", "HEAD") != run("git", "rev-parse", "origin/main"):
+        fail("main is not the same as origin/main (push or pull first)")
+    if run("git", "tag", "--list", tag):
+        fail(f"tag {tag} already exists")
+    sha = run("git", "rev-parse", "HEAD")
+    say(f"CI on {sha[:7]}")
+    if wait_for_run("tests.yml", sha, "the tests") != "success":
+        fail("the Tests workflow is not green on this commit; fix it first")
+    if args.dry_run:
+        say(f"dry run: all checks passed; would release {tag}")
+        return
+    if not args.yes and input(f"Release {tag} now? Type the tag to go on: ").strip() != tag:
+        fail("not confirmed")
+
+    if current_version() != version:
+        INIT.write_text(re.sub(r'^__version__ = "[^"]+"', f'__version__ = "{version}"', INIT.read_text(), flags=re.M))
+        run("git", "add", str(INIT))
+        run("git", "commit", "-q", "-m", f"Release {version}")
+        run("git", "push", "origin", "main")
+        sha = run("git", "rev-parse", "HEAD")
+    run("git", "tag", tag)
+    run("git", "push", "origin", tag)
+    say(f"pushed {tag}; waiting for the Release workflow (installer build, winget, AUR)")
+    time.sleep(15)
+    result = wait_for_run("release.yml", sha, "the Release workflow", minutes=40)
+    if result != "success":
+        fail(f"the Release workflow ended with '{result}': look at it on GitHub, then sign by hand: "
+             f"tools/sign-release sign {tag} --key {args.key}")
+    say("signing the release (check what it shows, type the tag to confirm)")
+    sign = subprocess.run([sys.executable, str(ROOT / "tools" / "sign-release"), "sign", tag, "--key", args.key], cwd=ROOT)
+    if sign.returncode != 0:
+        fail("signing failed; installed copies will not update to this release until it is signed")
+    say(f"{tag} is released and signed")
+
+
+if __name__ == "__main__":
+    main()
