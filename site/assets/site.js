@@ -1,14 +1,13 @@
 // NumpadControl website: everything shared by the pages (one source for the header, footer and form).
 (function () {
   // ---- settings: the accounts this site reports to ----
-  const FORM_ENDPOINT = "https://formspree.io/f/mgaakpzq";  // waitlist sign-ups (Formspree: "NumpadControl waitlist")
   const GOATCOUNTER = "youssefahmedstartscodingat2017";     // visit counts: https://youssefahmedstartscodingat2017.goatcounter.com
   const GITHUB = "https://github.com/youssefahmed2017/numpad-control";
   const KOFI = "https://ko-fi.com/youssefahmedabdou";  // the optional tip jar
 
   const PAGES = [
     ["index.html", "Home"], ["features.html", "Features"], ["pricing.html", "Why free"],
-    ["download.html", "Get started"], ["faq.html", "FAQ"],
+    ["download.html", "Get started"], ["docs.html", "Docs"], ["faq.html", "FAQ"],
   ];
   const here = (location.pathname.split("/").pop() || "index.html");
   const current = (href) => (href === here ? ' aria-current="page"' : "");
@@ -65,7 +64,7 @@
         <a class="brand" href="index.html">${LOGO}NumpadControl</a>
         <nav class="nav" aria-label="Pages">${PAGES.map(([h, t]) => `<a href="${h}"${current(h)}>${t}</a>`).join("")}</nav>
         <button class="icon-btn" id="theme" aria-label="Colours and dark mode" aria-expanded="false">${icon("palette")}</button>
-        <a class="btn filled small" href="index.html#waitlist" data-track="nav-waitlist">Join the waitlist</a>
+        <a class="btn filled small" href="download.html#install" data-track="nav-install">Install</a>
       </div>
       <div class="picker" id="picker" role="dialog" aria-label="Colours">
         <h3>Pick your colour</h3>
@@ -84,14 +83,14 @@
         <a href="privacy.html"${current("privacy.html")}>Privacy</a>
         <a href="${GITHUB}">GitHub</a>
       </nav>
-      <a class="fab" href="index.html#waitlist" data-track="fab-waitlist">${icon("mail")}Join the waitlist</a>`);
+      <a class="fab" href="download.html#install" data-track="fab-install">${icon("download")}Install</a>`);
     const footer = document.querySelector("footer.site");
     footer.innerHTML = `
       <div class="wrap">
         <div class="cols">
           <div><a class="brand" href="index.html">${LOGO}NumpadControl</a>
             <p class="muted" style="max-width:360px">Turn any cheap USB numpad into a control deck. Windows and Linux, no driver, no telemetry.</p></div>
-          <div><h4>Product</h4><a href="features.html">Features</a><a href="pricing.html">Why free</a><a href="download.html">Get started</a></div>
+          <div><h4>Product</h4><a href="features.html">Features</a><a href="pricing.html">Why free</a><a href="download.html">Get started</a><a href="docs.html">Docs</a></div>
           <div><h4>Help</h4><a href="faq.html">FAQ</a><a href="${GITHUB}/blob/main/docs/compatibility.md">Tested numpads</a><a href="${GITHUB}/issues">Report a problem</a></div>
           <div><h4>Open source</h4><a href="${GITHUB}">GitHub</a><a href="privacy.html">Privacy</a><a href="code-signing.html">Code signing policy</a><a href="${GITHUB}/blob/main/LICENSE">GPL-3.0</a><a href="${KOFI}">Leave a tip</a></div>
         </div>
@@ -105,7 +104,7 @@
     const onScroll = () => {
       header.classList.toggle("scrolled", scrollY > 8);
       const fab = document.querySelector(".fab");
-      const target = document.getElementById("waitlist");
+      const target = document.getElementById("install");   // the install section has its own button: hide the floating one there
       if (fab && target) {
         const r = target.getBoundingClientRect();
         fab.classList.toggle("hidden", r.top < innerHeight && r.bottom > 0);
@@ -253,54 +252,6 @@
     });
   }
 
-  // ---- the waitlist form (on every page that has <div data-waitlist>) ----
-  function waitlistHTML(id) {
-    return `
-      <form class="signup reveal" id="${id}" novalidate>
-        <span class="badge">Free · open source · beta</span>
-        <h2 class="headline" style="margin-top:14px">Join the waitlist</h2>
-        <p class="muted" style="margin:0">Get an email when the one-click installer and big updates are out. Nothing else, ever.</p>
-        <div class="field"><input id="${id}-email" name="email" type="email" required placeholder=" " autocomplete="email"><label for="${id}-email">Your email</label></div>
-        <div class="field"><select id="${id}-use" name="use">
-          <option value="streaming">Streaming (OBS, Twitch, YouTube…)</option><option value="editing">Video or photo editing</option>
-          <option value="gaming">Gaming</option><option value="work">Work and productivity</option><option value="other">Something else</option>
-        </select><label for="${id}-use">What would you use it for?</label></div>
-        <p class="question">Which computer is it for? <span class="muted">(optional)</span></p>
-        <div class="segmented" role="radiogroup">
-          <label><input type="radio" name="os" value="windows">Windows</label>
-          <label><input type="radio" name="os" value="linux">Linux</label>
-          <label><input type="radio" name="os" value="mac">Mac</label>
-        </div>
-        <input type="hidden" name="page" value="${here}">
-        <p style="margin:26px 0 0"><button class="btn filled" type="submit">${icon("mail")}Join the waitlist</button></p>
-        <div class="form-done">${icon("check")}<span>You're on the list. We'll email you when there's news.</span></div>
-        <p class="form-note">Only used for NumpadControl news. No spam; unsubscribe any time. <a href="privacy.html">Privacy</a></p>
-      </form>`;
-  }
-  function wireWaitlist() {
-    document.querySelectorAll("[data-waitlist]").forEach((slot, n) => { slot.innerHTML = waitlistHTML("waitlist-form-" + n); });
-    document.querySelectorAll("form.signup").forEach(form => form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const note = form.querySelector(".form-note");
-      const email = form.querySelector('input[type="email"]');
-      if (!email.value || !email.checkValidity()) { email.focus(); note.textContent = "Please enter a valid email address."; return; }
-      const button = form.querySelector('button[type="submit"]');
-      const answers = new FormData(form);  // read before disabling: disabled fields aren't sent
-      button.disabled = true;
-      try {
-        const response = await fetch(FORM_ENDPOINT, { method: "POST", body: answers, headers: { Accept: "application/json" } });
-        if (!response.ok) throw new Error(response.status);
-        form.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
-        form.querySelector(".form-done").classList.add("show");
-        note.textContent = "Thanks! Tell a streamer friend 🙂";
-        count("signup-" + (answers.get("os") || "unknown"));
-      } catch (e) {
-        button.disabled = false;
-        note.textContent = "That didn't go through. Please try again in a moment.";
-      }
-    }));
-  }
-
   // ---- visit counts: GoatCounter (no cookies) ----
   function count(path) {
     if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path, title: path, event: true });
@@ -322,7 +273,6 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     buildChrome();
-    wireWaitlist();
     document.querySelectorAll("[data-icon]").forEach(el => { el.insertAdjacentHTML("afterbegin", icon(el.dataset.icon)); });
     wireChrome();
     wireRipples();
