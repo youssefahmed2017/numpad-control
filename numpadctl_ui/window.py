@@ -74,10 +74,30 @@ class KeyButton(_Morph, QPushButton):
         """Show the sticker `name` instead of the key's name ("" for none)."""
         if name == self.sticker:
             return
-        pix = sticker_image.pixmap(name, 18 if self.compact else 30) if name else None
+        self.sticker = name
+        self._sticker_side_now = self._sticker_side()
+        pix = sticker_image.pixmap(name, self._sticker_side_now) if name else None
         self.sticker = name if pix else ""
         self._sticker_pix = pix
         self._show()
+
+    STICKER_MAX = 64    # stickers are stored at most 128 px wide: 64 logical px is sharp on a 2x screen
+
+    def _sticker_side(self):
+        """The biggest square the key has room for: its width, or its height less the margins and the line below."""
+        margin = 2 if self.compact else 8
+        room_h = self.height() - margin - (0 if self.compact else self.action.sizeHint().height())
+        side = min(self.width() - margin, room_h) // 2 * 2
+        return max(14 if self.compact else 24, min(self.STICKER_MAX, side))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.sticker and self._sticker_side() != getattr(self, "_sticker_side_now", None):   # the key got bigger or smaller
+            self._sticker_side_now = self._sticker_side()
+            pix = sticker_image.pixmap(self.sticker, self._sticker_side_now)
+            if pix:
+                self._sticker_pix = pix
+                self.picture.setPixmap(pix)
 
     def set_icon(self, action_id):
         """The built-in icon of `action_id` (None: no icon). A sticker always wins over it."""

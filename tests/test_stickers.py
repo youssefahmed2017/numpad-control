@@ -225,5 +225,59 @@ class ServiceAndOverlayTest(unittest.TestCase):
         hud.deleteLater()
 
 
+class KeySizingTest(unittest.TestCase):
+    """A sticker is drawn as big as its key has room for, not at one fixed size."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        patch = mock.patch.object(stickers.paths, "config_dir", lambda: self.root)
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.name = sticker_image.make(picture(self.root / "p.png", 128, 128))
+
+    @staticmethod
+    def resized(button, w, h):
+        """Resize `button` and deliver the resize event the way a shown key gets it (a hidden widget only gets it on show)."""
+        from PySide6.QtCore import QSize
+        from PySide6.QtGui import QResizeEvent
+        old = button.size()
+        button.resize(w, h)
+        button.resizeEvent(QResizeEvent(QSize(w, h), old))
+
+    def key(self, w, h, compact=False):
+        from numpadctl_ui.window import KeyButton
+        button = KeyButton("7", compact=compact)
+        self.addCleanup(button.deleteLater)
+        button.resize(w, h)
+        button.set_sticker(self.name)
+        return button
+
+    def test_a_bigger_key_gets_a_bigger_sticker_up_to_a_limit(self):
+        small, normal, huge = self.key(60, 50), self.key(105, 66), self.key(400, 400)
+        sides = [b._sticker_side_now for b in (small, normal, huge)]
+        self.assertLess(sides[0], sides[1])
+        self.assertLess(sides[1], sides[2])
+        self.assertEqual(sides[2], 64)                     # a sticker is stored at 128 px: no bigger than that is useful
+        self.assertGreater(sides[1], 30)                   # more than the old fixed size on a normal key
+
+    def test_the_sticker_follows_the_key_when_it_is_resized(self):
+        button = self.key(105, 66)
+        before = button._sticker_side_now
+        self.resized(button, 200, 160)
+        self.assertGreater(button._sticker_side_now, before)
+        self.resized(button, 60, 50)
+        self.assertLess(button._sticker_side_now, before)
+        self.assertEqual(button._sticker_pix.deviceIndependentSize().width(), button._sticker_side_now)
+
+    def test_a_compact_key_keeps_a_small_sticker_and_never_goes_below_a_minimum(self):
+        compact = self.key(40, 30, compact=True)
+        self.assertLessEqual(compact._sticker_side_now, 30)
+        self.assertGreaterEqual(compact._sticker_side_now, 14)
+        tiny = self.key(5, 5)
+        self.assertGreaterEqual(tiny._sticker_side_now, 24)
+
+
 if __name__ == "__main__":
     unittest.main()
