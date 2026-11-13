@@ -17,8 +17,9 @@ class StickerError(Exception):
     """The picture can't be used; the message says why, in plain words."""
 
 
-def make(path):
-    """Store `path` as a sticker and return its name. Raises StickerError."""
+def png_bytes(path, side=None):
+    """The picture file `path` as PNG bytes, at most `side` (default: sticker size) pixels wide and high. Raises StickerError."""
+    side = side or stickers.SIZE
     try:
         size = os.path.getsize(path)
     except OSError as e:
@@ -32,7 +33,7 @@ def make(path):
         raise StickerError("That doesn't look like a picture NumpadControl can open.")
     if full.width() * full.height() > MAX_PIXELS:
         raise StickerError("That picture is too large to open.")
-    box = QSize(stickers.SIZE, stickers.SIZE)
+    box = QSize(side, side)
     # asking the reader for the small size lets it decode a big photo cheaply (and draws SVG sharp)
     reader.setScaledSize(full.scaled(box, Qt.KeepAspectRatio) if full.width() > box.width()
                          or full.height() > box.height() else full)
@@ -44,7 +45,12 @@ def make(path):
     buffer = QBuffer(data)
     buffer.open(QIODevice.WriteOnly)
     image.save(buffer, "PNG")
-    raw = bytes(data)
+    return bytes(data)
+
+
+def make(path):
+    """Store `path` as a sticker and return its name. Raises StickerError."""
+    raw = png_bytes(path)
     name = hashlib.sha256(raw).hexdigest()[:16] + ".png"
     target = stickers.path_for(name)
     try:
@@ -54,6 +60,15 @@ def make(path):
     except OSError as e:
         raise StickerError(f"Couldn't keep the sticker: {e.strerror or e}") from None
     return name
+
+
+def png_from_bytes(data, extension, side=None):
+    """Like png_bytes(), for a picture that is only in memory (one from a pack)."""
+    with tempfile.TemporaryDirectory() as folder:
+        path = os.path.join(folder, "picture" + extension)     # a name we choose: nothing from the pack reaches the file system
+        with open(path, "wb") as f:
+            f.write(data)
+        return png_bytes(path, side)
 
 
 def make_from_bytes(data, extension):

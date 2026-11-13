@@ -323,6 +323,14 @@ keyboard in the window also removes the actions set on its keys.
   To make one, put your pictures in a folder (square, 256 px or more, transparent background) and run
   `python tools/make-sticker-pack.py my-pictures --name "My pack" --author "You" --license "Personal use only"`: it checks them,
   says which keys are missing and writes the zip. Anyone may make, share or sell packs; the app stays free either way.
+- **Icon packs.** A pack can also restyle the icon of every *action* (volume, media, OBS, launch app …): **Settings →
+  Appearance → Icon pack → Install pack…**, pick a `.zip`, confirm. A pack is a zip (or folder) with one picture per action,
+  named after the action's id: `volume_up.png`, `mic_mute.png`, `obs_start_recording.png` … (any picture type as above), and
+  optionally a `pack.json` with `name`, `author`, `license`. The pad and the key map overlay then draw the pack's picture
+  instead of the built-in icon; an action the pack has no picture for keeps the built-in icon, and a sticker you put on a
+  key still wins. Pictures are shrunk to 128 px and kept in the `icon-packs` folder of the settings directory; **Remove**
+  deletes a pack and "Built-in icons" goes back. Read as strictly as sticker packs (at most 160 files, 5 MB a picture, 40 MB
+  in all, 20 packs installed). To make one: `python tools/make-icon-pack.py my-icons --name "My icons" --author "You"`.
 - **Profile sets.** A set is a whole separate setup (its own Default and its own
   per-app profiles), for example "Coding", "Streaming" and "Gaming". Only the active set
   does anything, and a set never borrows keys from another one. Put **Switch to a profile

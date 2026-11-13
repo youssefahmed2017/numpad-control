@@ -25,6 +25,7 @@ GONE_AFTER = 5  # status messages saying the service is gone, 2 s apart, before 
 ROWS, COLUMNS = 5, 4
 STICKER = 28   # a sticker's size on the overlay, where the key's name would be
 ICON = 24      # a built-in action icon's size on the overlay
+ICON_PACK = 30  # an icon pack's picture: a whole tile, drawn where the name would be (the action's words start 34 px down)
 
 
 class Hud(QWidget):
@@ -113,12 +114,12 @@ class Hud(QWidget):
             return "Key map"
         return None
 
-    def icon(self, action, ink, behind):
+    def icon(self, action, ink, behind, px=ICON, pack=""):
         """An action's icon, drawn once per colour (the overlay repaints every frame while it fades)."""
-        key = (action, ink, behind)
+        key = (action, ink, behind, px, pack)
         if key not in self._icon_cache:
-            self._icon_cache[key] = action_icons.pixmap(action, ink, ICON, behind=behind,
-                                                        record=theme.current.get("error", "#e53935"))
+            self._icon_cache[key] = action_icons.pixmap(action, ink, px, behind=behind,
+                                                        record=theme.current.get("error", "#e53935"), pack=pack)
         return self._icon_cache[key]
 
     def draw_half(self, painter, colour, left, title, keys, stickers, layer, icons=None):
@@ -156,7 +157,12 @@ class Hud(QWidget):
                                   1.0 if used or special else 0.7))
             sticker = sticker_image.pixmap(stickers.get(key), STICKER) if used else None
             action = (icons or {}).get(key) if used and not sticker else None
-            if action and action_icons.has_icon(action) and theme.look.get("action_icons", True):
+            pack = theme.look.get("icon_pack", "")
+            if action and action_icons.has_icon(action) and theme.look.get("action_icons", True) \
+                    and action_icons.pack_has(pack, action):
+                # an icon pack's picture (a whole tile) where the name was, no small name: the tile is the key's face
+                painter.drawPixmap(QPointF(x + (CELL_W - ICON_PACK) / 2, y + 3), self.icon(action, "", "", ICON_PACK, pack))
+            elif action and action_icons.has_icon(action) and theme.look.get("action_icons", True):
                 # the icon where the name was, the key's name small in the top-left corner
                 painter.drawPixmap(QPointF(x + (CELL_W - ICON) / 2, y + 7),
                                    self.icon(action, theme.current[text], theme.current[fill]))

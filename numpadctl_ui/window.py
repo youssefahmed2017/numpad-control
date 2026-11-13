@@ -69,6 +69,7 @@ class KeyButton(_Morph, QPushButton):
         self.icon_action = None   # the action whose built-in icon shows (action_icons.py), when there's no sticker
         self._icon_key = None     # (action, colour, background) the icon was last drawn with
         self._mode = None         # "sticker", "icon" or None: what the picture label shows right now
+        self._packed = False      # the icon on show is a picture from the icon pack in use (settings -> Appearance)
 
     def set_sticker(self, name):
         """Show the sticker `name` instead of the key's name ("" for none)."""
@@ -92,6 +93,8 @@ class KeyButton(_Morph, QPushButton):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        if self._packed:
+            self._icon_key = None      # drawn again, at the new size, in the next paint
         if self.sticker and self._sticker_side() != getattr(self, "_sticker_side_now", None):   # the key got bigger or smaller
             self._sticker_side_now = self._sticker_side()
             pix = sticker_image.pixmap(self.sticker, self._sticker_side_now)
@@ -106,6 +109,11 @@ class KeyButton(_Morph, QPushButton):
         self.icon_action = action_id
         self._show()
 
+    def pack_icon(self):
+        """True when this key's action has a picture in the icon pack in use (it then shows instead of the built-in icon)."""
+        return (self.wants_icon() and not self.sticker
+                and action_icons.pack_has(theme.look.get("icon_pack", ""), self.icon_action))
+
     def wants_icon(self):
         return (bool(self.icon_action) and action_icons.has_icon(self.icon_action) and not self.compact
                 and theme.look.get("action_icons", True) and bool(theme.painted()))
@@ -113,18 +121,19 @@ class KeyButton(_Morph, QPushButton):
     def _show(self):
         """Sticker (big, the name hidden), else icon (the name small above it), else just the name."""
         mode = "sticker" if self.sticker else "icon" if self.wants_icon() else None
-        if mode == self._mode and mode != "sticker":
+        packed = mode == "icon" and self.pack_icon()
+        if mode == self._mode and packed == self._packed and mode != "sticker":
             return
-        self._mode = mode
+        self._mode, self._packed = mode, packed
         if mode == "sticker":
             self.picture.setPixmap(self._sticker_pix)
         elif mode is None:
             self.picture.clear()
         self._icon_key = None   # drawn in paintEvent, in the key's own colours
         self.picture.setVisible(mode is not None)
-        self.name.setVisible(mode != "sticker")
-        if bool(self.name.property("small")) != (mode == "icon"):
-            self.name.setProperty("small", mode == "icon")
+        self.name.setVisible(mode != "sticker" and not packed)     # a pack's tile takes the room, like a sticker
+        if bool(self.name.property("small")) != (mode == "icon" and not packed):
+            self.name.setProperty("small", mode == "icon" and not packed)
             self.name.style().unpolish(self.name)
             self.name.style().polish(self.name)
         self.update()
@@ -196,17 +205,20 @@ class KeyButton(_Morph, QPushButton):
             painter.setBrush(Qt.NoBrush)
             painter.drawRoundedRect(rect.adjusted(1, 1, -1, -1), radius - 1, radius - 1)
         painter.end()
-        if (self.wants_icon() and not self.sticker) != (self._mode == "icon"):
-            QTimer.singleShot(0, self._show)   # the setting or the theme changed: re-arrange after this paint
+        if (self.wants_icon() and not self.sticker) != (self._mode == "icon") \
+                or (self._mode == "icon" and self.pack_icon() != self._packed):
+            QTimer.singleShot(0, self._show)   # the setting, the theme or the icon pack changed: re-arrange after this paint
         elif self._mode == "icon":   # the icon in the key's current text colour, its badge cut out of the key colour
             chosen_now = self._sel > 0.5   # resting or selected colours only: never redrawn per animation frame
             ink = c["onPrimaryContainer"] if chosen_now else content
             behind = c["primaryContainer"] if chosen_now else resting
-            key = (self.icon_action, ink, behind)
+            pack = theme.look.get("icon_pack", "") if self._packed else ""
+            side = self._sticker_side() if self._packed else 26     # a pack's tile is as big as the key has room for
+            key = (self.icon_action, ink, behind, pack, side)
             if key != self._icon_key:
                 self._icon_key = key
-                self.picture.setPixmap(action_icons.pixmap(self.icon_action, ink, 26, behind=behind,
-                                                           record=c["error"]))
+                self.picture.setPixmap(action_icons.pixmap(self.icon_action, ink, side, behind=behind,
+                                                           record=c["error"], pack=pack))
 
 
 class MainWindow(QMainWindow):

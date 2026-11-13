@@ -17,6 +17,7 @@ Layout:
 """
 
 import json
+import re
 import os
 
 from . import profile_sets, stickers
@@ -167,6 +168,7 @@ LOOK_DEFAULTS = {
     "font": "",            # the UI font family; "" = the bundled Google Sans
     "font_scale": 100,     # text size, 85..130 %
     "action_icons": True,  # a built-in icon for each key's action (window and key map); your stickers win
+    "icon_pack": "",       # an installed icon pack (icon_packs.py) whose pictures replace the built-in icons; "" = the built-in ones
 }
 LOOK_CHOICES = {"source": ("accent", "color", "image", "pywal", "file"), "shape": ("round", "rounded", "square"),
                 "variant": ("tonal_spot", "vibrant", "expressive", "fidelity", "content", "neutral", "monochrome",
@@ -194,6 +196,8 @@ def look_settings(cfg):
             value = default
         if key in LOOK_CHOICES and value not in LOOK_CHOICES[key]:
             value = default
+        if key == "icon_pack" and value and not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,39}", value):
+            value = default     # a pack is named by a folder name we made: nothing else is believed
         look[key] = value
     return look
 

@@ -69,12 +69,13 @@ def _read_info(raw, pack):
         pack.name, pack.author, pack.license = _text(data.get("name")), _text(data.get("author")), _text(data.get("license"))
 
 
-def _collect(entries, pack):
+def _collect(entries, pack, key_for=None, max_entries=MAX_ENTRIES, what="a key"):
     """`entries` yields (file name, size claimed, opener). Fills pack.files, enforcing the limits on what is really read."""
+    key_for = key_for or _key_for
     total = 0
     for count, (filename, claimed, opener) in enumerate(entries):
-        if count >= MAX_ENTRIES:
-            pack.ignored.append(f"only the first {MAX_ENTRIES} files were looked at")
+        if count >= max_entries:
+            pack.ignored.append(f"only the first {max_entries} files were looked at")
             break
         base = PurePosixPath(filename).name
         if not base or base.startswith(".") or "__MACOSX" in PurePosixPath(filename).parts:
@@ -86,9 +87,9 @@ def _collect(entries, pack):
             else:
                 _read_info(raw, pack)
             continue
-        found = _key_for(base)
+        found = key_for(base)
         if found is None:
-            pack.ignored.append(f"{base[:40]}: not a name for a key")
+            pack.ignored.append(f"{base[:40]}: not a name for {what}")
             continue
         key, extension = found
         if key in pack.files:
@@ -105,8 +106,11 @@ def _collect(entries, pack):
         pack.files[key] = (extension, data)
 
 
-def read_pack(path):
-    """The Pack in the zip or folder at `path`. Raises PackError (never anything else) when it can't be used."""
+def read_pack(path, key_for=None, max_entries=MAX_ENTRIES, empty="it has no pictures named after keys (7.png, plus.png, enter.png ...)", what="a key"):
+    """The Pack in the zip or folder at `path`. Raises PackError (never anything else) when it can't be used.
+
+    By default the pictures are named after keys; `key_for(file name) -> (id, extension) or None` lets another kind of pack
+    (icon_packs.py: named after actions) use the same strict reading."""
     path = Path(path)
     pack = Pack()
     try:
@@ -119,7 +123,7 @@ def read_pack(path):
                         with open(p, "rb") as f:
                             return f.read(limit)
                     yield p.name, p.stat().st_size, opener
-            _collect(entries(), pack)
+            _collect(entries(), pack, key_for, max_entries, what)
         elif zipfile.is_zipfile(path):
             with zipfile.ZipFile(path) as archive:
                 infos = sorted((i for i in archive.infolist() if not i.is_dir()), key=lambda i: i.filename)
@@ -130,7 +134,7 @@ def read_pack(path):
                             with archive.open(info) as f:
                                 return f.read(limit)
                         yield info.filename, info.file_size, opener
-                _collect(entries(), pack)
+                _collect(entries(), pack, key_for, max_entries, what)
         else:
             raise PackError("that isn't a zip file or a folder")
     except PackError:
@@ -138,5 +142,5 @@ def read_pack(path):
     except (OSError, zipfile.BadZipFile, RuntimeError, NotImplementedError, EOFError) as e:   # unreadable, encrypted, broken
         raise PackError(f"it couldn't be read ({getattr(e, 'strerror', None) or e})") from None
     if not pack.files:
-        raise PackError("it has no pictures named after keys (7.png, plus.png, enter.png ...)")
+        raise PackError(empty)
     return pack

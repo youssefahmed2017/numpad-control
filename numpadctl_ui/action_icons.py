@@ -12,6 +12,8 @@ from pathlib import Path
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPixmap
 
+from numpadctl import icon_packs
+
 from . import icons
 
 BRANDS = Path(__file__).resolve().parent.parent / "assets" / "brands"
@@ -132,12 +134,43 @@ def _brand(name, color, px, ratio):
     return image
 
 
-def pixmap(action_id, color, px=28, behind=None, record="#e53935", ratio=2.0):
+_pack_cache = {}
+
+
+def pack_has(pack, action_id):
+    """True when the installed icon pack `pack` has a picture for `action_id`."""
+    return bool(pack) and action_id in ICONS and icon_packs.path_for(pack, action_id) is not None
+
+
+def _pack_pixmap(pack, action_id, side, ratio):
+    """The pack's picture of `action_id` fitting `side` x `side` logical pixels, or None. Pictures are whole tiles with their
+    own colours, so they are not tinted."""
+    path = icon_packs.path_for(pack, action_id)
+    if path is None:
+        return None
+    key = (str(path), side, ratio, path.stat().st_mtime_ns)      # a pack installed again is read again
+    if key not in _pack_cache:
+        loaded = QPixmap(str(path))
+        if loaded.isNull():
+            return None
+        size = round(side * ratio)
+        scaled = loaded.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        scaled.setDevicePixelRatio(ratio)
+        _pack_cache[key] = scaled
+    return _pack_cache[key]
+
+
+def pixmap(action_id, color, px=28, behind=None, record="#e53935", ratio=2.0, pack=""):
     """The icon for an action (or None): `color` for the icon, `behind` = the colour it sits on (the badge is cut
-    out of the icon with a ring of it), `record` = the red of recording / going live."""
+    out of the icon with a ring of it), `record` = the red of recording / going live. With `pack` (an installed icon pack)
+    that has a picture for the action, the picture is returned instead, `px` wide: it keeps its own colours."""
     spec = ICONS.get(action_id)
     if spec is None:
         return None
+    if pack:
+        picture = _pack_pixmap(pack, action_id, px, ratio)
+        if picture is not None:
+            return picture
     base, badge, role = spec
     size = round(px * ratio)
     canvas = QPixmap(size, size)
