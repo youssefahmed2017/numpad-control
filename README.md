@@ -47,4 +47,4 @@ like to say thanks, you can leave a tip on **[Ko-fi](https://ko-fi.com/youssefah
 
 ## License
 [GPL-3.0](LICENSE). Parts it uses keep their own licenses (PySide6 under the LGPL, evdev, obsws-python, pystray, pycaw,
-and on Windows, only if you choose it, the Interception driver).
+and on Windows).
