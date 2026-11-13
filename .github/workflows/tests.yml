@@ -27,7 +27,7 @@ jobs:
       - run: python -m pip install -r requirements.txt
       - name: The tests
         shell: bash   # PowerShell turned the exit code to 1 after a pass on Windows
-        run: python tools/ci-run-tests.py
+        run: python -X faulthandler tools/ci-run-tests.py
       - name: setup.sh menu and a dry run (Linux)
         if: runner.os == 'Linux'
         run: |
