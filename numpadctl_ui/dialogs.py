@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt, QTimer, QUrl
+from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
     QDialog, QDialogButtonBox, QHBoxLayout, QTabWidget, QLineEdit, QListWidget, QListWidgetItem, QMessageBox,
     QVBoxLayout, QWidget)
@@ -180,6 +180,10 @@ class SettingsDialog(QDialog):
         self.look_page.changed.connect(self._preview_timer.start)
         self.look_page.show_status()
         buttons = QDialogButtonBox()
+        self.support_button = PushButton("Support NumpadControl")
+        self.support_button.setToolTip("Leave a tip on Ko-fi. Optional: everything stays free and nothing is locked.")
+        self.support_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(ui_common.SUPPORT_URL)))
+        buttons.addButton(self.support_button, QDialogButtonBox.HelpRole)
         buttons.addButton(PushButton("Close"), QDialogButtonBox.RejectRole)
         buttons.rejected.connect(self.accept)
         outer.addWidget(buttons)

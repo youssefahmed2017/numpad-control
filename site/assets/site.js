@@ -4,6 +4,7 @@
   const FORM_ENDPOINT = "https://formspree.io/f/mgaakpzq";  // waitlist sign-ups (Formspree: "NumpadControl waitlist")
   const GOATCOUNTER = "youssefahmedstartscodingat2017";     // visit counts: https://youssefahmedstartscodingat2017.goatcounter.com
   const GITHUB = "https://github.com/youssefahmed2017/numpad-control";
+  const KOFI = "https://ko-fi.com/youssefahmedabdou";  // the optional tip jar
 
   const PAGES = [
     ["index.html", "Home"], ["features.html", "Features"], ["pricing.html", "Why free"],
@@ -92,7 +93,7 @@
             <p class="muted" style="max-width:360px">Turn any cheap USB numpad into a control deck. Windows and Linux, no driver, no telemetry.</p></div>
           <div><h4>Product</h4><a href="features.html">Features</a><a href="pricing.html">Why free</a><a href="download.html">Get started</a></div>
           <div><h4>Help</h4><a href="faq.html">FAQ</a><a href="${GITHUB}/blob/main/docs/compatibility.md">Tested numpads</a><a href="${GITHUB}/issues">Report a problem</a></div>
-          <div><h4>Open source</h4><a href="${GITHUB}">GitHub</a><a href="privacy.html">Privacy</a><a href="code-signing.html">Code signing policy</a><a href="${GITHUB}/blob/main/LICENSE">GPL-3.0</a></div>
+          <div><h4>Open source</h4><a href="${GITHUB}">GitHub</a><a href="privacy.html">Privacy</a><a href="code-signing.html">Code signing policy</a><a href="${GITHUB}/blob/main/LICENSE">GPL-3.0</a><a href="${KOFI}">Leave a tip</a></div>
         </div>
         <p class="fine">Stream Deck is a trademark of Corsair / Elgato; NumpadControl isn't affiliated with them.
           This site counts visits without cookies and keeps nothing about you.</p>

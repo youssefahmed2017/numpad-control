@@ -43,6 +43,8 @@ def layout_for(cfg):
 
 
 KEY_LABELS = {"NumLock": "Num", "Backspace": "⌫", "Enter": "⏎"}
+SUPPORT_URL = "https://ko-fi.com/youssefahmedabdou"   # the optional tip jar (Settings -> Support NumpadControl, the README, the website)
+
 LAYER_KEY_CHOICES = [k for k, *_ in LAYOUT if k not in config.TAP_ONLY_KEYS]
 
 SLOT_TITLES = {"tap": "Press", "hold": "Hold", "double": "Double tap"}

@@ -845,6 +845,11 @@ microphone, EasyEffects and its preset file even if it fails. They need `obs`, `
   Run Python, and on-screen popups (notifications instead). Install with
   `setup.ps1` (see Install → Windows).
 
+## Support the project
+NumpadControl is free and stays free: every key, every action, no ads, no account. If it saved you time and you'd
+like to say thanks, you can leave a tip on **[Ko-fi](https://ko-fi.com/youssefahmedabdou)** (or use the Sponsor button at the top of this page).
+It is optional and unlocks nothing. A tip link is also in Settings, next to Close.
+
 ## License
 NumpadControl is free software under the [GNU General Public License v3.0](LICENSE)
 (GPL-3.0): the service, the settings window (`numpadctl_ui/`), the future cloud backend in
