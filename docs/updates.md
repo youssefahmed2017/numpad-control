@@ -29,7 +29,12 @@ the Windows installer), then **sign it on your own computer**:
 uploads `source.zip` and `release.sig` to the release. Until then, installed copies see the release
 but refuse to install it.
 
-**Not released yet** (on `main`):
+**1.0.0:** a control deck that looks and feels like a finished app.
+- **More desktops (Linux):** XFCE and other X11 desktops, and GNOME on Wayland (through GNOME's own shortcuts),
+  now work next to Hyprland and KDE Plasma, with volume popups on each. See [Linux desktops](linux-details.md).
+- **Stickers and sticker packs:** a picture for each key, on the pad and on the key map; give the whole pad its
+  pictures from a zip in one step. **Action icon packs** restyle every action's icon the same way.
+- **Profile library:** browse shared profiles from the profile menu; a download is checked against its checksum.
 - **Key map overlay, both halves ([#12](https://github.com/youssefahmed2017/numpad-control/issues/12)):** it opens
   with Layer + Enter (configurable) instead of popping up whenever the layer key is held, and shows the normal keys
   next to the layer keys. *Holding the layer key* in Settings brings back the old behaviour.

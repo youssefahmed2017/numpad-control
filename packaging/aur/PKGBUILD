@@ -8,7 +8,7 @@ url='https://github.com/youssefahmed2017/numpad-control'
 license=('GPL-3.0-only')
 replaces=('numpad-pilot')    # the name before the rename
 conflicts=('numpad-pilot')
-depends=('python' 'python-evdev' 'pyside6' 'systemd')
+depends=('python' 'python-evdev' 'python-xlib' 'pyside6' 'systemd')
 optdepends=('python-obsws: the OBS actions'
             'python-pillow: the Windows-style tray icon helpers'
             'ydotool: the Type text and Press keys actions'
