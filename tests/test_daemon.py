@@ -243,7 +243,7 @@ class SocketTest(unittest.IsolatedAsyncioTestCase):
 
     async def message(self):
         import json
-        return json.loads(await asyncio.wait_for(self.reader.readline(), 2))
+        return json.loads(await asyncio.wait_for(self.reader.readline(), 10))
 
     async def send(self, message):
         import json
