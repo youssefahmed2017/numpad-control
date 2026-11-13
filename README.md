@@ -741,37 +741,8 @@ it then types like a normal keyboard and nothing is read; `false`: never) and
 (a VM can't do it: anti-cheat refuses them). Tested games and numpad models:
 [docs/compatibility.md](docs/compatibility.md); test a numpad with `python -m numpadctl check`.
 
-## NumpadControl Cloud (optional)
-Settings → **Cloud** connects this PC to NumpadControl Cloud, a separate online service that keeps your profiles in
-step between your PCs. **It is in development: the service isn't open yet, so the tab can't connect.** NumpadControl
-itself stays free and works exactly the same without it; nothing is sent anywhere until you pair a PC.
-- **Pair this PC:** the tab shows a code like `ABCD-2345`; you sign in at the cloud's dashboard and type it there.
-  This PC makes its own secret token and sends only a hash of it, so the server never holds a token that could act
-  as this PC. You can remove a PC in the dashboard at any time, and it is cut off at once.
-- **Vault:** the first PC asks for a passphrase and shows a **recovery key** once (a vault can't be reset by anyone,
-  not even us); the next PCs ask for the passphrase (or the recovery key).
-- **Sync now:** sends profiles that changed here and brings in the ones that changed elsewhere. **Profiles to sync**
-  has a switch per profile, because the free plan syncs 1 profile (paid plans with more are planned); a profile
-  switched off stays on this PC and is taken out of the cloud.
-- **Disconnect this PC:** forgets the token and the key here. Profiles stay on this PC and in the cloud.
-
-What keeps it safe (a profile can contain macro code, so a synced profile is code that runs on your PC):
-- Every profile is encrypted on this PC (AES-256-GCM; the key is wrapped by your passphrase with Argon2id) before it
-  leaves it. The server stores only ciphertext, so it can't read a profile, and it can't forge one: its id and
-  revision are part of the encryption, so it can't hand one profile back as another.
-- What comes back is treated like an imported file: checked, and shown to you first when it brings actions that run
-  programs, press keys or power the PC off. An older version than this PC already had is refused, and when a profile
-  changed in two places nothing is overwritten: the cloud's version is kept as "Name (from cloud)".
-- Settings such as the OBS password are not part of a profile and never leave this PC.
-- This PC's token and the vault key are kept in `cloud.json` next to `config.json`, readable only by you on Linux
-  (Windows: ordinary file permissions don't restrict it the same way).
-
-(`numpadctl/cloud_crypto.py`, `cloud_api.py`, `cloud_sync.py`, `numpadctl_ui/cloud_page.py`; the protocol is written down in
-the cloud project's `docs/SYNC-PROTOCOL.md`, and `tests/fixtures/cloud-test-vectors.json` holds the vectors both sides must match.)
-
 ## Privacy and crash reports
-NumpadControl collects nothing: no telemetry, no usage statistics, no account (the optional
-[NumpadControl Cloud](#numpadcontrol-cloud-optional) is the one exception, and only once you pair a PC). If a part
+NumpadControl collects nothing: no telemetry, no usage statistics, no account. If a part
 of it crashes, a plain system dialog asks whether to report that crash; **Yes** opens a
 pre-filled GitHub issue in your browser, so you read everything before sending it, and
 **No** sends nothing. The report (the error and where it happened, the version, the
@@ -782,8 +753,6 @@ system; your user name and home folder taken out) is also kept in
 The only other times it uses the network: once a day it asks GitHub whether a new version exists (turn it off or
 set it to only tell you with `"updates": "off"` / `"notify"` in `config.json`), and **Profile ⋯ → Browse library…**
 downloads the profile list and the profile you pick from GitHub, only when you open it. Nothing about you is sent.
-If you pair a PC with NumpadControl Cloud, your profiles (encrypted on your PC first) and the PC's name go to its server, and
-the PC contacts it when you press Sync now.
 Stickers never leave your computer. The same text is on the [privacy page](https://youssefahmed2017.github.io/numpad-control/privacy.html).
 
 ![The crash dialog on Linux (xmessage, the most basic of the dialogs it can use)](docs/screenshots/crash-dialog-linux.png)
@@ -810,8 +779,6 @@ Stickers never leave your computer. The same text is on the [privacy page](https
 - `numpadctl/profile_sets.py`: which profile set is active (a small state file, like `modes.py`)
 - `numpadctl/stickers.py`: key pictures: their names, where they live, which one a profile shows (`numpadctl_ui/sticker_image.py` makes them from a picture file)
 - `numpadctl/library.py`: the profile library (Browse library…): reads its index and fetches a profile to import
-- `numpadctl/cloud_crypto.py`, `cloud_api.py`, `cloud_sync.py`: NumpadControl Cloud: the encryption, the HTTPS calls and the sync
-  (pairing, conflicts, what is checked before a profile is applied); `numpadctl_ui/cloud_page.py` is Settings → Cloud
 - `numpadctl/obs.py`, `audio.py`, `modes.py`, `sandbox.py`, `config.py`
 - `numpadctl/platform/`: everything that differs between operating systems, so a
   future Windows version only has to add its own versions of these:

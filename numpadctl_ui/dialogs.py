@@ -13,7 +13,6 @@ from .checkbox import Switch
 from . import theme
 from .buttons import ComboBox, PushButton, SmoothScrollArea, SpinBox
 from .appearance import APPEARANCES, AppearancePage  # noqa: F401 (APPEARANCES: older imports)
-from .cloud_page import CloudPage
 from .widgets import card, label
 
 
@@ -175,16 +174,6 @@ class SettingsDialog(QDialog):
         holder_layout.addStretch()
         look_scroll.setWidget(holder)
         self.tabs.addTab(look_scroll, "Appearance")
-        self.cloud_page = CloudPage(window)
-        cloud_scroll = SmoothScrollArea()
-        cloud_scroll.setWidgetResizable(True)
-        cloud_holder = QWidget()
-        cloud_layout = QVBoxLayout(cloud_holder)
-        cloud_layout.addWidget(self.cloud_page)
-        cloud_layout.addStretch()
-        cloud_scroll.setWidget(cloud_holder)
-        self.tabs.addTab(cloud_scroll, "Cloud")
-        self.finished.connect(self.cloud_page.shutdown)     # closing Settings stops a pairing that is waiting
         # a burst of changes (scrolling through a list, typing an opacity) is shown once, when it settles
         self._preview_timer = QTimer(self, singleShot=True, interval=120)
         self._preview_timer.timeout.connect(self.preview_look)
