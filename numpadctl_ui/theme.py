@@ -411,6 +411,12 @@ QTabBar::tab:selected { color: ${primary}; border-bottom: 3px solid ${primary}; 
 QScrollArea { border: none; background: transparent; }
 QScrollArea > QWidget > QWidget { background: transparent; }
 QDialogButtonBox QPushButton { min-width: 72px; }
+/* Stock buttons (Save / Discard / Cancel in a QMessageBox) aren't the self-painting PushButton, so the transparent
+   rule above would leave them without a shape; on Windows they vanished. Give them a fill of their own. */
+QMessageBox QPushButton, QDialogButtonBox QPushButton { background: ${secondaryContainer}; color: ${onSecondaryContainer};
+    border-radius: 20px; min-width: 72px; min-height: 40px; }
+QMessageBox QPushButton:default, QDialogButtonBox QPushButton:default { background: ${primary}; color: ${onPrimary}; }
+QMessageBox QLabel { color: ${onSurface}; }
 """
 
 
