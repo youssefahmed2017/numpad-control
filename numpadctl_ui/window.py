@@ -1360,13 +1360,11 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         if self.dirty:
-            answer = QMessageBox.question(self, "Save changes?", "Your key setup has unsaved changes.",
-                                          QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
-                                          QMessageBox.Save)
-            if answer == QMessageBox.Cancel or (answer == QMessageBox.Save and not self.save()):
+            answer = dialogs.ask_save_changes(self)
+            if answer == "cancel" or (answer == "save" and not self.save()):
                 event.ignore()
                 return
-            if answer == QMessageBox.Discard:
+            if answer == "discard":
                 self.discard_changes()
         if self.learn.isChecked():
             self.learn.setChecked(False)  # never leave the numpad blocked while hidden

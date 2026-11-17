@@ -604,3 +604,36 @@ class AddDeviceDialog(QDialog):
         name = self.name.text().strip() or device["name"]
         return {"id": devices.make_id(name, self.taken_ids), "vendor": device["vendor"],
                 "product": device["product"], "name": name, "grab": self.grab.isChecked()}
+
+
+def ask_save_changes(parent):
+    """"Save changes?" with Save / Don't save / Cancel: returns "save", "discard" or "cancel".
+    Built from the app's own buttons: the stock QMessageBox buttons didn't show on Windows."""
+    dialog = QDialog(parent)
+    dialog.setWindowTitle("Save changes?")
+    dialog.setModal(True)
+    result = ["cancel"]
+
+    def choose(answer):
+        result[0] = answer
+        dialog.accept()
+
+    layout = QVBoxLayout(dialog)
+    layout.setContentsMargins(24, 24, 24, 20)
+    layout.setSpacing(16)
+    layout.addWidget(label("Save changes?", "title"))
+    layout.addWidget(label("Your key setup has unsaved changes.", "dim", wrap=True))
+    row = QHBoxLayout()
+    row.addStretch(1)
+    for text, answer, name in (("Cancel", "cancel", "flat"), ("Don't save", "discard", "flat"), ("Save", "save", "primary")):
+        button = PushButton(text)
+        button.setObjectName(name)
+        button.setMinimumWidth(88)
+        button.clicked.connect(lambda _=False, a=answer: choose(a))
+        if answer == "save":
+            button.setDefault(True)
+        row.addWidget(button)
+    layout.addLayout(row)
+    dialog.setMinimumWidth(380)
+    dialog.exec()   # Esc / the close box leave result as "cancel"
+    return result[0]
