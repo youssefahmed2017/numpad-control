@@ -5,3 +5,6 @@ __pycache__/
 interception.dll
 build/
 packaging/winget/manifests/
+
+# graphify knowledge graph (rebuilt locally with `graphify update .`)
+graphify-out/
