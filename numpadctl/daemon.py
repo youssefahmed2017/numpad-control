@@ -76,6 +76,10 @@ def spawn_hud():
     env = dict(os.environ)
     if not IS_WINDOWS and env.get("DISPLAY") and env.get("WAYLAND_DISPLAY"):
         env["QT_QPA_PLATFORM"] = "xcb"
+    # `-m numpadctl_ui.hud` finds the package through the working directory, which is wherever the service was
+    # started from (Windows startup, a scheduled task...): put the folder holding the package on the path instead.
+    root = str(Path(__file__).resolve().parent.parent)
+    env["PYTHONPATH"] = os.pathsep.join([root] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
     kwargs = {"creationflags": 0x08000008} if IS_WINDOWS else {"start_new_session": True}  # no console window, own group
     if not IS_WINDOWS:
         kill_stale_hud()
@@ -85,7 +89,7 @@ def spawn_hud():
     except OSError:
         errors = subprocess.DEVNULL
     try:
-        process = subprocess.Popen([sys.executable, "-m", "numpadctl_ui.hud"], env=env, stdin=subprocess.DEVNULL,
+        process = subprocess.Popen([sys.executable, "-m", "numpadctl_ui.hud"], env=env, cwd=root, stdin=subprocess.DEVNULL,
                                    stdout=subprocess.DEVNULL, stderr=errors, **kwargs)
     finally:
         if errors is not subprocess.DEVNULL:
