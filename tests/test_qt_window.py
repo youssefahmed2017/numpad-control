@@ -239,10 +239,23 @@ class QtWindowTest(unittest.TestCase):
     def test_close_with_unsaved_changes_can_discard(self):
         self.w.select("2")
         self.pick(0, "media_stop")
-        with mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Discard):
+        with mock.patch.object(window_module.dialogs, "ask_save_changes", return_value="discard"):
             self.w.close()
         self.assertFalse(self.w.dirty)
         self.assertNotIn("2", self.w.keymap(), "discarding reloads the saved setup")
+
+    def test_close_with_unsaved_changes_can_be_cancelled_or_saved(self):
+        self.w.select("2")
+        self.pick(0, "media_stop")
+        self.w.show()
+        with mock.patch.object(window_module.dialogs, "ask_save_changes", return_value="cancel") as ask:
+            self.assertFalse(self.w.close(), "Cancel keeps the window open")
+        ask.assert_called_once()
+        self.assertTrue(self.w.dirty, "and keeps the unsaved changes")
+        with mock.patch.object(window_module.dialogs, "ask_save_changes", return_value="save"):
+            self.w.close()
+        self.assertFalse(self.w.dirty)
+        self.assertIn("2", self.saved(), "Save writes the changes before closing")
 
     def test_placeholder_is_inserted_at_the_cursor(self):
         self.w.select("3")
