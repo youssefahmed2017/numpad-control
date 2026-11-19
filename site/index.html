@@ -15,134 +15,104 @@
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <link rel="preload" href="assets/fonts/roboto-flex-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/beer/beer.min.css">
+<link rel="stylesheet" href="assets/site.css">
 <script src="assets/palettes.js"></script>
 <script src="assets/theme.js"></script>
+<script type="module" src="assets/beer/beer.min.js"></script>
 <script src="assets/site.js" defer></script>
 </head>
 <body>
-<header class="appbar"></header>
-<main>
-
-<section class="hero">
-  <div class="blob one" aria-hidden="true"></div>
-  <div class="blob two" aria-hidden="true"></div>
-  <div class="wrap">
-    <div>
-      <span class="badge">Windows &amp; Linux · no driver</span>
-      <h1 class="display-l" style="margin-top:18px">Your <em>$10 numpad</em> is now a control deck.</h1>
-      <p class="lead">NumpadControl turns any cheap USB numpad into a macro pad. Switch OBS scenes, start recording, change the volume and launch apps, while your main keyboard keeps typing like nothing happened.</p>
-      <div class="cta">
-        <a class="btn filled" href="download.html#install" data-track="hero-install"><svg><use href="#i-download"/></svg>Install</a>
-        <a class="btn tonal" href="docs.html">Read the docs<svg><use href="#i-arrow"/></svg></a>
+<header class="fixed np-bar"></header>
+<main class="np">
+<section class="np-hero">
+  <div class="grid">
+    <div class="s12 l6">
+      <span class="chip fill small">Windows &amp; Linux · no driver</span>
+      <h1>Your <em>$10 numpad</em> is now a control deck.</h1>
+      <p class="np-lead">NumpadControl turns any cheap USB numpad into a macro pad. Switch OBS scenes, start recording, change the volume and launch apps, while your main keyboard keeps typing like nothing happened.</p>
+      <div class="row wrap" style="margin-top:20px">
+        <a class="button round extra" href="download.html#install" data-track="hero-install"><i aria-hidden="true">download</i><span>Install</span></a>
+        <a class="button round extra secondary-container" href="docs.html">Read the docs<i aria-hidden="true">arrow_forward</i></a>
       </div>
-      <div class="chips">
+      <div class="row wrap" style="margin-top:20px">
         <span class="chip" data-icon="keyboard">Works next to your keyboard</span>
-        <span class="chip" data-icon="gamepad">Steps aside for anti-cheat games</span>
+        <span class="chip" data-icon="sports_esports">Steps aside for anti-cheat games</span>
         <span class="chip" data-icon="lock">Collects nothing</span>
       </div>
     </div>
-    <div class="demo reveal" aria-label="A numpad you can try: tap a key to see what it does">
-      <div class="demo-top"><p class="title-m">Try it: tap a key</p><span class="live">Live demo</span></div>
-      <div class="pad" id="pad"></div>
-      <div class="demo-action">
-        <span class="feature-icon shape-cookie" id="demo-icon" style="width:44px;height:44px;margin:0"></span>
-        <div><div class="what" id="demo-what">Key 5</div><div class="how" id="demo-how">OBS: start recording</div></div>
+    <div class="s12 l6">
+      <div class="np-demo" aria-label="A numpad you can try: tap a key to see what it does">
+        <div class="np-demo-top"><h6 class="small" style="margin:0">Try it: tap a key</h6><span class="np-live">Live demo</span></div>
+        <div class="np-pad" id="pad"></div>
+        <div class="np-demo-action">
+          <div class="np-icon" id="demo-icon"></div>
+          <div><div class="what" id="demo-what">Key 5</div><div class="how" id="demo-how">OBS: start recording</div></div>
+        </div>
+        <div class="np-toast" id="demo-toast" role="status" aria-live="polite"><span id="demo-toast-text">Recording</span></div>
       </div>
-      <div class="toast" id="demo-toast" role="status" aria-live="polite"><i></i><span id="demo-toast-text">Recording</span></div>
     </div>
   </div>
 </section>
 
-<section style="padding-top:24px">
-  <div class="wrap">
-    <div class="stats" data-stagger>
-      <div class="stat"><b>~$15</b><span>a numpad + NumpadControl, instead of a $150 deck</span></div>
-      <div class="stat"><b>57</b><span>actions on one numpad: 19 keys × press, hold, double-tap</span></div>
-      <div class="stat"><b>0</b><span>drivers to install: nothing for anti-cheat to flag</span></div>
-      <div class="stat"><b>0</b><span>bytes collected about you, ever</span></div>
-    </div>
+<section class="np">
+  <div class="np-stats">
+    <div class="np-stat"><b>~$15</b><span>a numpad + NumpadControl, instead of a $150 deck</span></div>
+    <div class="np-stat"><b>57</b><span>actions on one numpad: 19 keys × press, hold, double-tap</span></div>
+    <div class="np-stat"><b>0</b><span>drivers to install, and it steps aside while an anti-cheat game runs</span></div>
+    <div class="np-stat"><b>0</b><span>bytes collected about you, ever</span></div>
   </div>
 </section>
 
-<section>
-  <div class="wrap">
-    <div class="section-head reveal">
-      <span class="label">How it works</span>
-      <h2 class="headline" style="margin-top:8px">Ready in two minutes</h2>
-      <p>No scripts, no config files, no second keyboard getting in the way.</p>
-    </div>
-    <div class="grid g3" data-stagger>
-      <div class="card"><div class="step-num">1</div><h3 class="title-l">Plug in any numpad</h3><p>A $10 wired one, a wireless one, the one in your drawer. NumpadControl tells it apart from your main keyboard, even if that keyboard has its own number pad.</p></div>
-      <div class="card"><div class="step-num">2</div><h3 class="title-l">Press a key on it</h3><p>NumpadControl finds your numpad by itself. From then on its keys only run actions, and your main keyboard types as usual.</p></div>
-      <div class="card"><div class="step-num">3</div><h3 class="title-l">Pick what each key does</h3><p>Press, hold or double-tap: three actions per key. Hold the layer key and every key gets a second set.</p></div>
-    </div>
+<section class="np">
+  <span class="np-label">How it works</span><h2 style="margin:6px 0 16px">Ready in two minutes</h2><p class="np-lead">No scripts, no config files, no second keyboard getting in the way.</p>
+  <div class="grid">
+    <div class="s12 m4"><article class="np-card round border"><div class="np-step">1</div><h6 class="small">Plug in any numpad</h6><p>A $10 wired one, a wireless one, the one in your drawer. NumpadControl tells it apart from your main keyboard, even if that keyboard has its own number pad.</p></article></div>
+    <div class="s12 m4"><article class="np-card round border"><div class="np-step">2</div><h6 class="small">Press a key on it</h6><p>NumpadControl finds your numpad by itself. From then on its keys only run actions, and your main keyboard types as usual.</p></article></div>
+    <div class="s12 m4"><article class="np-card round border"><div class="np-step">3</div><h6 class="small">Pick what each key does</h6><p>Press, hold or double-tap: three actions per key. Hold the layer key and every key gets a second set.</p></article></div>
   </div>
 </section>
 
-<section>
-  <div class="wrap">
-    <div class="section-head reveal">
-      <span class="label">Features</span>
-      <h2 class="headline" style="margin-top:8px">Everything a streamer or editor reaches for</h2>
-      <p>The things you'd buy a $150 deck for, on keys you can feel.</p>
-    </div>
-    <div class="grid g3" data-stagger>
-      <a class="card hoverable" href="features.html#stream"><div class="feature-icon shape-cookie"><svg><use href="#i-videocam"/></svg></div><h3 class="title-l">OBS control</h3><p>Scenes, recording, streaming, the replay buffer, sources and mics, all on real keys.</p></a>
-      <a class="card hoverable" href="features.html#sound"><div class="feature-icon shape-flower"><svg><use href="#i-volume"/></svg></div><h3 class="title-l">Volume &amp; media</h3><p>System and per-app volume, play/pause, tracks and your audio output.</p></a>
-      <a class="card hoverable" href="features.html#keys"><div class="feature-icon shape-soft"><svg><use href="#i-bolt"/></svg></div><h3 class="title-l">Macros</h3><p>One key, many steps: switch the scene, wait three seconds, go live, say so.</p></a>
-      <a class="card hoverable" href="features.html#smart"><div class="feature-icon shape-pill"><svg><use href="#i-window"/></svg></div><h3 class="title-l">Per-app profiles</h3><p>Different keys in OBS, Premiere or Blender: the right set follows the app in front.</p></a>
-      <a class="card hoverable" href="features.html#smart"><div class="feature-icon shape-cookie"><svg><use href="#i-gamepad"/></svg></div><h3 class="title-l">Game-safe</h3><p>No driver, and it lets go by itself while Valorant, Fortnite and co. are running.</p></a>
-      <a class="card hoverable" href="features.html#open"><div class="feature-icon shape-flower"><svg><use href="#i-lock"/></svg></div><h3 class="title-l">Private by design</h3><p>No telemetry and no account. Open source, so anyone can check.</p></a>
-    </div>
-    <p style="margin-top:22px" class="reveal"><a class="btn text" href="features.html">All features<svg><use href="#i-arrow"/></svg></a></p>
-  </div>
+<section class="np">
+  <span class="np-label">Features</span><h2 style="margin:6px 0 16px">Everything a streamer or editor reaches for</h2><p class="np-lead">The things you'd buy a $150 deck for, on keys you can feel.</p>
+  <div class="grid"><div class="s12 m6 l4"><a class="np-card round border" href="features.html#stream"><div class="np-icon"><i aria-hidden="true">videocam</i></div><h6 class="small">OBS control</h6><p>Scenes, recording, streaming, the replay buffer, sources and mics, all on real keys.</p></a></div><div class="s12 m6 l4"><a class="np-card round border" href="features.html#sound"><div class="np-icon"><i aria-hidden="true">volume_up</i></div><h6 class="small">Volume &amp; media</h6><p>System and per-app volume, play/pause, tracks and your audio output.</p></a></div><div class="s12 m6 l4"><a class="np-card round border" href="features.html#keys"><div class="np-icon"><i aria-hidden="true">bolt</i></div><h6 class="small">Macros</h6><p>One key, many steps: switch the scene, wait three seconds, go live, say so.</p></a></div><div class="s12 m6 l4"><a class="np-card round border" href="features.html#smart"><div class="np-icon"><i aria-hidden="true">web_asset</i></div><h6 class="small">Per-app profiles</h6><p>Different keys in OBS, Premiere or Blender: the right set follows the app in front.</p></a></div><div class="s12 m6 l4"><a class="np-card round border" href="features.html#smart"><div class="np-icon"><i aria-hidden="true">sports_esports</i></div><h6 class="small">Game-safe</h6><p>No driver, and it lets go by itself while Valorant, Fortnite and co. are running.</p></a></div><div class="s12 m6 l4"><a class="np-card round border" href="features.html#open"><div class="np-icon"><i aria-hidden="true">lock</i></div><h6 class="small">Private by design</h6><p>No telemetry and no account. Open source, so anyone can check.</p></a></div></div>
+  <p style="margin-top:18px"><a class="button round transparent" href="features.html">All features<i aria-hidden="true">arrow_forward</i></a></p>
 </section>
 
-<section>
-  <div class="wrap grid g2" style="align-items:center;gap:48px">
-    <div class="reveal">
-      <span class="label">The app</span>
-      <h2 class="headline" style="margin-top:8px">A settings window you'll enjoy opening</h2>
-      <p class="body-l muted">Click a key, pick an action from a searchable list, and you're done. Or press Learn and tap the key on your numpad. Built in Material 3, with your colour, in light or dark.</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:20px">
-        <span class="chip" data-icon="touch">Learn: press the real key</span>
+<section class="np">
+  <div class="grid" style="align-items:center">
+    <div class="s12 l5">
+      <span class="np-label">The app</span>
+      <h2 style="margin:6px 0 12px">A settings window you'll enjoy opening</h2>
+      <p class="np-lead">Click a key, pick an action from a searchable list, and you're done. Or press Learn and tap the key on your numpad. Built in Material 3, with your colour, in light or dark.</p>
+      <div class="row wrap" style="margin-top:16px">
+        <span class="chip" data-icon="touch_app">Learn: press the real key</span>
         <span class="chip" data-icon="timer">Press · hold · double-tap</span>
         <span class="chip" data-icon="layers">Layers</span>
       </div>
     </div>
-    <div class="frame reveal"><img src="img/editor.png" alt="The NumpadControl settings window: a numpad on the left, the selected key's macro on the right" width="1180" height="800" loading="lazy"></div>
+    <div class="s12 l7"><div class="np-frame"><img src="img/screenshots/macro.png" onerror="this.onerror=null;this.src='img/editor.png'" alt="The NumpadControl settings window: a numpad on the left, the selected key's macro on the right" width="1180" height="800" loading="lazy"></div></div>
   </div>
 </section>
 
-<section>
-  <div class="wrap">
-    <div class="section-head reveal">
-      <span class="label">Compare</span>
-      <h2 class="headline" style="margin-top:8px">About $15 instead of $150</h2>
-    </div>
-    <div class="table-wrap reveal">
-      <table class="compare">
-        <tr><th></th><th>Elgato Stream Deck MK.2</th><th>Phone deck apps</th><th class="us">Numpad + NumpadControl</th></tr>
-        <tr><td>Cost</td><td>About $150</td><td>A subscription, or a spare phone</td><td class="us">A $10 numpad. NumpadControl is free</td></tr>
-        <tr><td>Keys</td><td>15</td><td>On a touchscreen</td><td class="us">19 real keys, ×3 with hold and double-tap</td></tr>
-        <tr><td>Linux</td><td>No official software</td><td>Depends</td><td class="us"><span class="yes">✓</span> First-class</td></tr>
-        <tr><td>Keys you can feel</td><td><span class="yes">✓</span></td><td>No</td><td class="us"><span class="yes">✓</span></td></tr>
-      </table>
-    </div>
+<section class="np">
+  <span class="np-label">Compare</span><h2 style="margin:6px 0 16px">About $15 instead of $150</h2>
+  <div class="np-table-wrap">
+    <table class="np-compare">
+      <tr><th></th><th>Elgato Stream Deck MK.2</th><th>Phone deck apps</th><th class="us">Numpad + NumpadControl</th></tr>
+      <tr><td>Cost</td><td>About $150</td><td>A subscription, or a spare phone</td><td class="us">A $10 numpad. NumpadControl is free</td></tr>
+      <tr><td>Keys</td><td>15</td><td>On a touchscreen</td><td class="us">19 real keys, ×3 with hold and double-tap</td></tr>
+      <tr><td>Linux</td><td>No official software</td><td>Depends</td><td class="us"><span class="np-yes">✓</span> First-class</td></tr>
+      <tr><td>Keys you can feel</td><td><span class="np-yes">✓</span></td><td>No</td><td class="us"><span class="np-yes">✓</span></td></tr>
+    </table>
   </div>
 </section>
 
-<section>
-  <div class="wrap">
-    <div class="band reveal">
-      <div><h2 class="headline">Free. For everyone.</h2><p>Every key and every action. No ads, no account, no subscription.</p></div>
-      <a class="btn filled" href="pricing.html">Why it's free<svg><use href="#i-arrow"/></svg></a>
-    </div>
-  </div>
+<section class="np">
+  <div class="np-band"><div><h2>Free. For everyone.</h2><p>Every key and every action. No ads, no account, no subscription.</p></div><a class="button round large" href="pricing.html">Why it's free<i aria-hidden="true">arrow_forward</i></a></div>
 </section>
 
 </main>
-<footer class="site"></footer>
+<footer class="np-foot"></footer>
 </body>
 </html>

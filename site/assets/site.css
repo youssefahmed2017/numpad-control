@@ -1,0 +1,92 @@
+/* NumpadControl site: BeerCSS (assets/beer/) does the components; this file adds what the pages need on top. */
+@font-face { font-family: "Roboto Flex"; src: url(fonts/roboto-flex-latin.woff2) format("woff2"); font-weight: 100 1000; font-display: swap; }
+:root, body, body.light, body.dark { --font: "Roboto Flex", Roboto, system-ui, -apple-system, "Segoe UI", sans-serif; }
+html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+html.tinting *, html.tinting *::before, html.tinting *::after { transition: background-color .5s, color .5s, border-color .5s !important; }
+body { background: var(--background); color: var(--on-background); }
+a { color: var(--primary); }
+.np-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--on-surface); font-weight: 700; font-size: 1.15rem; }
+.np-brand svg { width: 34px; height: 34px; }
+header.np-bar { background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--outline-variant); }
+header.np-bar nav { max-width: 1240px; margin: 0 auto; width: 100%; padding: 0 12px; }
+main.np { display: block; width: 100%; box-sizing: border-box; max-width: 1240px; margin: 0 auto; padding: 72px 16px 40px; }
+main.np > section { width: 100%; box-sizing: border-box; }
+main.np > section.np-narrow, main.np > .np-faq, main.np > .np-prose-wrap { max-width: 900px; margin-left: auto; margin-right: auto; }
+section.np { padding: 36px 0; }
+.np-hero { padding: 16px 0 8px; }
+.np-hero h1 { font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.05; letter-spacing: -.02em; margin: 14px 0; }
+.np-hero h1 em { font-style: normal; color: var(--primary); }
+.np-page-head { padding: 12px 0 4px; }
+.np-page-head h1 { font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.1; margin: 8px 0 12px; letter-spacing: -.01em; }
+.np-label { color: var(--primary); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: .8rem; }
+.np-lead { font-size: 1.2rem; color: var(--on-surface-variant); max-width: 62ch; }
+.np-icon { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: var(--primary-container); color: var(--on-primary-container); margin-bottom: 12px; }
+.np-icon:nth-child(3n+2) { border-radius: 50%; }
+.np-icon i { font-size: 28px; }
+.np-card { height: 100%; box-sizing: border-box; }
+article.np-card { padding: 20px; }
+.np-card p { color: var(--on-surface-variant); margin: 6px 0 0; }
+a.np-card { display: block; padding: 20px; text-decoration: none; color: inherit; transition: transform .2s, background-color .2s; }
+a.np-card:hover { background: var(--surface-container-high); transform: translateY(-3px); }
+.np-step { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--primary); color: var(--on-primary); font-weight: 700; margin-bottom: 12px; }
+.np-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
+.np-stat { background: var(--surface-container); border-radius: 24px; padding: 20px 24px; }
+.np-stat b { display: block; font-size: 2.4rem; line-height: 1; color: var(--primary); }
+.np-stat span { color: var(--on-surface-variant); }
+.np-band { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; background: var(--primary-container); color: var(--on-primary-container); border-radius: 32px; padding: 32px 36px; }
+.np-band h2 { margin: 0 0 6px; }
+.np-band p { margin: 0; }
+.np-code { position: relative; background: var(--surface-container-highest); border-radius: 16px; padding: 16px 56px 16px 18px; font: 500 .95rem/1.5 "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; margin: 10px 0; }
+.np-code button { position: absolute; top: 8px; right: 8px; }
+.np-frame { border-radius: 24px; overflow: hidden; border: 1px solid var(--outline-variant); background: var(--surface-container); }
+.np-frame img { display: block; width: 100%; height: auto; }
+.np-fig { margin: 0; }
+.np-fig img { width: 100%; height: auto; border-radius: 16px; border: 1px solid var(--outline-variant); display: block; }
+.np-fig figcaption { margin-top: 10px; }
+.np-fig figcaption span { color: var(--on-surface-variant); }
+.np-soon { display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 2px 10px; border-radius: 99px; background: var(--tertiary-container); color: var(--on-tertiary-container); vertical-align: middle; margin-left: 8px; }
+.np-prose { max-width: 760px; }
+.np-prose h2 { margin-top: 36px; }
+.np-prose li { margin: 8px 0; }
+.np-prose code, .np-code-inline { background: var(--surface-container-highest); border-radius: 6px; padding: 1px 6px; font-size: .92em; }
+.np-faq { max-width: 860px; }
+.np-faq h2 { margin: 36px 0 12px; }
+.np-faq details { background: var(--surface-container-low); border-radius: 16px; margin: 8px 0; padding: 4px 16px; }
+.np-faq details p { color: var(--on-surface-variant); margin: 0 0 14px; }
+.np-faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; font-weight: 600; }
+.np-faq summary::-webkit-details-marker { display: none; }
+.np-faq summary::after { content: "+"; font-size: 1.5rem; line-height: 1; color: var(--primary); }
+.np-faq details[open] summary::after { content: "-"; }
+.np-compare { width: 100%; border-collapse: collapse; }
+.np-compare th, .np-compare td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--outline-variant); }
+.np-compare th.us, .np-compare td.us { background: var(--primary-container); color: var(--on-primary-container); }
+.np-yes { color: var(--primary); font-weight: 700; }
+.np-table-wrap { overflow-x: auto; border-radius: 20px; border: 1px solid var(--outline-variant); }
+.np-os-panel[hidden] { display: none; }
+footer.np-foot { background: var(--surface-container); border-top: 1px solid var(--outline-variant); padding: 40px 16px 28px; margin-top: 48px; }
+footer.np-foot .np-cols { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: 28px; }
+footer.np-foot h6 { margin: 0 0 10px; font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; color: var(--on-surface-variant); }
+footer.np-foot a { display: block; padding: 4px 0; text-decoration: none; color: var(--on-surface); }
+footer.np-foot a:hover { color: var(--primary); }
+footer.np-foot .np-fine { max-width: 1240px; margin: 28px auto 0; color: var(--on-surface-variant); font-size: .85rem; }
+@media (max-width: 760px) { footer.np-foot .np-cols { grid-template-columns: 1fr 1fr; } main.np { padding-top: 80px; } }
+/* the live numpad on the home page */
+.np-demo { background: var(--surface-container); border-radius: 32px; padding: 20px; position: relative; }
+.np-demo-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.np-live { font-size: .75rem; font-weight: 700; padding: 3px 12px; border-radius: 99px; background: var(--primary); color: var(--on-primary); }
+.np-pad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.np-key { border: 0; cursor: pointer; height: auto; min-width: 0; align-self: stretch; margin: 0; border-radius: 18px; padding: 10px 4px; background: var(--surface-container-highest); color: var(--on-surface); font: 700 1.15rem/1.1 var(--font); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 64px; transition: transform .15s, background-color .15s, border-radius .15s; }
+.np-key small { font-weight: 500; font-size: .62rem; color: var(--on-surface-variant); line-height: 1.1; text-align: center; }
+.np-key.tall { grid-row: span 2; }
+.np-key:hover { background: var(--secondary-container); }
+.np-key.down { background: var(--primary); color: var(--on-primary); transform: scale(.94); border-radius: 28px; }
+.np-key.down small { color: var(--on-primary); }
+.np-demo-action { display: flex; align-items: center; gap: 14px; margin-top: 16px; background: var(--surface-container-high); border-radius: 20px; padding: 12px 16px; }
+.np-demo-action .np-icon { margin: 0; flex: none; }
+.np-demo-action .what { font-weight: 700; }
+.np-demo-action .how { color: var(--on-surface-variant); font-size: .9rem; }
+.np-toast { position: absolute; left: 50%; bottom: -18px; transform: translate(-50%, 12px); background: var(--inverse-surface); color: var(--inverse-on-surface); padding: 10px 22px; border-radius: 99px; font-weight: 600; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; }
+.np-toast.show { opacity: 1; transform: translate(-50%, 0); }
+.np-swatches { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 18px; }
+.np-swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; padding: 0; }
+.np-swatch[aria-pressed="true"] { border-color: var(--on-surface); }

@@ -9,70 +9,51 @@
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 <link rel="preload" href="assets/fonts/roboto-flex-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/beer/beer.min.css">
+<link rel="stylesheet" href="assets/site.css">
 <script src="assets/palettes.js"></script>
 <script src="assets/theme.js"></script>
+<script type="module" src="assets/beer/beer.min.js"></script>
 <script src="assets/site.js" defer></script>
 </head>
 <body>
-<header class="appbar"></header>
-<main>
-
-<section class="page-head">
-  <div class="blob one" aria-hidden="true"></div>
-  <div class="wrap">
-    <span class="label">Get started</span>
-    <h1 class="display-m" style="margin-top:10px">One command, then click a key</h1>
-    <p>Free and open source. The installer sets up everything, the settings window included.</p>
+<header class="fixed np-bar"></header>
+<main class="np">
+<section class="np-page-head np-narrow"><span class="np-label">Get started</span><h1>One command, then click a key</h1><p class="np-lead">Free and open source. The installer sets up everything, the settings window included.</p></section>
+<section class="np np-narrow" id="install">
+  <span class="np-label">Install</span><h2 style="margin:6px 0 16px">One command</h2><p class="np-lead">The installer gets everything it needs and starts NumpadControl at login. After that it keeps itself up to date.</p>
+  <div class="tabs np-os-tabs" role="tablist"><a class="active" data-os="windows" role="tab" href="#install">Windows</a><a data-os="linux" role="tab" href="#install">Linux</a></div>
+  <div class="np-os-panel" data-os="windows">
+    <p>Open <b>PowerShell</b> (as your normal user, not as administrator) and paste:</p>
+    <div class="np-code">irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/setup.ps1 | iex</div>
+    <p class="small-text">Windows 10 or 11, 64-bit. It installs Python if needed. No driver and no administrator rights. Afterwards, look for the NumpadControl icon in the tray.</p>
+    <p>Prefer an installer? Download <b>NumpadControl-Setup</b> from the <a href="https://github.com/youssefahmed2017/numpad-control/releases">Releases</a> page. It is not code-signed yet, so Windows SmartScreen may warn: choose <i>More info</i>, then <i>Run anyway</i>.</p>
+  </div>
+  <div class="np-os-panel" data-os="linux" hidden>
+    <p>Open a terminal and paste:</p>
+    <div class="np-code">curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/setup.sh | bash</div>
+    <p class="small-text">Arch, Debian/Ubuntu or Fedora (and their relatives). It asks you to press a key on your numpad to find it, and for your password once, to install packages and a rule that lets it read that numpad (and only that one).</p>
+    <p>On Arch you can use the AUR package instead:</p>
+    <div class="np-code">yay -S numpad-control</div>
   </div>
 </section>
 
-<section id="install">
-  <div class="wrap" style="max-width:880px">
-    <div class="section-head reveal"><span class="label">Install</span><h2 class="headline" style="margin-top:8px">One command</h2>
-      <p>The installer gets everything it needs and starts NumpadControl at login. After that it keeps itself up to date.</p></div>
-    <div class="reveal">
-      <div class="os-tabs" role="tablist">
-        <button data-os="windows" role="tab" aria-selected="true">Windows</button>
-        <button data-os="linux" role="tab" aria-selected="false">Linux</button>
-      </div>
-      <div class="os-panel" data-os="windows">
-        <p>Open <b>PowerShell</b> (as your normal user, not as administrator) and paste:</p>
-        <div class="code">irm https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/setup.ps1 | iex</div>
-        <p class="muted" style="margin-top:14px">Windows 10 or 11, 64-bit. It installs Python if needed. No driver and no administrator rights. Afterwards, look for the NumpadControl icon in the tray.</p>
-      </div>
-      <div class="os-panel" data-os="linux" hidden>
-        <p>Open a terminal and paste:</p>
-        <div class="code">curl -fsSL https://raw.githubusercontent.com/youssefahmed2017/numpad-control/main/setup.sh | bash</div>
-        <p class="muted" style="margin-top:14px">Arch, Debian/Ubuntu or Fedora (and their relatives). It asks you to press a key on your numpad to find it, and for your password once, to install packages and a rule that lets it read that numpad (and only that one).</p>
-      </div>
-    </div>
+<section class="np np-narrow">
+  <span class="np-label">Then</span><h2 style="margin:6px 0 16px">Make your first key</h2>
+  <div class="grid">
+    <div class="s12 m4"><article class="np-card round border"><div class="np-step">1</div><h6 class="small">Open NumpadControl</h6><p>Windows: <b>NumpadControl Settings</b> in the Start menu, or <b>Settings…</b> in the tray icon's menu. Linux: <b>NumpadControl</b> in your app menu.</p></article></div>
+    <div class="s12 m4"><article class="np-card round border"><div class="np-step">2</div><h6 class="small">Give a key an action</h6><p>Click a key in the window (or press <b>Learn</b> and tap it on your numpad), pick an action from the list and <b>Save</b>. Or start from a ready-made set: ⋯ next to Profile, <b>Add a starter preset</b>.</p></article></div>
+    <div class="s12 m4"><article class="np-card round border"><div class="np-step">3</div><h6 class="small">Check your numpad</h6><p>Got an unusual numpad? This walks you through every key and tells you what works, from the <b>numpad-control</b> folder in your home folder:</p>
+      <div class="np-code" data-copy=".venv/bin/python -m numpadctl check">.venv/bin/python -m numpadctl check        # Linux
+.venv\Scripts\python -m numpadctl check    # Windows</div></article></div>
   </div>
 </section>
 
-<section>
-  <div class="wrap" style="max-width:880px">
-    <div class="section-head reveal"><span class="label">Then</span><h2 class="headline" style="margin-top:8px">Make your first key</h2></div>
-    <div class="grid" data-stagger>
-      <div class="card"><div class="step-num">1</div><h3 class="title-l">Open NumpadControl</h3><p>Windows: <b>NumpadControl Settings</b> in the Start menu, or <b>Settings…</b> in the tray icon's menu. Linux: <b>NumpadControl</b> in your app menu.</p></div>
-      <div class="card"><div class="step-num">2</div><h3 class="title-l">Give a key an action</h3><p>Click a key in the window (or press <b>Learn</b> and tap it on your numpad), pick an action from the list and <b>Save</b>. Or start from a ready-made set: ⋯ next to Profile, <b>Add a starter preset</b>.</p></div>
-      <div class="card"><div class="step-num">3</div><h3 class="title-l">Check your numpad</h3><p>Got an unusual numpad? This walks you through every key and tells you what works. In the <b>numpad-control</b> folder in your home folder:</p>
-        <div class="code" style="margin-top:12px" data-copy=".venv/bin/python -m numpadctl check">.venv/bin/python -m numpadctl check        # Linux
-.venv\Scripts\python -m numpadctl check    # Windows</div></div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
-    <div class="band reveal">
-      <div><h2 class="headline">Tested a numpad?</h2><p>Add it to the compatibility list in two minutes and help everyone choose.</p></div>
-      <a class="btn filled" href="https://github.com/youssefahmed2017/numpad-control/issues/new?template=numpad-model.yml">Add your numpad<svg><use href="#i-arrow"/></svg></a>
-    </div>
-  </div>
+<section class="np">
+  <div class="np-band"><div><h2>Tested a numpad?</h2><p>Add it to the compatibility list in two minutes and help everyone choose.</p></div><a class="button round large" href="https://github.com/youssefahmed2017/numpad-control/issues/new?template=numpad-model.yml">Add your numpad<i aria-hidden="true">arrow_forward</i></a></div>
 </section>
 
 </main>
-<footer class="site"></footer>
+<footer class="np-foot"></footer>
 </body>
 </html>

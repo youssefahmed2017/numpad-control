@@ -14,14 +14,18 @@ one, then add it to `PAGES` in `site.js`.
 
 ## Assets
 
-- `style.css`: the Material 3 (Material You) design: colour roles as `--md-*` variables,
-  type scale, buttons that change shape when pressed, ripples, cards, scroll reveal.
-- `palettes.js`: the light and dark colour schemes of the app's 7 accent colours, exported
-  from the app so the site and the app match.
-- `theme.js`: applies the chosen accent and light/dark mode before the page draws (no flash),
-  and remembers them in the browser.
-- `site.js`: header, footer, icons, ripples, the demo and
-  visit counting.
+The look comes from [BeerCSS](https://www.beercss.com) 5.0.3 (MIT, Material Design 3), copied into `assets/beer/` so
+the site makes no calls to a CDN or to Google's font servers (the privacy page says so). Two edits were made to its CSS:
+the CDN fallbacks for the icon font were removed, and the font faces the site doesn't use. `material-symbols-outlined.woff2`
+there is Google's Material Symbols Outlined cut down to the icons the pages use (5 KB instead of 460 KB); to add an icon,
+add its name to a page, re-cut the font from `material-symbols-outlined.woff2` in the BeerCSS package (fontTools, with the
+`rlig` feature and no layout closure, FILL pinned to 0) and replace the file.
+
+- `site.css`: what the pages need on top of BeerCSS: the live demo pad, stat tiles, code blocks, the footer.
+- `palettes.js`: the light and dark colour schemes of the app's 7 accent colours, exported from the app.
+- `theme.js`: applies the chosen accent and light/dark mode to BeerCSS's colour variables before the page draws (no flash),
+  and remembers them in the browser. So the site and the app share their colours.
+- `site.js`: header, drawer, colour dialog, footer, the demo and visit counting.
 - `fonts/roboto-flex-latin.woff2`: served from this site, so no calls to Google.
 
 ## Settings
