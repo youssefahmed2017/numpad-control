@@ -71,8 +71,8 @@ def main():
 
     if not VERSION.match(version):
         fail("the version looks like 1.2.3")
-    if not newer(version, current_version()):
-        fail(f"{version} is not newer than the current {current_version()}")
+    if newer(current_version(), version):
+        fail(f"{version} is older than the current {current_version()}")
     if not Path(args.key).is_file():
         fail(f"key file {args.key} not found")
     if run("git", "branch", "--show-current") != "main":
