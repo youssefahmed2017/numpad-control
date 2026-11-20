@@ -5,6 +5,7 @@ service is running, light up keys as they're pressed, and use "learn" mode.
 """
 
 import asyncio
+import errno
 import json
 import logging
 import os
@@ -16,7 +17,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from . import actions, config, games, keys, stickers, updater
+from . import actions, config, games, hints, keys, logs, stickers, updater
 from .platform import IS_WINDOWS, ipc, numpad_input, paths, processes
 
 log = logging.getLogger("numpadctl")
@@ -33,6 +34,8 @@ GAME_CHECK_SECONDS = 0.5  # how often the running programs are checked for a gam
 MISSING_NOTICE = 5        # seconds the numpad must stay missing before saying so (not for a wobbly plug)
 RETRY_DELAYS = (1, 2, 5, 10, 30)  # seconds before reopening a numpad whose reader keeps failing at once
 QUICK_FAILURE = 5         # a reader that fails within this many seconds counts as failing at once
+FLAP_WINDOW = 600         # a numpad that vanishes from USB FLAP_COUNT times within this many seconds is flapping
+FLAP_COUNT = 3
 UPDATE_FIRST_CHECK = 60   # seconds after starting before looking for an update (not slowing the start)
 UPDATE_LOOP_SECONDS = 3600  # how often it wakes to see whether the daily check is due
 HUD_CHECK_SECONDS = 2      # how often the key map overlay process is checked on (started, restarted, stopped)
@@ -157,6 +160,9 @@ class Daemon:
         self.hud_show_until = 0.0   # a preview is showing until then
         self.raw_clients = set()  # key tester windows: want every raw key event
         self.detect_future = None
+        self.drops = []            # when the numpad last vanished from the USB bus (see note_drop)
+        self.flap_warned = None    # when that was last explained in the log
+        self.unknown_logged = set()  # keys that aren't on the pad, already explained once in the log
         self.extra = {}         # device id -> {"spec": ..., "task": ..., "pad": ...} of the extra devices
         self.released = set()   # extra devices given back to the system with the escape chord
         self.held = {}          # device id -> keys currently down on it (for that chord)
@@ -171,19 +177,26 @@ class Daemon:
 
     # ------------------------------------------------------------ running actions
     def fire(self, key, slot, binding):
-        log.info("key %s %s: %s", key, slot, binding["action"])
+        log.debug("key %s %s: %s starts", key, slot, binding["action"])
         self.run_action(key, binding, slot)
 
     def _submit(self, key, binding, slot):
         return self.pool.submit(self._run, key, binding, slot)
 
     def _run(self, key, binding, slot):
+        """Run one action and log what came of it: the result and how long it took, and for a failure the error with a
+        first clue (hints.py), so a log line says what happened and where to start."""
+        started = time.monotonic()
+        name = binding["action"]
         try:
             output = actions.run(self.cfg, binding, trigger=slot)
-            if output and not actions.BY_ID[binding["action"]].osd_icon:
+            log.info("key %s %s: %s -> ok (%d ms)", key, slot, name, (time.monotonic() - started) * 1000)
+            if output and not actions.BY_ID[name].osd_icon:
                 log.info("key %s output:\n%s", key, output)
         except Exception as e:
-            log.warning("key %s failed: %s", key, e)
+            clue = hints.first_clue(e)
+            log.warning("key %s %s: %s -> FAILED (%d ms): %s%s", key, slot, name, (time.monotonic() - started) * 1000, e,
+                        f"\n  clue: {clue}" if clue else "")
             actions.notify(f"Numpad key {key} failed", str(e))
 
     def start_repeat(self, key, press, slot, delay=None, force=False):
@@ -261,6 +274,9 @@ class Daemon:
         return self.learning() or keys.DOUBLE_ZERO in keys.extra_ids(self.cfg)
 
     def key_event(self, key, down):
+        if down and not keys.known(key, self.cfg) and key not in self.unknown_logged:
+            self.unknown_logged.add(key)
+            log.info("key %s isn't on the pad yet: turn on Learn in the settings window and press it to add it", key)
         if down:
             self.broadcast({"event": "key", "key": key, "label": keys.label_for(key),
                             "unknown": not keys.known(key, self.cfg)})
@@ -269,6 +285,10 @@ class Daemon:
                 self.detect_future.set_result(self.current_device_spec())
             return
         if self.capturing or self.paused:  # learn mode in the settings window, or paused
+            if down:   # say so: from outside, a key that does nothing looks the same as a key that never arrived
+                log.info("key %s: not run, %s", key, "NumpadControl is paused" if self.paused else
+                         "the settings window is taking the keys (it is in front with Tools > Select a key when I press it "
+                         "on, or Learn is on): put another window in front, or turn that off, to run actions")
             return
         if key == self.cfg.get("layer_key"):
             if self.layer_held != down:
@@ -317,7 +337,7 @@ class Daemon:
         if key in config.TAP_ONLY_KEYS:
             slots = {s: b for s, b in slots.items() if s == "tap"}
         if not slots:
-            log.info("key %s: not bound", key)
+            log.info("key %s: not bound (layer key %s, window %r)", key, "held" if self.layer_held else "not held", window)
             return
 
         press = Press(slots)
@@ -593,9 +613,25 @@ class Daemon:
     # ------------------------------------------------------------ device loop
     async def read(self, numpad):
         async for key, down in numpad.events():
+            log.debug("raw: key %s %s", key, "down" if down else "up")   # if this never appears, the key never arrived
             for writer in list(self.raw_clients):
                 self.send(writer, {"event": "raw", "key": key, "down": down, "t": time.monotonic()})
             self.on_key(key, down)
+
+    def note_drop(self, error, now=None):
+        """The numpad's reader ended with `error`. A numpad that keeps vanishing from the USB bus is a hardware problem
+        (the port, the cable, a hub) that no setting can fix: once it has happened FLAP_COUNT times within FLAP_WINDOW
+        seconds, say so in the log (once per window), with the command that shows the kernel's side of it."""
+        if IS_WINDOWS or getattr(error, "errno", None) not in (errno.ENODEV, errno.EIO):
+            return
+        now = time.monotonic() if now is None else now
+        self.drops = [t for t in self.drops if now - t <= FLAP_WINDOW] + [now]
+        if len(self.drops) >= FLAP_COUNT and (self.flap_warned is None or now - self.flap_warned >= FLAP_WINDOW):
+            self.flap_warned = now
+            log.warning("the numpad dropped off USB %d times in %d minutes. That is almost always the connection (the port, "
+                        "the cable or a hub), not NumpadControl: plug it straight into a port on the back of the computer, "
+                        "or try another cable. `journalctl -k | grep -i usb` shows the disconnects.",
+                        len(self.drops), FLAP_WINDOW // 60)
 
     # ------------------------------------------------------------ extra devices (whole keyboards)
     async def manage_devices(self):
@@ -807,7 +843,7 @@ class Daemon:
             numpad = numpad_input.open_numpad(self.cfg["device"], self.cfg["grab"] and not game)
             if numpad is None:
                 if not waiting_logged:
-                    log.info("numpad %s:%s not found (unplugged, or udev rule missing?)",
+                    log.info("numpad %s:%s not found (unplugged, or the udev rule is missing: `lsusb` should list it, see docs/install.md)",
                              self.cfg["device"]["vendor"], self.cfg["device"]["product"])
                     waiting_logged = True
                 missing_since = missing_since or time.monotonic()
@@ -840,6 +876,7 @@ class Daemon:
             if failed is None:
                 quick_failures = 0
                 continue
+            self.note_drop(failed)
             if time.monotonic() - opened >= QUICK_FAILURE:
                 quick_failures = 0
                 log.info("device disconnected: %s", failed)
@@ -854,8 +891,9 @@ class Daemon:
 
 
 def run():
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
-    from . import crash
+    level = logs.setup()
+    from . import __version__, crash
+    log.info("NumpadControl %s starting (log level %s, log file %s)", __version__, level, logs.log_path())
     crash.install("service")
     try:
         asyncio.run(Daemon().main())

@@ -336,7 +336,26 @@ class StaleOverlayTest(unittest.TestCase):
         import sys
         process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)", marker])
         self.started.append(process)
+        self.wait_until_named(process, marker)
         return process
+
+    @staticmethod
+    def wait_until_named(process, marker):
+        """Until the new process shows `marker` in its command line. Right after the fork it still shows its parent's, and
+        under load that lasts long enough for the code under test to take it for some other program (a flaky test)."""
+        import time
+        from pathlib import Path
+        proc = Path(f"/proc/{process.pid}/cmdline")
+        if not proc.parent.parent.exists():    # no /proc (Windows): that code looks processes up another way
+            return
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            try:
+                if marker.encode() in proc.read_bytes():
+                    return
+            except OSError:
+                pass
+            time.sleep(0.01)
 
     def wait_gone(self, process):
         try:

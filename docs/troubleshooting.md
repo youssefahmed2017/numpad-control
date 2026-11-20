@@ -18,6 +18,28 @@ Part of the [NumpadControl docs](../README.md).
   configured numpad marked), USB set-up failures from the kernel log (Linux), keys with
   problems, and the last 50 log lines. **Copy** puts it on the clipboard. It never
   contains passwords.
+- **The log** is a file on every system (Linux: `~/.local/state/numpad-control/numpad-control.log`, Windows: in
+  `%LOCALAPPDATA%\numpad-control\state\`; Diagnostics prints the exact path), cut at 1 MB with the last two kept. **Tools →
+  Copy the log** puts its last 200 lines on the clipboard, to paste into an issue. One line per press says what came
+  of it and how long it took:
+
+      2026-11-20 15:10:41 INFO    key 1 tap: open_browser -> ok (12 ms)
+      2026-11-20 15:10:48 WARNING key 2 hold: open_url -> FAILED (35 ms): no URL set
+
+  A failure from a program that gave no hint (it timed out, was refused, wasn't found, or may not be read) gets a
+  second line, `clue: ...`, with the usual cause and the first thing to try. A key that isn't on the pad yet is
+  explained once (turn on Learn and press it), and a key with nothing bound says which profile and layer it looked in.
+  A key that the settings window swallows is logged too (`key 1: not run, the settings window is taking the keys`):
+  while that window is in front with *Tools → Select a key when I press it* on (the default), or while Learn is on,
+  a numpad key only selects the key in the editor and does not run its action. That is by design, so you can't fire
+  Shut down by accident while setting it up, but in a demo it looks exactly like a broken numpad.
+- **The numpad does nothing at all?** Raise the log to debug: `NUMPADCTL_LOG=debug` in the service's environment
+  (`systemctl --user edit numpad-control`, then `[Service]` and `Environment=NUMPADCTL_LOG=debug`), or
+  `"log_level": "debug"` in `config.json`. Every raw key event is then logged (`raw: key 7 down`). If those lines appear
+  when you press a key, the numpad reaches the program and the cause is a setting; if they do not, the key never
+  arrived, which is the hardware or the USB connection, and no setting can fix that. A numpad that keeps dropping off
+  USB (3 times in 10 minutes) is called out in the log with what to try: another port, straight into the back of the
+  computer, another cable; `journalctl -k | grep -i usb` shows the kernel's side of it.
 
 ## Games with anti-cheat
 On Windows, while a game with anti-cheat runs (Valorant, Fortnite, Call of Duty,

@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import actions, config
+from . import actions, config, logs
 from .platform import IS_WINDOWS, paths
 
 LOG_LINES = 50
@@ -57,14 +57,15 @@ def devices():
 
 
 def log_tail():
+    """The end of the log file (every platform now has one: numpadctl/logs.py); on Linux, from before the file existed,
+    the system journal."""
+    lines = logs.tail(LOG_LINES)
+    if lines:
+        return lines
     if IS_WINDOWS:
-        path = paths.state_dir() / "numpad-control.log"
-        try:
-            return path.read_text(errors="replace").splitlines()[-LOG_LINES:]
-        except OSError:
-            return [f"(no log yet at {path})"]
+        return [f"(no log yet at {logs.log_path()})"]
     out = _run(["journalctl", "--user", "-u", "numpad-control", "-n", str(LOG_LINES), "--no-pager", "-o", "cat"])
-    return out.splitlines() or ["(the journal has nothing for numpad-control)"]
+    return out.splitlines() or ["(the log and the journal have nothing for numpad-control yet)"]
 
 
 def usb_errors():
@@ -95,5 +96,6 @@ def collect(cfg, status):
                 "  a software replug can't fix it (see docs/install.md, \"Numpads that need replugging\")."]
     problems = binding_problems(cfg)
     out += ["", f"Key problems: {len(problems)}" if problems else "Key problems: none", *problems]
-    out += ["", f"Last {LOG_LINES} log lines:", *log_tail()]
+    out += ["", f"Log file: {logs.log_path()} (level {logs.level_name()}; NUMPADCTL_LOG=debug or \"log_level\": \"debug\" adds a line per raw key event)",
+            f"Last {LOG_LINES} log lines:", *log_tail()]
     return "\n".join(out)

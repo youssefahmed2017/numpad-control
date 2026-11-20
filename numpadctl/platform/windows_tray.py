@@ -10,7 +10,6 @@ settings file, Pause, Start at login, Show log, Quit.
 
 import asyncio
 import logging
-import logging.handlers
 import sys
 import threading
 from pathlib import Path
@@ -28,7 +27,8 @@ STATUS_REFRESH_SECONDS = 2
 
 
 def log_path():
-    return paths.state_dir() / "numpad-control.log"
+    from .. import logs
+    return logs.log_path()   # the same rotating file the Linux service writes (numpadctl/logs.py)
 
 
 # ---------------------------------------------------------------- start at login
@@ -216,10 +216,8 @@ def _message_box(text):
 
 def main():
     try:
-        log_path().parent.mkdir(parents=True, exist_ok=True)
-        handler = logging.handlers.RotatingFileHandler(log_path(), maxBytes=1_000_000, backupCount=2,
-                                                       encoding="utf-8")
-        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", handlers=[handler])
+        from .. import logs
+        logs.setup(console=False)   # a tray app has no console: the file is the log
         from .. import crash
         crash.install("tray")
         if _already_running():

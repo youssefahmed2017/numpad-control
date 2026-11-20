@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QPushButton, QSizePolicy, QStackedWidget, QToolButton, QVBoxLayout, QWidget)
 
 import numpadctl
-from numpadctl import actions, config, devices, keys, presets, profile_io, sticker_packs, stickers, templates, ui_common
+from numpadctl import actions, config, devices, keys, logs, presets, profile_io, sticker_packs, stickers, templates, ui_common
 from numpadctl.platform import IS_WINDOWS
 from .checkbox import Switch
 from . import action_icons, dialogs, effects, icons, motion, sticker_image, theme, tokens, tools, welcome
@@ -306,6 +306,7 @@ class MainWindow(QMainWindow):
         menu.addAction("Key tester…", self.open_tester)
         menu.addAction("Diagnostics…", self.open_diagnostics)
         menu.addAction("Welcome tour…", self.open_welcome)
+        menu.addAction("Copy the log", self.copy_log)
         menu.addSeparator()
         self.follow = menu.addAction("Select a key when I press it")
         self.follow.setCheckable(True)
@@ -1304,6 +1305,17 @@ class MainWindow(QMainWindow):
     # ---------------------------------------------------------------- feedback
     def toast(self, message):
         self.snackbar.show_message(message)
+
+    COPY_LOG_LINES = 200
+
+    def copy_log(self):
+        """Tools > Copy the log: the end of the service's log file on the clipboard, to paste into a bug report."""
+        lines = logs.tail(self.COPY_LOG_LINES)
+        if not lines:
+            self.toast("No log yet: the service writes it as it runs")
+            return
+        QApplication.clipboard().setText("\n".join(lines))
+        self.toast(f"Copied the last {len(lines)} lines of the log")
 
     NARROW = 900   # below this width the top bar's FABs shrink to icons, like Gmail's collapsed sidebar
 
