@@ -3,9 +3,9 @@ name: Docs screenshots
 # Keeps the pictures in the README and docs current. When a push changes the settings window's code
 # (numpadctl_ui/), this renders the window offscreen with tools/docs-screenshots.py and, if a picture
 # came out different, commits it to main. The README shows docs/screenshots/macro.png, so it updates
-# with it. The website (docs.html) shows the same pictures: Vercel rebuilds it from the commit this makes.
-# The commit only touches docs/screenshots/, which isn't in the paths below, so this can't loop.
-
+# with it, and the website (docs.html) shows the same pictures. The commit is made with the workflow's own
+# token, which doesn't start other workflows, so the Website workflow is started by hand below; the commit only
+# touches docs/screenshots/, which isn't in the paths here, so this can't loop.
 on:
   push:
     branches: [main]
@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: docs-screenshots
@@ -36,6 +37,8 @@ jobs:
       - name: Render the screenshots
         run: python tools/docs-screenshots.py docs/screenshots
       - name: Commit the ones that changed
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if git status --porcelain docs/screenshots | grep -q .; then
             git config user.name "github-actions[bot]"
@@ -44,6 +47,7 @@ jobs:
             git commit -m "Update the docs screenshots"
             git pull --rebase origin main
             git push origin HEAD:main
+            gh workflow run pages.yml --ref main
           else
             echo "The screenshots are up to date."
           fi
