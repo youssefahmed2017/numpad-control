@@ -28,6 +28,12 @@ Until it is signed, installed copies see the release but refuse to install it. T
 (a personal access token with `public_repo`) and `AUR_SSH_KEY` (the AUR account's private key); a job without
 its secret is skipped. The first winget version of a package is submitted by hand.
 
+**1.0.2:** a settings window that no longer makes the numpad look broken.
+- **Press twice to run.** With the settings window in front, a numpad key selects its key in the editor as before, and
+  pressing it again within 1.5 seconds runs it. A hint in the top bar says what is going on while it is on ("Keys select
+  here: press twice to run"), and clicking it makes keys run at once. Learn mode and Pause still never run keys, and
+  the log now says what happened to a key the window took.
+
 **1.0.1:** logs that say what happened, FAB buttons, and the same sizes as the website.
 - **Logs that say what happened.** A log file on every system with the level in each line (Tools → Copy the log copies
   the last 200 lines), one line per press with its result and time, a first clue under a failure that has none, a debug

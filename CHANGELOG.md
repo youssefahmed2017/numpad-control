@@ -6,6 +6,16 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-21
+
+### Changed
+- **Numpad keys while the settings window is in front:** a key still selects its key in the editor (so setting things up is
+  safe), but pressing the same key again within 1.5 seconds now runs it. A hint in the top bar ("Keys select here: press
+  twice to run") says what is going on while it is on, and a click on it makes keys run at once. Before, keys did nothing at
+  all there, which looked exactly like a broken numpad in a demo. Learn mode and Pause still never run keys.
+- The log says what happened to a key the window took: `key 1: selected in the settings window, not run: press it again
+  within 1.5 s to run it`, `Learn mode is on ...` or `NumpadControl is paused`.
+
 ## [1.0.1] - 2026-11-20
 
 ### Added
@@ -14,7 +24,7 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
 - **Log lines that say what happened:** every press logs its result and how long it took (`key 1 tap: open_browser ->
   ok (12 ms)`), a failure adds a first clue when its error has none (timeout, permission, missing file, refused
   connection), a key that isn't on the pad is explained once, and an unbound key says which profile and layer it looked in.
-- **A swallowed key is logged:** when the settings window is taking the keys (in front, with *Select a key when I press it* on, or Learn on) or NumpadControl is paused, a press says `key 1: not run, ...` and why. Before, it was silent, which looks like a numpad that does nothing.
+- **A key the settings window or Pause takes is logged,** with the reason. Before, it was silent, which looks like a numpad that does nothing.
 - **Debug level** (`NUMPADCTL_LOG=debug` or `"log_level": "debug"`): one line per raw key event, to tell a key that never
   arrived (hardware) from one the program ignored (settings).
 - **A numpad that keeps dropping off USB** (3 times in 10 minutes, Linux) is called out in the log as a connection
@@ -133,7 +143,8 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
 ## [0.1.0] - 2026-10-27
 - First release.
 
-[Unreleased]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/youssefahmed2017/numpad-control/compare/v0.3.1...v1.0.0
 [0.3.1]: https://github.com/youssefahmed2017/numpad-control/compare/v0.3.0...v0.3.1
