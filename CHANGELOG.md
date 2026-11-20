@@ -6,6 +6,20 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-20
+
+### Added
+- **A log file on every system** (Linux too, not only the journal), with the level in every line, cut at 1 MB. **Tools →
+  Copy the log** puts the last 200 lines on the clipboard; Diagnostics shows the file's path and its last 50 lines.
+- **Log lines that say what happened:** every press logs its result and how long it took (`key 1 tap: open_browser ->
+  ok (12 ms)`), a failure adds a first clue when its error has none (timeout, permission, missing file, refused
+  connection), a key that isn't on the pad is explained once, and an unbound key says which profile and layer it looked in.
+- **A swallowed key is logged:** when the settings window is taking the keys (in front, with *Select a key when I press it* on, or Learn on) or NumpadControl is paused, a press says `key 1: not run, ...` and why. Before, it was silent, which looks like a numpad that does nothing.
+- **Debug level** (`NUMPADCTL_LOG=debug` or `"log_level": "debug"`): one line per raw key event, to tell a key that never
+  arrived (hardware) from one the program ignored (settings).
+- **A numpad that keeps dropping off USB** (3 times in 10 minutes, Linux) is called out in the log as a connection
+  problem, with what to try.
+
 ### Changed
 - **Top bar:** Settings and Save are Material 3 extended FABs, like Gmail's Compose button. They are flat at rest, a
   shadow grows in while the pointer is over them, and in a window narrower than 900 px they shrink to icon-only squares.
@@ -119,7 +133,8 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
 ## [0.1.0] - 2026-10-27
 - First release.
 
-[Unreleased]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/youssefahmed2017/numpad-control/compare/v0.3.1...v1.0.0
 [0.3.1]: https://github.com/youssefahmed2017/numpad-control/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/youssefahmed2017/numpad-control/compare/v0.2.7...v0.3.0

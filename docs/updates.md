@@ -28,7 +28,12 @@ Until it is signed, installed copies see the release but refuse to install it. T
 (a personal access token with `public_repo`) and `AUR_SSH_KEY` (the AUR account's private key); a job without
 its secret is skipped. The first winget version of a package is submitted by hand.
 
-**After 1.0.0** (on `main`):
+**1.0.1:** logs that say what happened, FAB buttons, and the same sizes as the website.
+- **Logs that say what happened.** A log file on every system with the level in each line (Tools → Copy the log copies
+  the last 200 lines), one line per press with its result and time, a first clue under a failure that has none, a debug
+  level that logs raw key events (`NUMPADCTL_LOG=debug`), and a warning when the numpad keeps dropping off USB. Prompted
+  by advice to log so that "what happened when I pressed this?" is already answered. See
+  [Troubleshooting](troubleshooting.md).
 - **FAB buttons:** Settings and Save in the top bar, and Save / Don't save in the "Save changes?" dialog, are Material 3
   extended FABs like Gmail's Compose button: flat at rest, a shadow that grows in while hovered, and in a narrow window
   (under 900 px) they shrink to icon-only squares. Learn and Tools stay in the top bar, without the shadow.
