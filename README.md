@@ -40,6 +40,7 @@ and on Windows (newer, still being tested). Website:
 - [Linux desktops](docs/linux-details.md): what works on Hyprland, KDE, X11 and GNOME
 - [Troubleshooting](docs/troubleshooting.md), [updates and release notes](docs/updates.md)
 - [Development](docs/development.md): code layout and tests. Security: [SECURITY.md](SECURITY.md)
+- [Roadmap](ROADMAP.md) and [changelog](CHANGELOG.md): what is planned, and what changed in each release
 
 ## Support the project
 NumpadControl is free and stays free: every key, every action, no ads, no account. If it saved you time and you'd

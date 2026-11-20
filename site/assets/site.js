@@ -54,8 +54,8 @@
       <div class="np-cols">
         <div><a class="np-brand" href="index.html">${LOGO}NumpadControl</a>
           <p style="max-width:360px;color:var(--on-surface-variant)">Turn any cheap USB numpad into a control deck. Windows and Linux, no driver, no telemetry.</p></div>
-        <div><h6>Product</h6><a href="features.html">Features</a><a href="pricing.html">Why free</a><a href="download.html">Get started</a><a href="docs.html">Docs</a></div>
-        <div><h6>Help</h6><a href="faq.html">FAQ</a><a href="${GITHUB}/blob/main/docs/compatibility.md">Tested numpads</a><a href="${GITHUB}/issues">Report a problem</a></div>
+        <div><h6>Product</h6><a href="features.html">Features</a><a href="pricing.html">Why free</a><a href="download.html">Get started</a><a href="docs.html">Docs</a><a href="roadmap.html">Roadmap</a></div>
+        <div><h6>Help</h6><a href="faq.html">FAQ</a><a href="${GITHUB}/blob/main/docs/compatibility.md">Tested numpads</a><a href="${GITHUB}/issues">Report a problem</a><a href="${GITHUB}/blob/main/CHANGELOG.md">Changelog</a></div>
         <div><h6>Open source</h6><a href="${GITHUB}">GitHub</a><a href="privacy.html">Privacy</a><a href="code-signing.html">Code signing policy</a><a href="${GITHUB}/blob/main/LICENSE">GPL-3.0</a><a href="${KOFI}">Leave a tip</a></div>
       </div>
       <p class="np-fine">Stream Deck is a trademark of Corsair / Elgato; NumpadControl isn't affiliated with them.
