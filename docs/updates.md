@@ -32,8 +32,9 @@ its secret is skipped. The first winget version of a package is submitted by han
 - **FAB buttons:** Settings and Save in the top bar, and Save / Don't save in the "Save changes?" dialog, are Material 3
   extended FABs like Gmail's Compose button: flat at rest, a shadow that grows in while hovered, and in a narrow window
   (under 900 px) they shrink to icon-only squares. Learn and Tools stay in the top bar, without the shadow.
-- **Same sizes as the website:** buttons, fields, chips, menus, list rows, tabs and the shadow levels use the numbers of
-  BeerCSS (the library the website is built on), so the app and the site match. Body text has BeerCSS's letter spacing.
+- **Same sizes as the website:** buttons, fields (48 px tall), chips, menus, list rows, tabs and the shadow levels use the
+  numbers of BeerCSS (the library the website is built on), so the app and the site match. Dialogs have its 24 px of
+  padding and a 320 px minimum width, and the Settings dialog opens wider to fit. Body text has BeerCSS's letter spacing.
 
 **1.0.0:** a control deck that looks and feels like a finished app.
 - **More desktops (Linux):** XFCE and other X11 desktops, and GNOME on Wayland (through GNOME's own shortcuts),

@@ -194,6 +194,7 @@ def apply(app, appearance="auto", accent=tokens.DEFAULT_ACCENT, contrast="standa
         _styled.append(True)
     _font(app, look["font"], look["font_scale"])
     _install_translucency(app)
+    _install_dialog_metrics(app)
     palette = QPalette()
     for role, key in ((QPalette.Window, "surface"), (QPalette.Base, "surfaceContainerLowest"),
                       (QPalette.AlternateBase, "surfaceContainerLow"), (QPalette.Text, "onSurface"),
@@ -240,8 +241,35 @@ class _Translucency(QObject):
         return False
 
 
+class _DialogMetrics(QObject):
+    """BeerCSS dialogs: 24 px of padding all round and at least 320 px wide. Done once, when one of this app's own
+    dialogs is first shown: a layout's margins come from the layout, and a style sheet can't set them. (The corner radius
+    and the shadow of a BeerCSS dialog belong to the window frame here, which the desktop draws.)"""
+
+    def eventFilter(self, obj, event):
+        if (event.type() == QEvent.Show and obj.isWidgetType() and obj.isWindow() and obj.inherits("QDialog")
+                and type(obj).__module__.startswith("numpadctl_ui") and not obj.property("beer_dialog")):
+            obj.setProperty("beer_dialog", True)
+            if material():
+                pad = tokens.BEER_DIALOG["padding"]
+                if obj.layout() is not None:
+                    obj.layout().setContentsMargins(pad, pad, pad, pad)
+                obj.setMinimumWidth(max(obj.minimumWidth(), tokens.BEER_DIALOG["min_width"]))
+        return False
+
+
 _translucency = []
 _styled = []
+
+
+_dialog_metrics = []
+
+
+def _install_dialog_metrics(app):
+    """Once per app: the filter that gives the app's dialogs BeerCSS's padding and width when they are shown."""
+    if not _dialog_metrics:
+        _dialog_metrics.append(_DialogMetrics(app))
+        app.installEventFilter(_dialog_metrics[0])
 
 
 def _install_translucency(app):
@@ -371,6 +399,8 @@ QToolButton::menu-indicator { image: none; }
 QLineEdit, QPlainTextEdit, QComboBox, QSpinBox, QListWidget { background: transparent; color: ${onSurface};
     border: 1px solid ${outline}; border-radius: ${r_xs}; padding: ${beer_field_pad_y} ${beer_field_pad}; font-size: ${bodyLarge_size};
     selection-background-color: ${primary}; selection-color: ${onPrimary}; }
+QLineEdit, QComboBox { min-height: ${beer_field_min}; }
+QSpinBox { min-height: ${beer_spin_min}; }   /* BeerCSS field: 48 px (the box adds the padding and border) */
 QLineEdit:hover, QPlainTextEdit:hover, QComboBox:hover, QSpinBox:hover { border-color: ${onSurface}; }
 QLineEdit:focus, QPlainTextEdit:focus, QComboBox:focus, QSpinBox:focus, QListWidget:focus {
     border: 2px solid ${primary}; padding: ${beer_field_pad_y_focus} ${beer_field_pad_focus}; }

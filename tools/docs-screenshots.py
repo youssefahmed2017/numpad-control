@@ -117,18 +117,18 @@ def main():
         def dialog(name, make, size):
             def work():
                 d = make()
-                d.resize(*size)
-                d.show()
+                d.show()   # shown first: the app gives its dialogs their padding and width then
+                d.resize(max(size[0], d.minimumSizeHint().width()), size[1])
                 save(d, name)
                 d.close()
             return work
-        attempt("settings.png", dialog("settings.png", lambda: dialogs.SettingsDialog(w), (620, 700)))
+        attempt("settings.png", dialog("settings.png", lambda: dialogs.SettingsDialog(w), (680, 700)))
 
         def appearance():
             d = dialogs.SettingsDialog(w)
             d.tabs.setCurrentIndex(1)
-            d.resize(620, 700)
             d.show()
+            d.resize(max(680, d.minimumSizeHint().width()), 700)
             save(d, "settings-appearance.png")
             d.close()
         attempt("settings-appearance.png", appearance)

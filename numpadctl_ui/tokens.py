@@ -41,7 +41,7 @@ BEER_DIALOG = {"radius": 28, "padding": 24, "min_width": 320}
 BEER_MENU = {"radius": 16, "padding": 4, "gap": 2, "item_padding": (8, 16), "item_height": 44, "item_radius": 4}
 BEER_LIST_ITEM = {"padding": (8, 16), "height": 56}
 BEER_TAB = {"padding": (8, 16), "height": 48, "indicator": 2}
-BEER_FIELD = {"padding": 15, "focus_padding": 14, "font": 16, "radius": 4}
+BEER_FIELD = {"padding": 15, "focus_padding": 14, "font": 16, "radius": 4, "height": 48, "small_height": 40, "pad_y": 8, "border": 1}   # height: BeerCSS --_input 3rem
 BEER_LETTER_SPACING = 0.5      # body: letter-spacing 0.0313rem
 SPEED = {"speed1": 100, "speed2": 200, "speed3": 300, "speed4": 400}   # ms: BeerCSS --speed1..4
 ELEVATE = {1: (2, 0.32), 2: (4, 0.40), 3: (6, 0.48)}   # BeerCSS --elevate1..3: y offset px, shadow alpha
@@ -77,7 +77,9 @@ def beer_vars(factor=1.0):
         "beer_tab_pad_y": px(tab_y), "beer_tab_pad_x": px(tab_x), "beer_tab_indicator": px(BEER_TAB["indicator"]),
         "beer_tab_min": px(BEER_TAB["height"] - 2 * tab_y - BEER_TAB["indicator"]),
         "beer_field_pad": px(BEER_FIELD["padding"]), "beer_field_pad_focus": px(BEER_FIELD["focus_padding"]),
-        "beer_field_pad_y": "8px", "beer_field_pad_y_focus": "7px",
+        "beer_field_pad_y": px(BEER_FIELD["pad_y"]), "beer_field_pad_y_focus": px(BEER_FIELD["pad_y"] - 1),
+        "beer_field_min": px(BEER_FIELD["height"] - 2 * BEER_FIELD["pad_y"] - 2 * BEER_FIELD["border"]),   # the content box
+        "beer_spin_min": px(BEER_FIELD["height"] - 2 * BEER_FIELD["pad_y"] - 2 * BEER_FIELD["border"] - 3),   # QSpinBox adds 3 px of its own
     }
 
 

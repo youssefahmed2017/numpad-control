@@ -26,7 +26,7 @@ class SettingsDialog(QDialog):
         self.window = window
         cfg = window.cfg
         self.setWindowTitle("Settings")
-        self.resize(580, 760)
+        self.resize(680, 760)   # BeerCSS's 24 px dialog padding and 48 px fields need the room
         outer = QVBoxLayout(self)
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)   # M3 primary tabs: no frame, an indicator under the chosen one
@@ -508,7 +508,7 @@ class AddDeviceDialog(QDialog):
         super().__init__(window)
         self.window, self.taken, self.taken_ids = window, taken, taken_ids
         self.setWindowTitle("Add a keyboard")
-        self.resize(480, 460)
+        self.resize(520, 460)
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
         layout.addWidget(label("Pick the keyboard to use as a pad. All of its keys can run actions.", wrap=True))
