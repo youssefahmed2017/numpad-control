@@ -27,10 +27,10 @@ Windows then shows the publisher as SignPath Foundation. Their conditions
 |---|---|
 | OSI-approved licence, no proprietary parts, no commercial dual licensing | GPL-3.0 for everything |
 | Actively maintained and already released | Releases since 0.1.0 |
-| Functionality described on the download page | [Download page](https://youssefahmed2017.github.io/numpad-control/download.html) and the README |
+| Functionality described on the download page | [Download page](https://numpad.ahmedabdou.net/download.html) and the README |
 | Binaries built from source in a verifiable way, from an automated build | The installer is built by GitHub Actions (`packaging/windows/build-installer.ps1`). The keyboard hook DLL it carries is compiled from `numpadctl/platform/numpadhook/numpadhook.c` in that same build, not taken from the committed copy |
 | No malware or unwanted software; no hacking tools | The keyboard hook and the optional Interception driver read and block the chosen numpad's keys, and are documented in the README and SECURITY.md |
-| Privacy respected, system changes announced, an uninstaller | [Privacy page](https://youssefahmed2017.github.io/numpad-control/privacy.html); the Windows installer has an uninstaller; the Linux udev rule asks first |
+| Privacy respected, system changes announced, an uninstaller | [Privacy page](https://numpad.ahmedabdou.net/privacy.html); the Windows installer has an uninstaller; the Linux udev rule asks first |
 | A "Code signing policy" page on the website | [code-signing.html](../site/code-signing.html) |
 | Multi-factor authentication, separate author / reviewer / approver roles | To confirm when applying (this is a one-person project) |
 | Every release approved by hand before it is signed | Fits: the release workflow waits for the approval |

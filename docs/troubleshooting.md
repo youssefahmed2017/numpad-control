@@ -46,6 +46,6 @@ system; your user name and home folder taken out) is also kept in
 The only other times it uses the network: once a day it asks GitHub whether a new version exists (turn it off or
 set it to only tell you with `"updates": "off"` / `"notify"` in `config.json`), and **Profile ⋯ → Browse library…**
 downloads the profile list and the profile you pick from GitHub, only when you open it. Nothing about you is sent.
-Stickers never leave your computer. The same text is on the [privacy page](https://youssefahmed2017.github.io/numpad-control/privacy.html).
+Stickers never leave your computer. The same text is on the [privacy page](https://numpad.ahmedabdou.net/privacy.html).
 
 ![The crash dialog on Linux (xmessage, the most basic of the dialogs it can use)](screenshots/crash-dialog-linux.png)

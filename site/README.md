@@ -1,8 +1,8 @@
 # The NumpadControl website
 
-Plain HTML, CSS and JavaScript: no build step, no libraries. GitHub publishes it at
-<https://youssefahmed2017.github.io/numpad-control/> whenever `site/` changes on `main`
-(`.github/workflows/pages.yml`; enable it once under Settings → Pages → Source: GitHub Actions).
+Plain HTML, CSS and JavaScript: no build step, no libraries. Vercel serves it at
+<https://numpad.ahmedabdou.net/> whenever `site/`, `docs/screenshots/` or `vercel.json` change on `main` (the project is
+`numpad-control-site`; `vercel.json` copies the app screenshots into the site while it builds).
 
 ## Pages
 
@@ -36,8 +36,9 @@ One setting at the top of `site.js` connects the site to a free account:
 
 GoatCounter counts page views and button clicks (`data-track`). Nothing else is collected.
 
-## Screenshots
+## Screenshots and the video
 
-The pictures on `docs.html` are the ones in `docs/screenshots/`. The Docs screenshots workflow redraws them
-from the app's code when `numpadctl_ui/` changes, and the Website workflow copies them into the site while
-it builds (`site/img/screenshots/`).
+The pictures on `docs.html` are the ones in `docs/screenshots/`. The Docs screenshots workflow redraws them from the
+app's code when `numpadctl_ui/` changes, and Vercel copies them into the site while it builds (`vercel.json`,
+`site/img/screenshots/`). The demo video on the home page is `video/numpad-demo.mp4` with its poster
+`img/demo-poster.jpg`: a real numpad filmed on a desk, cut, with the pressed key labelled.

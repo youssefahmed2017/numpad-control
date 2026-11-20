@@ -15,4 +15,4 @@ The only times it uses the network:
    sends nothing.
 
 The program is free and open source (GPL-3.0). Full privacy page:
-https://youssefahmed2017.github.io/numpad-control/privacy.html
+https://numpad.ahmedabdou.net/privacy.html

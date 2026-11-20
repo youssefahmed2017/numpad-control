@@ -32,7 +32,7 @@ Then open **NumpadControl** from your app menu, click a key, pick an action, Sav
 
 Tested on Arch Linux with Hyprland, KDE Plasma 6 and XFCE, on GNOME (Wayland, with limits)
 and on Windows (newer, still being tested). Website:
-[youssefahmed2017.github.io/numpad-control](https://youssefahmed2017.github.io/numpad-control/).
+[numpad.ahmedabdou.net](https://numpad.ahmedabdou.net/).
 
 ## Docs
 - [Features and every action](docs/features.md): keys, macros, profiles, layers, modes, OBS, appearance

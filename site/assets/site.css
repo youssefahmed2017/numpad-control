@@ -39,7 +39,7 @@ a.np-card:hover { background: var(--surface-container-high); transform: translat
 .np-code { position: relative; background: var(--surface-container-highest); border-radius: 16px; padding: 16px 56px 16px 18px; font: 500 .95rem/1.5 "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; margin: 10px 0; }
 .np-code button { position: absolute; top: 8px; right: 8px; }
 .np-frame { border-radius: 24px; overflow: hidden; border: 1px solid var(--outline-variant); background: var(--surface-container); }
-.np-frame img { display: block; width: 100%; height: auto; }
+.np-frame img, .np-frame video { display: block; width: 100%; height: auto; }
 .np-fig { margin: 0; }
 .np-fig img { width: 100%; height: auto; border-radius: 16px; border: 1px solid var(--outline-variant); display: block; }
 .np-fig figcaption { margin-top: 10px; }
