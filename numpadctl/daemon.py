@@ -36,6 +36,7 @@ RETRY_DELAYS = (1, 2, 5, 10, 30)  # seconds before reopening a numpad whose read
 QUICK_FAILURE = 5         # a reader that fails within this many seconds counts as failing at once
 FLAP_WINDOW = 600         # a numpad that vanishes from USB FLAP_COUNT times within this many seconds is flapping
 FLAP_COUNT = 3
+SELECT_RUN_WINDOW = 1.5   # settings window in front: a second press of the same key within this many seconds runs it
 UPDATE_FIRST_CHECK = 60   # seconds after starting before looking for an update (not slowing the start)
 UPDATE_LOOP_SECONDS = 3600  # how often it wakes to see whether the daily check is due
 HUD_CHECK_SECONDS = 2      # how often the key map overlay process is checked on (started, restarted, stopped)
@@ -163,6 +164,9 @@ class Daemon:
         self.drops = []            # when the numpad last vanished from the USB bus (see note_drop)
         self.flap_warned = None    # when that was last explained in the log
         self.unknown_logged = set()  # keys that aren't on the pad, already explained once in the log
+        self.selected_key = None     # the key the settings window just selected (a quick second press runs it)
+        self.selected_at = 0.0
+        self.pass_through = set()    # keys whose press ran although the window was in front: their release goes through too
         self.extra = {}         # device id -> {"spec": ..., "task": ..., "pad": ...} of the extra devices
         self.released = set()   # extra devices given back to the system with the escape chord
         self.held = {}          # device id -> keys currently down on it (for that chord)
@@ -284,11 +288,27 @@ class Daemon:
             if down:
                 self.detect_future.set_result(self.current_device_spec())
             return
-        if self.capturing or self.paused:  # learn mode in the settings window, or paused
+        swallowed, why = bool(self.capturing or self.paused), None   # learn mode, the settings window in front, or paused
+        if swallowed and not self.paused and not (self.capturing - self.following):
+            # The settings window only wants to select (Tools > Select a key when I press it): the first press selects the key,
+            # and a quick second press of the same key runs it, so a demo from this window works without any setting.
+            if down:
+                now = time.monotonic()
+                if self.selected_key == key and now - self.selected_at <= SELECT_RUN_WINDOW:
+                    self.selected_key = None
+                    self.pass_through.add(key)
+                    swallowed = False
+                else:
+                    self.selected_key, self.selected_at = key, now
+                    why = (f"selected in the settings window, not run: press it again within {SELECT_RUN_WINDOW:g} s to run it "
+                           "(or turn off Tools > Select a key when I press it)")
+            elif key in self.pass_through:    # the release of a press that is running
+                self.pass_through.discard(key)
+                swallowed = False
+        if swallowed:
             if down:   # say so: from outside, a key that does nothing looks the same as a key that never arrived
-                log.info("key %s: not run, %s", key, "NumpadControl is paused" if self.paused else
-                         "the settings window is taking the keys (it is in front with Tools > Select a key when I press it "
-                         "on, or Learn is on): put another window in front, or turn that off, to run actions")
+                log.info("key %s: %s", key, why or ("NumpadControl is paused" if self.paused else
+                                                      "Learn mode is on in the settings window: keys are added there, never run"))
             return
         if key == self.cfg.get("layer_key"):
             if self.layer_held != down:

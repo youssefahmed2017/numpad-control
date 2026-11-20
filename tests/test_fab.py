@@ -95,7 +95,8 @@ class TopBarTest(unittest.TestCase):
         self.addCleanup(case.tmp.cleanup)
         w, bar = case.w, case.w.appbar
         texts = sorted(b.text() for b in bar.findChildren(QPushButton) + bar.findChildren(QToolButton))
-        self.assertEqual(texts, ["Learn", "Save", "Settings", "Tools"])
+        self.assertEqual(texts, ["Keys select here: press twice to run", "Learn", "Save", "Settings", "Tools"])
+        self.assertFalse(w.keys_chip.isVisibleTo(w), "the hint is only there while keys select instead of run")
         fabs = [b for b in bar.findChildren(buttons.Fab)]
         self.assertEqual(sorted(f.text() for f in fabs), ["Save", "Settings"], "only these two are FABs")
         self.assertEqual(w.save_button._look()[0], theme.current["primaryContainer"])

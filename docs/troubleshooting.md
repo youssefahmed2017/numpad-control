@@ -29,10 +29,12 @@ Part of the [NumpadControl docs](../README.md).
   A failure from a program that gave no hint (it timed out, was refused, wasn't found, or may not be read) gets a
   second line, `clue: ...`, with the usual cause and the first thing to try. A key that isn't on the pad yet is
   explained once (turn on Learn and press it), and a key with nothing bound says which profile and layer it looked in.
-  A key that the settings window swallows is logged too (`key 1: not run, the settings window is taking the keys`):
-  while that window is in front with *Tools → Select a key when I press it* on (the default), or while Learn is on,
-  a numpad key only selects the key in the editor and does not run its action. That is by design, so you can't fire
-  Shut down by accident while setting it up, but in a demo it looks exactly like a broken numpad.
+  A key that the settings window takes is logged too: `key 1: selected in the settings window, not run: press it again
+  within 1.5 s to run it`. While that window is in front with *Tools → Select a key when I press it* on (the default), a
+  numpad key first only selects its key in the editor, so you can't fire Shut down by accident while setting it up; pressing
+  the same key again within 1.5 seconds runs it. A hint in the top bar says so, and clicking it turns the selecting off.
+  In Learn mode keys are only added, never run (`Learn mode is on in the settings window`), and while paused they are
+  not run either (`NumpadControl is paused`).
 - **The numpad does nothing at all?** Raise the log to debug: `NUMPADCTL_LOG=debug` in the service's environment
   (`systemctl --user edit numpad-control`, then `[Service]` and `Environment=NUMPADCTL_LOG=debug`), or
   `"log_level": "debug"` in `config.json`. Every raw key event is then logged (`raw: key 7 down`). If those lines appear

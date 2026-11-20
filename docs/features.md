@@ -5,8 +5,11 @@ Part of the [NumpadControl docs](../README.md).
 ## Finding your way around
 - **Press a key to select it.** While the settings window is in front, pressing a key on
   the numpad selects it in the editor instead of running its action (so you can't fire
-  "Shut down" by accident while setting it up). Turn this off under *Tools ▾ → Select a
-  key when I press it*. The moment the window isn't in front, the keys work as usual.
+  "Shut down" by accident while setting it up). Press the same key again within a second and
+  a half and it runs, so a demo from this window works. A hint in the top bar ("Keys select
+  here: press twice to run") says so while it is on; click it, or turn it off under *Tools ▾ →
+  Select a key when I press it*, to make keys run at once. The moment the window isn't in
+  front, the keys work as usual. Learn mode never runs keys.
 - **Search the actions.** Click an action and type: "mute" finds the microphone, the
   speakers and OBS, "live" finds the streaming actions. Each one has a one-line
   description, and the ones you used last are listed first under *Recently used*.

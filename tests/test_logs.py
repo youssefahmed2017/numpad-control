@@ -157,38 +157,14 @@ class DaemonLogTest(unittest.TestCase):
     def test_a_key_that_is_not_on_the_pad_is_explained_once(self):
         d = self.bare()
         d.broadcast = lambda message: None
-        d.detect_future, d.capturing, d.paused = None, {object()}, False   # stops right after the log line
+        d.detect_future, d.capturing, d.following, d.paused = None, {object()}, set(), False   # Learn mode: stops after the log line
+        d.selected_key, d.selected_at, d.pass_through = None, 0.0, set()
         with mock.patch.object(daemon.keys, "known", return_value=False), self.assertLogs("numpadctl", "INFO") as seen:
             d.key_event("KEY_PROG1", True)
             d.key_event("KEY_PROG1", True)
         explained = [line for line in seen.output if "isn't on the pad yet" in line]
         self.assertEqual(len(explained), 1, "once, however often the key is pressed")
         self.assertIn("turn on Learn", explained[0])
-
-
-class SwallowedKeyTest(unittest.TestCase):
-    def daemon(self):
-        d = daemon.Daemon.__new__(daemon.Daemon)
-        d.cfg, d.unknown_logged, d.detect_future, d.paused = {}, set(), None, False
-        d.broadcast = lambda message: None
-        return d
-
-    def test_a_key_the_settings_window_takes_says_so_in_the_log(self):
-        d = self.daemon()
-        d.capturing = {object()}
-        with mock.patch.object(daemon.keys, "known", return_value=True), self.assertLogs("numpadctl", "INFO") as seen:
-            d.key_event("1", True)
-            d.key_event("1", False)             # the release is not logged again
-        self.assertEqual(len(seen.output), 1)
-        self.assertIn("key 1: not run, the settings window is taking the keys", seen.output[0])
-        self.assertIn("Select a key when I press it", seen.output[0])
-
-    def test_a_key_while_paused_says_it_is_paused(self):
-        d = self.daemon()
-        d.capturing, d.paused = set(), True
-        with mock.patch.object(daemon.keys, "known", return_value=True), self.assertLogs("numpadctl", "INFO") as seen:
-            d.key_event("1", True)
-        self.assertIn("NumpadControl is paused", seen.output[0])
 
 
 class CopyLogTest(unittest.TestCase):

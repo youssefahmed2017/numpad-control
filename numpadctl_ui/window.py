@@ -287,6 +287,12 @@ class MainWindow(QMainWindow):
         self.status = label("Connecting…", "dim")
         self.status.setContentsMargins(10, 4, 10, 4)  # the chip's padding (a stylesheet padding doesn't size a label)
         row.addWidget(self.status)
+        self.keys_chip = ToolButton(text="Keys select here: press twice to run")
+        self.keys_chip.setToolTip("While this window is in front, a numpad key selects its key here. Press the same key again "
+                                  "to run it. Click to make keys run at once instead.")
+        self.keys_chip.clicked.connect(self.run_keys_instead)
+        self.keys_chip.setVisible(False)
+        row.addWidget(self.keys_chip)
         row.addStretch()
         self.dirty_label = label("", "dim")
         row.addWidget(self.dirty_label)
@@ -1212,6 +1218,7 @@ class MainWindow(QMainWindow):
             self.say_given_back(self.last_status.get("extra", {}), message.get("extra", {}))
             self.last_status = message
             self.update_status(message)
+            self.refresh_keys_chip()
             self.refresh_devices()
             if self.tour:
                 self.tour.refresh_status()
@@ -1269,8 +1276,18 @@ class MainWindow(QMainWindow):
         """True while the window is in front and pressed keys select instead of act."""
         return self.follow.isChecked() and self.isActiveWindow() and self.link.connected
 
+    def refresh_keys_chip(self):
+        """The hint in the top bar while a pressed numpad key selects its key here instead of running (a quick second press
+        runs it): from outside, that looks like a numpad that does nothing."""
+        self.keys_chip.setVisible(bool(self.following_keys()) and not self.learn.isChecked() and self.width() >= self.NARROW)
+
+    def run_keys_instead(self):
+        self.follow.setChecked(False)
+        self.toast("Numpad keys run at once now. Tools > Select a key when I press it brings the selecting back")
+
     def sync_capture(self):
         """Keep the service in step: in Learn mode, or while this window is in front, keys report but don't run."""
+        self.refresh_keys_chip()
         learn = self.learn.isChecked()
         self.link.send({"cmd": "capture", "on": learn or self.following_keys() or bool(self.tour and self.tour.wants_capture()),
                         "learn": learn})
@@ -1323,6 +1340,7 @@ class MainWindow(QMainWindow):
         super().resizeEvent(event)
         self.snackbar.reposition()
         if hasattr(self, "save_button"):
+            self.refresh_keys_chip()
             narrow = self.width() < self.NARROW
             for fab in (self.settings_button, self.save_button):
                 fab.set_collapsed(narrow)
