@@ -9,7 +9,7 @@ from PySide6.QtCore import QEvent, QObject, QRectF, Qt
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPalette
 from PySide6.QtWidgets import QAbstractButton, QCheckBox, QGraphicsDropShadowEffect, QGraphicsOpacityEffect, QWidget
 
-from . import motion, theme
+from . import motion, theme, tokens
 
 RIPPLE_MS = motion.LONG1
 RIPPLE_ALPHA = 0.16      # a bit above the 10% "pressed" state layer, fading out as it spreads
@@ -87,9 +87,10 @@ class RippleFilter(QObject):
 def elevate(widget, level=1, dark=True):
     """A soft drop shadow, M3 elevation level 1-3 (one widget only: shadows cost a repaint of the widget)."""
     shadow = QGraphicsDropShadowEffect(widget)
-    shadow.setBlurRadius({1: 14, 2: 22, 3: 30}[level])
-    shadow.setOffset(0, {1: 2, 2: 4, 3: 6}[level])
-    shadow.setColor(QColor(0, 0, 0, 150 if dark else 55))
+    offset, alpha = tokens.ELEVATE[level]     # BeerCSS --elevate1..3
+    shadow.setBlurRadius({1: 14, 2: 22, 3: 30}[level])   # (Qt's blur radius is not CSS's: kept)
+    shadow.setOffset(0, offset)
+    shadow.setColor(QColor(0, 0, 0, round(255 * alpha)))
     widget.setGraphicsEffect(shadow)
 
 

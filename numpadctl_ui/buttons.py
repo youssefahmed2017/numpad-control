@@ -175,7 +175,7 @@ class Fab(PushButton):
         self.setObjectName(kind)
         self._label = text
         self._collapsed = False
-        self._shrink = motion.Tween(self, motion.MEDIUM2, "emphasized", lambda v: None)
+        self._shrink = motion.Tween(self, tokens.SPEED["speed3"], "emphasized", lambda v: None)
         self.setFixedHeight(FAB_HEIGHT)
         self.setCursor(Qt.PointingHandCursor)
         if symbol:
@@ -191,10 +191,10 @@ class Fab(PushButton):
         if level == self._shadow_level:
             return
         self._shadow_level = level
-        dark = theme.current.get("surface", "#000000") < "#808080"
+        offset, alpha = tokens.ELEVATE[3]    # lifted = BeerCSS elevate3
         self._shadow.setBlurRadius(6 + 24 * level)
-        self._shadow.setOffset(0, 1 + 5 * level)
-        self._shadow.setColor(QColor(0, 0, 0, round((150 if dark else 70) * min(1.0, level))))
+        self._shadow.setOffset(0, 1 + (offset - 1) * level)
+        self._shadow.setColor(QColor(0, 0, 0, round(255 * alpha * min(1.0, level))))
 
     def current_radius(self):
         rest = FAB_RADIUS * theme.shape_factor()
@@ -235,7 +235,7 @@ class Fab(PushButton):
             done()
             return
         self._shrink.stop()
-        self._shrink = motion.Tween(self, motion.MEDIUM2, "emphasized", step)
+        self._shrink = motion.Tween(self, tokens.SPEED["speed3"], "emphasized", step)
         self._shrink.when_done(done)
         self._shrink.go(0.0, 1.0)
 

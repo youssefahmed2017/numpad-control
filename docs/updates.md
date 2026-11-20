@@ -28,6 +28,13 @@ Until it is signed, installed copies see the release but refuse to install it. T
 (a personal access token with `public_repo`) and `AUR_SSH_KEY` (the AUR account's private key); a job without
 its secret is skipped. The first winget version of a package is submitted by hand.
 
+**After 1.0.0** (on `main`):
+- **FAB buttons:** Settings and Save in the top bar, and Save / Don't save in the "Save changes?" dialog, are Material 3
+  extended FABs like Gmail's Compose button: flat at rest, a shadow that grows in while hovered, and in a narrow window
+  (under 900 px) they shrink to icon-only squares. Learn and Tools moved from the top bar to the row under Profile.
+- **Same sizes as the website:** buttons, fields, chips, menus, list rows, tabs and the shadow levels use the numbers of
+  BeerCSS (the library the website is built on), so the app and the site match. Body text has BeerCSS's letter spacing.
+
 **1.0.0:** a control deck that looks and feels like a finished app.
 - **More desktops (Linux):** XFCE and other X11 desktops, and GNOME on Wayland (through GNOME's own shortcuts),
   now work next to Hyprland and KDE Plasma, with volume popups on each. See [Linux desktops](linux-details.md).

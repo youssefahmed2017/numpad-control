@@ -177,6 +177,7 @@ def _font(app, family="", scale=100):
         font = QFont(chosen)
         font.setPointSizeF(size)
         font.setStyleStrategy(QFont.PreferAntialias)
+        font.setLetterSpacing(QFont.AbsoluteSpacing, tokens.BEER_LETTER_SPACING)   # BeerCSS body: 0.0313rem
         app.setFont(font)
 
 
@@ -216,6 +217,7 @@ def apply(app, appearance="auto", accent=tokens.DEFAULT_ACCENT, contrast="standa
     current.clear()
     current.update(c)
     sheet = Template(STYLE if material() else CLASSIC_STYLE).substitute(**c, **shape, **type_, **see_through,
+                                                                       **tokens.beer_vars(shape_factor()),
                                                                        **_draw_images(c))
     if sheet != app.styleSheet():   # re-styling repolishes every widget (about a second): only when it changed
         app.setStyleSheet(sheet)
@@ -326,7 +328,7 @@ QLabel#dim { color: ${onSurfaceVariant}; }
 QLabel#small { color: ${onSurfaceVariant}; font-size: ${bodySmall_size}; }
 QLabel#appname { font-size: ${titleLarge_size}; font-weight: ${titleLarge_weight}; }
 QLabel#ok, QLabel#warn, QLabel#bad { font-size: ${labelMedium_size}; font-weight: ${labelMedium_weight};
-    border-radius: 14px; }
+    border-radius: ${beer_chip_radius}; }   /* BeerCSS chip: 8 px corners */
 QLabel#ok { background: ${okContainer}; color: ${onOkContainer}; }
 QLabel#warn { background: ${warnContainer}; color: ${onWarnContainer}; }
 QLabel#bad { background: ${errorContainer}; color: ${onErrorContainer}; }
@@ -339,10 +341,10 @@ QFrame#separator { background: ${outlineVariant}; max-width: 1px; }
 
 /* Buttons paint their own animated shape (buttons.py); the stylesheet gives text, padding and size only. */
 QPushButton, QToolButton { background: transparent; border: none; }
-QPushButton { color: ${onSecondaryContainer}; padding: 0 20px; min-height: 40px; font-size: ${labelLarge_size}; font-weight: ${labelLarge_weight}; }
+QPushButton { color: ${onSecondaryContainer}; padding: 0 ${beer_button_pad}; min-height: ${beer_button_height}; font-size: ${labelLarge_size}; font-weight: ${labelLarge_weight}; }
 QPushButton:disabled { color: ${onSurfaceVariant}; }
 QPushButton#primary { color: ${onPrimary}; }
-QPushButton#flat { color: ${primary}; padding: 0 12px; min-height: 36px; }
+QPushButton#flat { color: ${primary}; padding: 0 ${beer_small_pad}; min-height: ${beer_small_height}; }   /* BeerCSS small button */
 QPushButton#fab, QPushButton#fab_secondary { padding: 0 18px; min-height: 56px; font-size: ${labelLarge_size}; font-weight: ${labelLarge_weight}; }   /* buttons.Fab */
 QPushButton#segment { color: ${onSurface}; padding: 0 16px; min-height: 36px; }
 QPushButton#segment:checked { color: ${onSecondaryContainer}; }
@@ -359,7 +361,7 @@ QLabel#keyname { font-size: ${titleLarge_size}; font-weight: 600; color: ${onSur
 QLabel#keyname[small="true"] { font-size: ${labelMedium_size}; font-weight: 600; }   /* above the action's icon */
 QLabel#keyaction { font-size: ${bodySmall_size}; color: ${onSurfaceVariant}; }
 
-QToolButton { color: ${primary}; padding: 8px 14px; font-size: ${labelLarge_size}; font-weight: ${labelLarge_weight}; }
+QToolButton { color: ${primary}; padding: 8px ${beer_button_pad}; font-size: ${labelLarge_size}; font-weight: ${labelLarge_weight}; }
 QToolButton:checked { color: ${onSecondaryContainer}; }
 QToolButton#icon { padding: 0; min-width: 40px; max-width: 40px; min-height: 40px; max-height: 40px; }
 QPushButton#picker { text-align: left; padding: 0 16px; min-height: 56px; color: ${onSurface};
@@ -367,20 +369,20 @@ QPushButton#picker { text-align: left; padding: 0 16px; min-height: 56px; color:
 QToolButton::menu-indicator { image: none; }
 
 QLineEdit, QPlainTextEdit, QComboBox, QSpinBox, QListWidget { background: transparent; color: ${onSurface};
-    border: 1px solid ${outline}; border-radius: ${r_xs}; padding: 8px 14px;
+    border: 1px solid ${outline}; border-radius: ${r_xs}; padding: ${beer_field_pad_y} ${beer_field_pad}; font-size: ${bodyLarge_size};
     selection-background-color: ${primary}; selection-color: ${onPrimary}; }
 QLineEdit:hover, QPlainTextEdit:hover, QComboBox:hover, QSpinBox:hover { border-color: ${onSurface}; }
 QLineEdit:focus, QPlainTextEdit:focus, QComboBox:focus, QSpinBox:focus, QListWidget:focus {
-    border: 2px solid ${primary}; padding: 7px 13px; }
+    border: 2px solid ${primary}; padding: ${beer_field_pad_y_focus} ${beer_field_pad_focus}; }
 QComboBox::drop-down { border: none; width: 32px; }
 QComboBox::down-arrow { image: url("${arrow}"); width: 18px; height: 18px; }
 QComboBox QAbstractItemView { background: ${surfaceContainerHigh}; color: ${onSurface}; border: none;
     border-radius: ${r_s}; padding: 6px; outline: none; }
-QComboBox QAbstractItemView::item { padding: 10px 14px; border-radius: ${r_s}; min-height: 24px; }
+QComboBox QAbstractItemView::item { padding: ${beer_item_pad_y} ${beer_item_pad_x}; border-radius: ${beer_item_radius}; min-height: ${beer_item_min}; }
 QComboBox QAbstractItemView::item:hover { background: ${stateHover}; }
 QComboBox QAbstractItemView::item:selected { background: ${secondaryContainer}; color: ${onSecondaryContainer}; }
 QListWidget { padding: 4px; }
-QListWidget::item { padding: 8px 12px; border-radius: ${r_s}; }
+QListWidget::item { padding: ${beer_list_pad_y} ${beer_list_pad_x}; border-radius: ${beer_item_radius}; min-height: ${beer_list_min}; }
 QListWidget::item:hover { background: ${stateHover}; }
 QListWidget::item:selected { background: ${secondaryContainer}; color: ${onSecondaryContainer}; }
 QListWidget::item:disabled { color: ${onSurfaceVariant}; font-style: italic; }   /* e.g. a template with a mistake */
@@ -396,19 +398,18 @@ QScrollBar::handle { background: ${outlineVariant}; border-radius: 4px; min-heig
 QScrollBar::handle:hover { background: ${outline}; }
 QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
 QScrollBar::add-page, QScrollBar::sub-page { background: none; }
-QMenu { background: ${surfaceContainer}; color: ${onSurface}; border: none; border-radius: ${r_l}; padding: 8px 6px; }
-QMenu::item { border-radius: ${r_s}; }
-QMenu::item { padding: 10px 24px; }
+QMenu { background: ${surfaceContainer}; color: ${onSurface}; border: none; border-radius: ${beer_menu_radius}; padding: ${beer_menu_pad}; }   /* BeerCSS menu */
+QMenu::item { border-radius: ${beer_item_radius}; padding: ${beer_item_pad_y} ${beer_item_pad_x}; min-height: ${beer_item_min}; }
 QMenu::item:selected { background: ${stateHover}; }
 QMenu::item:disabled { color: ${onSurfaceVariant}; }
 QMenu::separator { height: 1px; background: ${outlineVariant}; margin: 6px 0; }
 QToolTip { background: ${inverseSurface}; color: ${inverseOnSurface}; border: none; padding: 4px 8px; }
 QTabWidget::pane { border: none; border-top: 1px solid ${outlineVariant}; top: -1px; }
 QTabBar { qproperty-drawBase: 0; }
-QTabBar::tab { background: transparent; color: ${onSurfaceVariant}; border: none; border-bottom: 3px solid transparent;
-    padding: 12px 20px 9px 20px; font-size: ${titleSmall_size}; font-weight: ${titleSmall_weight}; min-width: 96px; }
+QTabBar::tab { background: transparent; color: ${onSurfaceVariant}; border: none; border-bottom: ${beer_tab_indicator} solid transparent;
+    padding: ${beer_tab_pad_y} ${beer_tab_pad_x}; min-height: ${beer_tab_min}; font-size: ${titleSmall_size}; font-weight: ${titleSmall_weight}; min-width: 96px; }   /* BeerCSS tabs: 48 px */
 QTabBar::tab:hover { background: ${stateHover}; color: ${onSurface}; }
-QTabBar::tab:selected { color: ${primary}; border-bottom: 3px solid ${primary}; }   /* M3 primary tabs */
+QTabBar::tab:selected { color: ${primary}; border-bottom: ${beer_tab_indicator} solid ${primary}; }   /* M3 primary tabs */
 QScrollArea { border: none; background: transparent; }
 QScrollArea > QWidget > QWidget { background: transparent; }
 QDialogButtonBox QPushButton { min-width: 72px; }

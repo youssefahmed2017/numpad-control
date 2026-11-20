@@ -4,7 +4,7 @@ import copy
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QRectF, Qt, QTimer
-from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
+from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox,
     QPushButton, QSizePolicy, QStackedWidget, QToolButton, QVBoxLayout, QWidget)
@@ -55,6 +55,10 @@ class KeyButton(_Morph, QPushButton):
         layout.setSpacing(0)
         self.name = label(name or ui_common.KEY_LABELS.get(key, key), "keyname")
         self.action = label("", "keyaction")
+        for part in (self.name, self.action):   # the keys are cramped: no BeerCSS body letter spacing here, or the labels cut off sooner
+            spaced = part.font()
+            spaced.setLetterSpacing(QFont.AbsoluteSpacing, 0)
+            part.setFont(spaced)
         self.picture = QLabel()   # the key's sticker in place of its name, or its action's icon under a small name
         self.picture.setVisible(False)
         for part in (self.name, self.picture, self.action):

@@ -27,6 +27,59 @@ TYPE = {"titleLarge": (22, 500), "titleMedium": (16, 500), "titleSmall": (14, 50
 
 CONTRASTS = ("standard", "medium", "high")
 
+# ---------------------------------------------------------------- BeerCSS metrics
+# The numbers below are BeerCSS 5.0.3's (https://www.beercss.com, MIT license, the library the website uses), so the app
+# and the site are the same size. 1rem = 16 px. Qt style sheets have no calc(), var() or transitions, so what BeerCSS
+# computes with calc() is worked out here once (BeerCSS: "--_round: calc(var(--_size) / 2)"), and the stylesheet
+# in theme.py gets the finished px values. Animations stay with motion.py (springs); BeerCSS's plain CSS transitions
+# are only the named durations in SPEED.
+REM = 16
+BEER_BUTTON = {"small": (32, 12), "medium": (40, 16), "large": (48, 20), "extra": (56, 24)}   # (height, side padding)
+BEER_CHIP = {"height": 32, "padding": 12, "radius": 8, "gap": 8}
+BEER_CARD = {"radius": 12, "padding": 16}
+BEER_DIALOG = {"radius": 28, "padding": 24, "min_width": 320}
+BEER_MENU = {"radius": 16, "padding": 4, "gap": 2, "item_padding": (8, 16), "item_height": 44, "item_radius": 4}
+BEER_LIST_ITEM = {"padding": (8, 16), "height": 56}
+BEER_TAB = {"padding": (8, 16), "height": 48, "indicator": 2}
+BEER_FIELD = {"padding": 15, "focus_padding": 14, "font": 16, "radius": 4}
+BEER_LETTER_SPACING = 0.5      # body: letter-spacing 0.0313rem
+SPEED = {"speed1": 100, "speed2": 200, "speed3": 300, "speed4": 400}   # ms: BeerCSS --speed1..4
+ELEVATE = {1: (2, 0.32), 2: (4, 0.40), 3: (6, 0.48)}   # BeerCSS --elevate1..3: y offset px, shadow alpha
+
+
+def beer_button_radius(size):
+    """calc(var(--_size) / 2): a BeerCSS button is a full pill."""
+    return BEER_BUTTON[size][0] / 2
+
+
+def beer_vars(factor=1.0):
+    """The values the stylesheet template (theme.STYLE) takes, as "Npx" strings. `factor` scales the corner radii
+    with the shape setting (1.0 round, 0.6 rounded, 0.25 square); paddings and heights do not change."""
+    def px(value):
+        return f"{round(value)}px"
+
+    def radius(value):
+        return px(value * factor)
+
+    small_h, small_pad = BEER_BUTTON["small"]
+    medium_h, medium_pad = BEER_BUTTON["medium"]
+    item_y, item_x = BEER_MENU["item_padding"]
+    list_y, list_x = BEER_LIST_ITEM["padding"]
+    tab_y, tab_x = BEER_TAB["padding"]
+    return {
+        "beer_button_height": px(medium_h), "beer_button_pad": px(medium_pad),
+        "beer_small_height": px(small_h), "beer_small_pad": px(small_pad),
+        "beer_chip_radius": radius(BEER_CHIP["radius"]),
+        "beer_menu_radius": radius(BEER_MENU["radius"]), "beer_menu_pad": px(BEER_MENU["padding"]),
+        "beer_item_pad_y": px(item_y), "beer_item_pad_x": px(item_x),
+        "beer_item_min": px(BEER_MENU["item_height"] - 2 * item_y), "beer_item_radius": radius(BEER_MENU["item_radius"]),
+        "beer_list_pad_y": px(list_y), "beer_list_pad_x": px(list_x), "beer_list_min": px(BEER_LIST_ITEM["height"] - 2 * list_y),
+        "beer_tab_pad_y": px(tab_y), "beer_tab_pad_x": px(tab_x), "beer_tab_indicator": px(BEER_TAB["indicator"]),
+        "beer_tab_min": px(BEER_TAB["height"] - 2 * tab_y - BEER_TAB["indicator"]),
+        "beer_field_pad": px(BEER_FIELD["padding"]), "beer_field_pad_focus": px(BEER_FIELD["focus_padding"]),
+        "beer_field_pad_y": "8px", "beer_field_pad_y_focus": "7px",
+    }
+
 
 def colors(accent=DEFAULT_ACCENT, dark=True, contrast="standard"):
     """{role: "#rrggbb"}: every Material 3 role for an accent name from SEEDS, plus the custom ok / warn colours."""
