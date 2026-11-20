@@ -132,6 +132,7 @@ def main():
             save(d, "settings-appearance.png")
             d.close()
         attempt("settings-appearance.png", appearance)
+        attempt("save-changes.png", dialog("save-changes.png", lambda: dialogs.build_save_changes(w)[0], (460, 230)))
         attempt("presets.png", dialog("presets.png", lambda: dialogs.PresetDialog(w, "Default"), (560, 480)))
 
         def tester():

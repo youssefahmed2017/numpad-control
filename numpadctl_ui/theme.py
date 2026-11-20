@@ -343,6 +343,7 @@ QPushButton { color: ${onSecondaryContainer}; padding: 0 20px; min-height: 40px;
 QPushButton:disabled { color: ${onSurfaceVariant}; }
 QPushButton#primary { color: ${onPrimary}; }
 QPushButton#flat { color: ${primary}; padding: 0 12px; min-height: 36px; }
+QPushButton#fab, QPushButton#fab_secondary { padding: 0 18px; min-height: 56px; font-size: ${labelLarge_size}; font-weight: ${labelLarge_weight}; }   /* buttons.Fab */
 QPushButton#segment { color: ${onSurface}; padding: 0 16px; min-height: 36px; }
 QPushButton#segment:checked { color: ${onSecondaryContainer}; }
 QFrame#segments { background: transparent; border: 1px solid ${outline}; border-radius: ${r_full}; }

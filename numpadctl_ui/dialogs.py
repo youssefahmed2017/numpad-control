@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 from numpadctl import config, desktop, devices, keys, modes, obs, presets, templates, ui_common
 from .checkbox import Switch
 from . import theme
-from .buttons import ComboBox, PushButton, SmoothScrollArea, SpinBox
+from .buttons import ComboBox, Fab, PushButton, SmoothScrollArea, SpinBox
 from .appearance import APPEARANCES, AppearancePage  # noqa: F401 (APPEARANCES: older imports)
 from .widgets import card, label
 
@@ -606,9 +606,10 @@ class AddDeviceDialog(QDialog):
                 "product": device["product"], "name": name, "grab": self.grab.isChecked()}
 
 
-def ask_save_changes(parent):
-    """"Save changes?" with Save / Don't save / Cancel: returns "save", "discard" or "cancel".
-    Built from the app's own buttons: the stock QMessageBox buttons didn't show on Windows."""
+def build_save_changes(parent):
+    """The "Save changes?" dialog, not yet shown: (dialog, result) where result[0] becomes "save", "discard" or
+    "cancel". Save and Don't save are FABs (buttons.Fab, like Gmail's Compose); Cancel is a plain text button.
+    Split from ask_save_changes() so tests and the docs screenshots can build it without a modal loop."""
     dialog = QDialog(parent)
     dialog.setWindowTitle("Save changes?")
     dialog.setModal(True)
@@ -619,21 +620,32 @@ def ask_save_changes(parent):
         dialog.accept()
 
     layout = QVBoxLayout(dialog)
-    layout.setContentsMargins(24, 24, 24, 20)
-    layout.setSpacing(16)
+    layout.setContentsMargins(24, 24, 24, 24)
+    layout.setSpacing(20)
     layout.addWidget(label("Save changes?", "title"))
     layout.addWidget(label("Your key setup has unsaved changes.", "dim", wrap=True))
     row = QHBoxLayout()
+    row.setSpacing(12)
     row.addStretch(1)
-    for text, answer, name in (("Cancel", "cancel", "flat"), ("Don't save", "discard", "flat"), ("Save", "save", "primary")):
-        button = PushButton(text)
-        button.setObjectName(name)
-        button.setMinimumWidth(88)
-        button.clicked.connect(lambda _=False, a=answer: choose(a))
-        if answer == "save":
-            button.setDefault(True)
-        row.addWidget(button)
+    cancel = PushButton("Cancel")
+    cancel.setObjectName("flat")
+    cancel.clicked.connect(lambda: choose("cancel"))
+    row.addWidget(cancel)
+    discard = Fab("Don't save", "delete", "fab_secondary")
+    discard.clicked.connect(lambda: choose("discard"))
+    row.addWidget(discard)
+    save = Fab("Save", "save", "fab")
+    save.setDefault(True)
+    save.clicked.connect(lambda: choose("save"))
+    row.addWidget(save)
     layout.addLayout(row)
-    dialog.setMinimumWidth(380)
+    dialog.setMinimumWidth(420)
+    dialog.buttons = {"cancel": cancel, "discard": discard, "save": save}   # for tests
+    return dialog, result
+
+
+def ask_save_changes(parent):
+    """"Save changes?" with Save / Don't save / Cancel: returns "save", "discard" or "cancel"."""
+    dialog, result = build_save_changes(parent)
     dialog.exec()   # Esc / the close box leave result as "cancel"
     return result[0]

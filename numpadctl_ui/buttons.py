@@ -12,7 +12,7 @@ import time
 
 from PySide6.QtCore import QEvent, QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QPainter
-from PySide6.QtWidgets import QAbstractScrollArea, QComboBox, QMenu, QPushButton, QScrollArea, QSpinBox, QStyledItemDelegate, QToolButton
+from PySide6.QtWidgets import QAbstractScrollArea, QComboBox, QGraphicsDropShadowEffect, QMenu, QPushButton, QScrollArea, QSpinBox, QStyledItemDelegate, QToolButton
 
 from . import icons, motion, theme, tokens
 
@@ -110,6 +110,10 @@ class _Morph:
             return (c["secondaryContainer"], c["onSecondaryContainer"]) if self.isChecked() else (None, c["onSurfaceVariant"])
         if isinstance(self, QToolButton):
             return (c["secondaryContainer"], c["onSecondaryContainer"]) if self.isChecked() else (None, c["primary"])
+        if name == "fab":   # tonal FAB, like Gmail's Compose
+            return c["primaryContainer"], c["onPrimaryContainer"]
+        if name == "fab_secondary":
+            return c["secondaryContainer"], c["onSecondaryContainer"]
         if name == "primary":
             return c["primary"], c["onPrimary"]
         if name == "flat":
@@ -154,6 +158,90 @@ class ToolButton(_Morph, QToolButton):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._morph_setup()
+
+
+FAB_HEIGHT = 56     # M3: a FAB is 56 px tall; collapsed it is a 56 px square with rounded corners
+FAB_RADIUS = 16     # M3 large corner (scaled by the shape setting)
+
+
+class Fab(PushButton):
+    """An M3 extended FAB like Gmail's Compose button: an icon and a label in a tonal rounded rectangle.
+    It has no shadow at rest and lifts (a shadow grows in) while hovered, and set_collapsed(True) shrinks it, animated, to an
+    icon-only square that grows back with set_collapsed(False). kind: "fab" (primary container, the
+    main action) or "fab_secondary"."""
+
+    def __init__(self, text="", symbol=None, kind="fab", parent=None):
+        super().__init__(text, parent)
+        self.setObjectName(kind)
+        self._label = text
+        self._collapsed = False
+        self._shrink = motion.Tween(self, motion.MEDIUM2, "emphasized", lambda v: None)
+        self.setFixedHeight(FAB_HEIGHT)
+        self.setCursor(Qt.PointingHandCursor)
+        if symbol:
+            icons.set_symbol(self, symbol, 24)
+        self._shadow = QGraphicsDropShadowEffect(self)   # no shadow at rest: it grows in while hovered, like Gmail's
+        self._shadow_level = None
+        self.setGraphicsEffect(self._shadow)
+        self._apply_shadow(0.0)
+
+    def _apply_shadow(self, hover):
+        """The drop shadow at `hover` 0 (none) to 1 (lifted, M3 level 3)."""
+        level = round(hover, 3)
+        if level == self._shadow_level:
+            return
+        self._shadow_level = level
+        dark = theme.current.get("surface", "#000000") < "#808080"
+        self._shadow.setBlurRadius(6 + 24 * level)
+        self._shadow.setOffset(0, 1 + 5 * level)
+        self._shadow.setColor(QColor(0, 0, 0, round((150 if dark else 70) * min(1.0, level))))
+
+    def current_radius(self):
+        rest = FAB_RADIUS * theme.shape_factor()
+        return rest + (min(PRESSED_RADIUS, rest) - rest) * self._press
+
+    def extended_width(self):
+        """The width with its label showing (the icon square when it has no label)."""
+        keep = self.text()
+        self.setText(self._label)
+        width = max(FAB_HEIGHT, self.sizeHint().width())
+        self.setText(keep)
+        return width
+
+    def is_collapsed(self):
+        return self._collapsed
+
+    def set_collapsed(self, collapsed, animate=True):
+        """Shrink to the icon-only square, or grow back to icon and label (Gmail's collapsed sidebar)."""
+        if collapsed == self._collapsed or not self._label:
+            return
+        self._collapsed = collapsed
+        full = self.extended_width()
+        self.setToolTip(self._label if collapsed else "")   # a collapsed one names itself on hover
+        if not collapsed:
+            self.setText(self._label)
+        start = self.width() if self.width() > 0 and self.isVisible() else (full if collapsed else FAB_HEIGHT)
+        end = FAB_HEIGHT if collapsed else full
+
+        def step(v):
+            self.setFixedWidth(round(start + (end - start) * v))
+
+        def done():
+            self.setFixedWidth(end)
+            if collapsed:
+                self.setText("")
+
+        if not animate or not self.isVisible():
+            done()
+            return
+        self._shrink.stop()
+        self._shrink = motion.Tween(self, motion.MEDIUM2, "emphasized", step)
+        self._shrink.when_done(done)
+        self._shrink.go(0.0, 1.0)
+
+    def paintEvent(self, event):
+        self._apply_shadow(self._hover if theme.painted() else 0.0)
+        super().paintEvent(event)
 
 
 def reveal(popup, ms=motion.MEDIUM1):

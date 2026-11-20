@@ -15,7 +15,7 @@ from numpadctl.platform import IS_WINDOWS
 from .checkbox import Switch
 from . import action_icons, dialogs, effects, icons, motion, sticker_image, theme, tokens, tools, welcome
 from .snackbar import Snackbar
-from .buttons import ComboBox, Menu, PushButton, SmoothScrollArea, SpinBox, ToolButton, _Morph
+from .buttons import ComboBox, Fab, Menu, PushButton, SmoothScrollArea, SpinBox, ToolButton, _Morph
 from .picker import ActionPicker
 from .widgets import Dispatcher, add_param_widgets, card, label
 
@@ -273,12 +273,12 @@ class MainWindow(QMainWindow):
 
     # ---------------------------------------------------------------- layout
     def _build_header(self):
-        """The top app bar: name, connection status, tools, Settings and Save."""
+        """The top app bar: name, connection status, and just two buttons, Settings and Save."""
         bar = QFrame()
         bar.setObjectName("appbar")
         row = QHBoxLayout(bar)
-        row.setContentsMargins(20, 8, 12, 8)
-        row.setSpacing(8)
+        row.setContentsMargins(20, 8, 16, 12)
+        row.setSpacing(12)
         row.addWidget(label("NumpadControl", "appname"))
         self.status = label("Connecting…", "dim")
         self.status.setContentsMargins(10, 4, 10, 4)  # the chip's padding (a stylesheet padding doesn't size a label)
@@ -286,36 +286,10 @@ class MainWindow(QMainWindow):
         row.addStretch()
         self.dirty_label = label("", "dim")
         row.addWidget(self.dirty_label)
-        self.learn = ToolButton(text="Learn")
-        self.learn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        icons.set_symbol(self.learn, "keyboard")   # filled while Learn is on (buttons.py)
-        self.learn.setCheckable(True)
-        self.learn.setToolTip("Learn mode: press a numpad key to select it here (its action won't run)")
-        self.learn.toggled.connect(self.on_learn_toggled)
-        row.addWidget(self.learn)
-        extra = ToolButton(text="Tools")
-        extra.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        extra.setLayoutDirection(Qt.RightToLeft)   # the arrow after the word, like Google's menu buttons
-        icons.set_symbol(extra, "arrow_drop_down")
-        extra.setPopupMode(QToolButton.InstantPopup)
-        menu = Menu(extra)
-        menu.addAction("Key tester…", self.open_tester)
-        menu.addAction("Diagnostics…", self.open_diagnostics)
-        menu.addAction("Welcome tour…", self.open_welcome)
-        menu.addSeparator()
-        self.follow = menu.addAction("Select a key when I press it")
-        self.follow.setCheckable(True)
-        self.follow.setChecked(True)
-        self.follow.setToolTip("While this window is in front, pressing a numpad key selects it here "
-                               "instead of running its action")
-        self.follow.toggled.connect(lambda _: self.sync_capture())
-        extra.setMenu(menu)
-        row.addWidget(extra)
-        settings = PushButton("Settings")
-        settings.clicked.connect(self.open_settings)
-        row.addWidget(settings)
-        self.save_button = PushButton("Save")
-        self.save_button.setObjectName("primary")
+        self.settings_button = Fab("Settings", "settings", "fab_secondary")
+        self.settings_button.clicked.connect(self.open_settings)
+        row.addWidget(self.settings_button)
+        self.save_button = Fab("Save", "save", "fab")
         self.save_button.clicked.connect(self.save)
         row.addWidget(self.save_button)
         return bar
@@ -361,6 +335,36 @@ class MainWindow(QMainWindow):
         menu_button.setMenu(menu)
         profiles.addWidget(menu_button)
         layout.addLayout(profiles)
+
+        tools_row = QHBoxLayout()   # Learn and Tools used to sit in the top bar, which now holds only Settings and Save
+        tools_row.setSpacing(8)
+        self.learn = ToolButton(text="Learn")
+        self.learn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        icons.set_symbol(self.learn, "keyboard")   # filled while Learn is on (buttons.py)
+        self.learn.setCheckable(True)
+        self.learn.setToolTip("Learn mode: press a numpad key to select it here (its action won't run)")
+        self.learn.toggled.connect(self.on_learn_toggled)
+        tools_row.addWidget(self.learn)
+        extra = ToolButton(text="Tools")
+        extra.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        extra.setLayoutDirection(Qt.RightToLeft)   # the arrow after the word, like Google's menu buttons
+        icons.set_symbol(extra, "arrow_drop_down")
+        extra.setPopupMode(QToolButton.InstantPopup)
+        menu = Menu(extra)
+        menu.addAction("Key tester…", self.open_tester)
+        menu.addAction("Diagnostics…", self.open_diagnostics)
+        menu.addAction("Welcome tour…", self.open_welcome)
+        menu.addSeparator()
+        self.follow = menu.addAction("Select a key when I press it")
+        self.follow.setCheckable(True)
+        self.follow.setChecked(True)
+        self.follow.setToolTip("While this window is in front, pressing a numpad key selects it here "
+                               "instead of running its action")
+        self.follow.toggled.connect(lambda _: self.sync_capture())
+        extra.setMenu(menu)
+        tools_row.addWidget(extra)
+        tools_row.addStretch()
+        layout.addLayout(tools_row)
 
         self.device_row = QWidget()
         devices = QHBoxLayout(self.device_row)
@@ -1302,9 +1306,15 @@ class MainWindow(QMainWindow):
     def toast(self, message):
         self.snackbar.show_message(message)
 
+    NARROW = 900   # below this width the top bar's FABs shrink to icons, like Gmail's collapsed sidebar
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.snackbar.reposition()
+        if hasattr(self, "save_button"):
+            narrow = self.width() < self.NARROW
+            for fab in (self.settings_button, self.save_button):
+                fab.set_collapsed(narrow)
 
     def show_problems(self, problems, ok_message):
         if problems:
