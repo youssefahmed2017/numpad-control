@@ -93,6 +93,12 @@ class HintsTest(unittest.TestCase):
 
 
 class DaemonLogTest(unittest.TestCase):
+    def setUp(self):
+        # the USB-drop warning is Linux-only, so these tests must behave the same on the Windows runner
+        patch = mock.patch.object(daemon, "IS_WINDOWS", False)
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def bare(self):
         d = daemon.Daemon.__new__(daemon.Daemon)
         d.cfg, d.drops, d.flap_warned, d.unknown_logged = {}, [], None, set()
