@@ -64,6 +64,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("version", help="the new version, e.g. 1.2.3")
     ap.add_argument("--key", required=True, help="the offline release key file (see tools/sign-release keygen)")
+    ap.add_argument("--commit", help="tag this commit (one CI already checked, on main) instead of the newest one: "
+                                     "the bot's screenshot commits don't run the tests, so main's head often has no test run")
     ap.add_argument("--yes", action="store_true", help="don't ask before pushing")
     ap.add_argument("--dry-run", action="store_true", help="run the checks only; change and push nothing")
     args = ap.parse_args()
@@ -80,11 +82,19 @@ def main():
     if run("git", "status", "--porcelain", "--untracked-files=no"):
         fail("there are uncommitted changes")
     run("git", "fetch", "origin", "main", "--tags")
-    if run("git", "rev-parse", "HEAD") != run("git", "rev-parse", "origin/main"):
-        fail("main is not the same as origin/main (push or pull first)")
+    if args.commit:
+        sha = run("git", "rev-parse", "--verify", args.commit + "^{commit}")
+        if subprocess.run(["git", "merge-base", "--is-ancestor", sha, "origin/main"], cwd=ROOT).returncode != 0:
+            fail(f"{args.commit} is not on origin/main")
+        shown = re.search(r'^__version__ = "([^"]+)"', run("git", "show", f"{sha}:numpadctl/__init__.py"), re.M).group(1)
+        if shown != version:
+            fail(f"{args.commit} has __version__ {shown}, not {version}: set it in a commit first")
+    else:
+        if run("git", "rev-parse", "HEAD") != run("git", "rev-parse", "origin/main"):
+            fail("main is not the same as origin/main (push or pull first)")
+        sha = run("git", "rev-parse", "HEAD")
     if run("git", "tag", "--list", tag):
         fail(f"tag {tag} already exists")
-    sha = run("git", "rev-parse", "HEAD")
     say(f"CI on {sha[:7]}")
     if wait_for_run("tests.yml", sha, "the tests") != "success":
         fail("the Tests workflow is not green on this commit; fix it first")
@@ -94,13 +104,13 @@ def main():
     if not args.yes and input(f"Release {tag} now? Type the tag to go on: ").strip() != tag:
         fail("not confirmed")
 
-    if current_version() != version:
+    if current_version() != version and not args.commit:
         INIT.write_text(re.sub(r'^__version__ = "[^"]+"', f'__version__ = "{version}"', INIT.read_text(), flags=re.M))
         run("git", "add", str(INIT))
         run("git", "commit", "-q", "-m", f"Release {version}")
         run("git", "push", "origin", "main")
         sha = run("git", "rev-parse", "HEAD")
-    run("git", "tag", tag)
+    run("git", "tag", tag, sha)
     run("git", "push", "origin", tag)
     say(f"pushed {tag}; waiting for the Release workflow (installer build, winget, AUR)")
     time.sleep(15)

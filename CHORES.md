@@ -40,7 +40,8 @@ Run `tools/release X.Y.Z --key <your key file>`: it checks CI, tags, waits for t
 surrounds it.
 
 **Before**
-- [ ] CI is green on the commit that will be tagged, and `main` is the same as `origin/main`.
+- [ ] CI is green on the commit that will be tagged, and `main` is the same as `origin/main`. The bot's screenshot commits
+  don't run the tests, so if one landed after your last push, tag the verified commit: `tools/release X.Y.Z --commit <sha>`.
 - [ ] `__version__` in `numpadctl/__init__.py` is the new version (`tools/release` sets it when it differs).
 - [ ] **CHANGELOG.md:** `[Unreleased]` becomes `[X.Y.Z] - date`, a fresh empty `[Unreleased]` goes on top, and the
   compare links at the bottom are updated.
