@@ -88,21 +88,21 @@ class SaveChangesDialogTest(unittest.TestCase):
 
 
 class TopBarTest(unittest.TestCase):
-    def test_the_top_bar_has_only_settings_and_save(self):
+    def test_settings_and_save_are_fabs_and_learn_and_tools_stay_ordinary(self):
         from tests.test_qt_window import QtWindowTest
         case = QtWindowTest("test_choose_action_edit_and_save")
         case.setUp()
         self.addCleanup(case.tmp.cleanup)
-        bar = case.w.appbar
+        w, bar = case.w, case.w.appbar
         texts = sorted(b.text() for b in bar.findChildren(QPushButton) + bar.findChildren(QToolButton))
-        self.assertEqual(texts, ["Save", "Settings"])
-        self.assertIsInstance(case.w.save_button, buttons.Fab)
-        self.assertIsInstance(case.w.settings_button, buttons.Fab)
-        self.assertEqual(case.w.save_button._look()[0], theme.current["primaryContainer"])
-        # Learn and Tools moved under Profile, and still work
-        self.assertIsNotNone(case.w.learn.parentWidget())
-        self.assertNotIn(case.w.learn, bar.findChildren(QToolButton))
-        self.assertTrue(case.w.follow.isCheckable())
+        self.assertEqual(texts, ["Learn", "Save", "Settings", "Tools"])
+        fabs = [b for b in bar.findChildren(buttons.Fab)]
+        self.assertEqual(sorted(f.text() for f in fabs), ["Save", "Settings"], "only these two are FABs")
+        self.assertEqual(w.save_button._look()[0], theme.current["primaryContainer"])
+        self.assertIsNone(w.learn.graphicsEffect(), "no shadow on Learn")
+        self.assertIsNotNone(w.save_button.graphicsEffect())
+        self.assertIsNotNone(w.settings_button.graphicsEffect())
+        self.assertTrue(w.follow.isCheckable())
 
     def test_the_top_bar_fabs_collapse_in_a_narrow_window_and_come_back(self):
         from tests.test_qt_window import QtWindowTest

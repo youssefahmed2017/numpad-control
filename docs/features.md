@@ -5,7 +5,7 @@ Part of the [NumpadControl docs](../README.md).
 ## Finding your way around
 - **Press a key to select it.** While the settings window is in front, pressing a key on
   the numpad selects it in the editor instead of running its action (so you can't fire
-  "Shut down" by accident while setting it up). Turn this off under *Tools ▾ (the row under Profile) → Select a
+  "Shut down" by accident while setting it up). Turn this off under *Tools ▾ → Select a
   key when I press it*. The moment the window isn't in front, the keys work as usual.
 - **Search the actions.** Click an action and type: "mute" finds the microphone, the
   speakers and OBS, "live" finds the streaming actions. Each one has a one-line
@@ -16,7 +16,7 @@ Part of the [NumpadControl docs](../README.md).
   `config.json` it is `"numpad_layout": "backspace_below"`; the default is `"standard"`.)
 - **First launch tour.** A new install opens a 3-step welcome: it finds your numpad, lets you
   pick a starting point (streaming, media, everyday shortcuts or empty) and has you press a
-  key to see it register. Open it again from *Tools ▾ (under Profile) → Welcome tour*.
+  key to see it register. Open it again from *Tools ▾ → Welcome tour*.
 - **Find it in your launcher.** The menu entry answers to "NumpadControl", "Numpad Control", its old name "NumpadPilot", and "numpad". Its icon is installed in
   your icon theme (`~/.local/share/icons/hicolor`), so launchers that ignore file paths show it too. (The
   setup also adds the theme's `index.theme` there if missing: hyprlauncher skips icon folders without one.)

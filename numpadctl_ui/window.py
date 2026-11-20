@@ -277,7 +277,7 @@ class MainWindow(QMainWindow):
 
     # ---------------------------------------------------------------- layout
     def _build_header(self):
-        """The top app bar: name, connection status, and just two buttons, Settings and Save."""
+        """The top app bar: name, connection status, Learn and Tools, and the Settings and Save FABs."""
         bar = QFrame()
         bar.setObjectName("appbar")
         row = QHBoxLayout(bar)
@@ -290,6 +290,31 @@ class MainWindow(QMainWindow):
         row.addStretch()
         self.dirty_label = label("", "dim")
         row.addWidget(self.dirty_label)
+        self.learn = ToolButton(text="Learn")
+        self.learn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        icons.set_symbol(self.learn, "keyboard")   # filled while Learn is on (buttons.py)
+        self.learn.setCheckable(True)
+        self.learn.setToolTip("Learn mode: press a numpad key to select it here (its action won't run)")
+        self.learn.toggled.connect(self.on_learn_toggled)
+        row.addWidget(self.learn)
+        extra = ToolButton(text="Tools")
+        extra.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        extra.setLayoutDirection(Qt.RightToLeft)   # the arrow after the word, like Google's menu buttons
+        icons.set_symbol(extra, "arrow_drop_down")
+        extra.setPopupMode(QToolButton.InstantPopup)
+        menu = Menu(extra)
+        menu.addAction("Key tester…", self.open_tester)
+        menu.addAction("Diagnostics…", self.open_diagnostics)
+        menu.addAction("Welcome tour…", self.open_welcome)
+        menu.addSeparator()
+        self.follow = menu.addAction("Select a key when I press it")
+        self.follow.setCheckable(True)
+        self.follow.setChecked(True)
+        self.follow.setToolTip("While this window is in front, pressing a numpad key selects it here "
+                               "instead of running its action")
+        self.follow.toggled.connect(lambda _: self.sync_capture())
+        extra.setMenu(menu)
+        row.addWidget(extra)
         self.settings_button = Fab("Settings", "settings", "fab_secondary")
         self.settings_button.clicked.connect(self.open_settings)
         row.addWidget(self.settings_button)
@@ -339,36 +364,6 @@ class MainWindow(QMainWindow):
         menu_button.setMenu(menu)
         profiles.addWidget(menu_button)
         layout.addLayout(profiles)
-
-        tools_row = QHBoxLayout()   # Learn and Tools used to sit in the top bar, which now holds only Settings and Save
-        tools_row.setSpacing(8)
-        self.learn = ToolButton(text="Learn")
-        self.learn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        icons.set_symbol(self.learn, "keyboard")   # filled while Learn is on (buttons.py)
-        self.learn.setCheckable(True)
-        self.learn.setToolTip("Learn mode: press a numpad key to select it here (its action won't run)")
-        self.learn.toggled.connect(self.on_learn_toggled)
-        tools_row.addWidget(self.learn)
-        extra = ToolButton(text="Tools")
-        extra.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        extra.setLayoutDirection(Qt.RightToLeft)   # the arrow after the word, like Google's menu buttons
-        icons.set_symbol(extra, "arrow_drop_down")
-        extra.setPopupMode(QToolButton.InstantPopup)
-        menu = Menu(extra)
-        menu.addAction("Key tester…", self.open_tester)
-        menu.addAction("Diagnostics…", self.open_diagnostics)
-        menu.addAction("Welcome tour…", self.open_welcome)
-        menu.addSeparator()
-        self.follow = menu.addAction("Select a key when I press it")
-        self.follow.setCheckable(True)
-        self.follow.setChecked(True)
-        self.follow.setToolTip("While this window is in front, pressing a numpad key selects it here "
-                               "instead of running its action")
-        self.follow.toggled.connect(lambda _: self.sync_capture())
-        extra.setMenu(menu)
-        tools_row.addWidget(extra)
-        tools_row.addStretch()
-        layout.addLayout(tools_row)
 
         self.device_row = QWidget()
         devices = QHBoxLayout(self.device_row)

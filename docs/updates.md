@@ -31,7 +31,7 @@ its secret is skipped. The first winget version of a package is submitted by han
 **After 1.0.0** (on `main`):
 - **FAB buttons:** Settings and Save in the top bar, and Save / Don't save in the "Save changes?" dialog, are Material 3
   extended FABs like Gmail's Compose button: flat at rest, a shadow that grows in while hovered, and in a narrow window
-  (under 900 px) they shrink to icon-only squares. Learn and Tools moved from the top bar to the row under Profile.
+  (under 900 px) they shrink to icon-only squares. Learn and Tools stay in the top bar, without the shadow.
 - **Same sizes as the website:** buttons, fields, chips, menus, list rows, tabs and the shadow levels use the numbers of
   BeerCSS (the library the website is built on), so the app and the site match. Body text has BeerCSS's letter spacing.
 
