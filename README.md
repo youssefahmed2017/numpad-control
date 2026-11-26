@@ -8,6 +8,8 @@ Turn a cheap USB numpad into a Stream Deck-style control pad on Linux and Window
 Each key can open apps, control OBS, mute your mic, switch windows, type text or run a macro.
 You set it up in a settings window, no code needed. Free and open source (GPL-3.0).
 
+![A real numpad running actions: open the browser, volume down, a macro that starts a terminal session](docs/screenshots/demo.gif)
+
 ![The settings window: a numpad on the left, the selected key's "Go live" macro on the right](docs/screenshots/macro.png)
 
 ## Why use it
