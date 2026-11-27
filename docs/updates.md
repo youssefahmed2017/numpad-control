@@ -28,6 +28,14 @@ Until it is signed, installed copies see the release but refuse to install it. T
 (a personal access token with `public_repo`) and `AUR_SSH_KEY` (the AUR account's private key); a job without
 its secret is skipped. The first winget version of a package is submitted by hand.
 
+**1.0.4:** an experimental way to keep the numpad from typing on Windows, off by default.
+- **Low-level keyboard hook (experimental).** `"windows_blocking": "lowlevel"` in `config.json` uses a `WH_KEYBOARD_LL` hook in the
+  service instead of the hook DLL, so nothing is loaded into other programs and 32-bit apps would be covered. It only works
+  when a key's Raw Input is already waiting when the hook runs; a key whose keyboard is unknown is never swallowed, so the main
+  keyboard can't lose keys, and a hook Windows drops without a word is put back. `python -m numpadctl.platform.windows_rawinput --ll-probe`
+  measures a PC without blocking anything. The first measurement (GitHub's Windows runner, injected keys) found Raw Input
+  late every time, so the default stays the DLL. Administrator apps are not covered by either way.
+
 **1.0.3:** crash reports without a GitHub account, and the Issues page.
 - **Crash reports go to our own Issues page.** The crash dialog shows exactly what would be sent (the error, where in the
   code it failed, the version, your system, with your user name and home folder taken out). Yes sends it to

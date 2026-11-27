@@ -6,12 +6,16 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-11-27
+
 ### Added
 - **Experimental low-level keyboard hook on Windows** (`"windows_blocking": "lowlevel"` in `config.json`, default `"dll"`).
   It keeps the numpad's keys from typing with a `WH_KEYBOARD_LL` hook in the service instead of the hook DLL, so nothing is
   loaded into other programs and 32-bit apps are covered. A key whose keyboard isn't known in time is never swallowed, and a
   hook Windows silently drops is put back. `python -m numpadctl.platform.windows_rawinput --ll-probe` measures a PC without
   blocking anything. Administrator apps are still not covered, and the games' step-aside list works the same in both modes.
+  It stays off by default: the first measurement (GitHub's Windows runner, with injected keys) found that Raw Input was not
+  yet waiting when the hook ran, so on that test the mode never blocks a key. Run the probe on your own PC before trying it.
 
 ## [1.0.3] - 2026-11-27
 
@@ -185,7 +189,8 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
 ## [0.1.0] - 2026-10-27
 - First release.
 
-[Unreleased]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.0...v1.0.1
