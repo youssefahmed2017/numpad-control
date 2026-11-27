@@ -1,0 +1,10 @@
+{
+  "name": "numpad-control-site-api",
+  "private": true,
+  "type": "module",
+  "description": "The website's crash-report API (api/). The app itself is Python; this only serves numpad.ahmedabdou.net.",
+  "license": "GPL-3.0-only",
+  "scripts": { "test": "node --test tests/api/" },
+  "dependencies": { "@neondatabase/serverless": "^1.2.0" },
+  "engines": { "node": ">=20" }
+}

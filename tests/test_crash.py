@@ -1,16 +1,18 @@
 """Crash reports: saved without personal paths, asked about once per crash, sent only on Yes,
 and every failure along the way falls back instead of hiding the crash."""
 
+import json
 import sys
 import tempfile
 import threading
 import time
 import unittest
-import urllib.parse
 from pathlib import Path
 from unittest import mock
 
 from numpadctl import crash
+
+REAL_SEND = crash._send  # the tests below replace crash._send; this one is kept to test itself
 
 
 def exc_info(message="boom"):
@@ -26,10 +28,10 @@ class CrashTest(unittest.TestCase):
         self.spawned = []
         for patch in [mock.patch.object(crash, "crashes_dir", lambda: self.folder),
                       mock.patch.object(crash, "_spawn_dialog", self.spawned.append),
-                      mock.patch.object(crash.webbrowser, "open")]:
+                      mock.patch.object(crash, "_send", return_value=True)]:
             patch.start()
             self.addCleanup(patch.stop)
-        self.browser = crash.webbrowser.open
+        self.send = crash._send
 
     def reports(self):
         return [r for _, r in crash._reports()]
@@ -54,37 +56,56 @@ class CrashTest(unittest.TestCase):
         self.assertEqual([r["state"] for r in self.reports()], ["pending", "repeat", "repeat"])
         self.assertEqual(len(self.spawned), 1)
 
-    def test_yes_opens_a_prefilled_issue(self):
+    def test_yes_sends_exactly_the_shown_details(self):
         crash.report("service", exc_info())
-        with mock.patch.object(crash, "_dialog", return_value=True):
+        with mock.patch.object(crash, "_dialog", return_value=True) as dialog:
             crash.ask(self.spawned[0])
         self.assertEqual(self.reports()[0]["state"], "reported")
-        url = self.browser.call_args.args[0]
-        query = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
-        self.assertTrue(url.startswith(crash.ISSUE_URL))
-        self.assertEqual(query["title"], ["Crash: ValueError: boom"])
-        self.assertIn("raise ValueError", query["body"][0])
+        sent = crash.payload(self.send.call_args.args[0])
+        self.assertEqual(set(sent), {"component", "version", "system", "python", "error", "traceback", "signature", "note"})
+        self.assertEqual((sent["component"], sent["error"]), ("service", "ValueError: boom"))
+        self.assertIn("raise ValueError", sent["traceback"])
+        self.assertIn("numpad.ahmedabdou.net", dialog.call_args.args[0])  # the dialog says where it goes
+        self.assertIn("ValueError: boom", dialog.call_args.args[0])
 
-    def test_yes_without_a_working_browser_keeps_the_report_and_says_where_it_is(self):
-        for failure in ({"return_value": False}, {"side_effect": OSError("no browser")}):
-            with self.subTest(failure=failure):
-                crash.report("service", exc_info(f"boom {len(failure)} {list(failure)}"))
-                path = self.spawned[-1]
-                with mock.patch.object(crash, "_dialog", return_value=True), \
-                        mock.patch.object(crash, "_notice") as notice, \
-                        mock.patch.object(crash.webbrowser, "open", **failure):
-                    crash.ask(path)
-                self.assertEqual(crash._load(path)["state"], "pending")  # not "reported": it never was
-                saved = path.with_suffix(".issue.txt")
-                self.assertIn("raise ValueError", saved.read_text(encoding="utf-8"))
-                self.assertIn(str(saved), notice.call_args.args[0])
+    def test_the_post_goes_to_the_website_and_needs_its_ok(self):
+        crash.report("service", exc_info())
+        report = crash._reports()[0][1]
+        answer = mock.MagicMock(status=201)
+        answer.__enter__.return_value = answer
+        with mock.patch.object(crash.urllib.request, "urlopen", return_value=answer) as urlopen:
+            self.assertTrue(REAL_SEND(report))
+        request = urlopen.call_args.args[0]
+        self.assertEqual((request.full_url, request.get_method()), (crash.REPORT_URL, "POST"))
+        self.assertEqual(json.loads(request.data)["signature"], report["signature"])
+        for failure in (OSError("offline"), crash.urllib.error.URLError("dns")):
+            with mock.patch.object(crash.urllib.request, "urlopen", side_effect=failure):
+                self.assertFalse(REAL_SEND(report))
+        answer.status = 500
+        with mock.patch.object(crash.urllib.request, "urlopen", return_value=answer):
+            self.assertFalse(REAL_SEND(report))
+
+    def test_yes_when_the_website_cant_be_reached_keeps_the_report_and_says_where_it_is(self):
+        crash.report("service", exc_info())
+        path = self.spawned[-1]
+        with mock.patch.object(crash, "_dialog", return_value=True), \
+                mock.patch.object(crash, "_notice") as notice, \
+                mock.patch.object(crash, "_send", return_value=False):
+            crash.ask(path)
+        self.assertEqual(crash._load(path)["state"], "pending")  # not "reported": it never was
+        saved = path.with_suffix(".report.txt")
+        self.assertIn("raise ValueError", saved.read_text(encoding="utf-8"))
+        self.assertIn(str(saved), notice.call_args.args[0])
+        self.spawned.clear()
+        crash.ask_pending()  # and it is asked again at the next start
+        self.assertEqual(len(self.spawned), 1)
 
     def test_no_sends_nothing(self):
         crash.report("service", exc_info())
         with mock.patch.object(crash, "_dialog", return_value=False):
             crash.ask(self.spawned[0])
         self.assertEqual(self.reports()[0]["state"], "declined")
-        self.browser.assert_not_called()
+        self.send.assert_not_called()
 
     def test_without_a_desktop_it_asks_at_the_next_start(self):
         crash.report("service", exc_info())
@@ -148,10 +169,11 @@ class CrashTest(unittest.TestCase):
 
     def test_long_tracebacks_keep_their_end(self):
         report = {"error": "ValueError: x", "traceback": "start\n" + "x" * 20000 + "\nValueError: the end\n"}
-        body = urllib.parse.parse_qs(urllib.parse.urlparse(crash.issue_url(report)).query)["body"][0]
+        body = crash.payload(report)["traceback"]
         self.assertIn("ValueError: the end", body)
         self.assertNotIn("start", body)
-        self.assertLess(len(body), crash.MAX_TRACEBACK + 1000)
+        self.assertLess(len(body), crash.MAX_TRACEBACK + 10)
+        self.assertLess(len(crash._message(report)), 2500)  # the dialog stays readable
 
     def test_old_reports_are_cleaned_up(self):
         with mock.patch.object(crash, "REPEAT_WINDOW", 0):

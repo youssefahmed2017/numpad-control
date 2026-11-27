@@ -24,7 +24,7 @@ and the details are public afterwards.
 - **The service's connection.** Linux: a socket only your user can open. Windows: a localhost port
   that needs a random key kept in a file only your user can read. It accepts at most 16 clients
   and ignores or drops anything malformed. It can't run actions or change settings; only report keys.
-- **Crash reports.** Nothing is sent by itself. You read the pre-filled GitHub issue before sending it.
+- **Crash reports.** Nothing is sent by itself. The crash dialog shows what would be sent and only Yes sends it, to `numpad.ahmedabdou.net/api/crash` (no account, no IP stored, listed on the Issues page). The endpoint is in `api/`: it checks size and shape, rate-limits, and keeps notes and system details private.
 - **Commands.** Every program NumpadControl starts gets its arguments as a list (never through a shell),
   with text kept apart from options.
 

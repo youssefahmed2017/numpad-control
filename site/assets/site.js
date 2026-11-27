@@ -8,6 +8,7 @@
   const PAGES = [
     ["index.html", "Home"], ["features.html", "Features"], ["pricing.html", "Why free"],
     ["download.html", "Get started"], ["docs.html", "Docs"], ["faq.html", "FAQ"],
+    ["issues.html", "Issues"],
   ];
   const here = (location.pathname.split("/").pop() || "index.html");
   const icon = (name) => `<i aria-hidden="true">${name}</i>`;

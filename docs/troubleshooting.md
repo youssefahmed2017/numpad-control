@@ -60,9 +60,10 @@ it then types like a normal keyboard and nothing is read; `false`: never) and
 
 ## Privacy and crash reports
 NumpadControl collects nothing: no telemetry, no usage statistics, no account. If a part
-of it crashes, a plain system dialog asks whether to report that crash; **Yes** opens a
-pre-filled GitHub issue in your browser, so you read everything before sending it, and
-**No** sends nothing. The report (the error and where it happened, the version, the
+of it crashes, a plain system dialog asks whether to report that crash; the dialog shows what would be
+sent and **Yes** sends it to numpad.ahmedabdou.net (no account needed; listed on the
+[Issues page](https://numpad.ahmedabdou.net/issues.html)), and **No** sends nothing. If you are offline the report
+waits and you are asked again at the next start. The report (the error and where it happened, the version, the
 system; your user name and home folder taken out) is also kept in
 `~/.local/state/numpad-control/crashes/` (Windows: `%LOCALAPPDATA%\numpad-control\state\crashes`).
 (`numpadctl/crash.py`; the plan's [section 12](plan-section-12-crash-reports.md).)

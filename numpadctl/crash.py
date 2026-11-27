@@ -7,8 +7,9 @@ things work. Only when a part of NumpadControl crashes:
      <state folder>/crashes/, with your user name and home folder taken out;
   2. a plain system dialog, not Qt (which may be what broke), asks
      "NumpadControl crashed. Do you want to report it?  [Yes] [No]";
-  3. Yes opens a pre-filled GitHub issue in the browser, so you read every word before
-     choosing to send it; No sends nothing (the file stays, for you to look at).
+  3. the dialog shows what would be sent. Yes sends it to the NumpadControl website
+     (numpad.ahmedabdou.net/api/crash, listed on its Issues page: no account needed);
+     No sends nothing (the file stays, for you to look at).
 
 Each step falls back to the next, so even a crash handler in trouble can't hide a crash:
 the dialog runs in its own process (python -m numpadctl.crash FILE); if that can't
@@ -30,19 +31,22 @@ import sys
 import threading
 import time
 import traceback
-import urllib.parse
-import webbrowser
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 from .platform import IS_WINDOWS, paths
 
 ROOT = Path(__file__).resolve().parent.parent
-ISSUE_URL = "https://github.com/youssefahmed2017/numpad-control/issues/new"
+REPORT_URL = "https://numpad.ahmedabdou.net/api/crash"
+ISSUES_PAGE = "https://numpad.ahmedabdou.net/issues.html"
+SEND_TIMEOUT = 10          # seconds to wait for the website
 KEEP_REPORTS = 20          # older crash files are deleted
 REPEAT_WINDOW = 3600       # the same crash again within an hour isn't asked about again
 ASKING_TIMEOUT = 3600      # a dialog that never answered (its process died) is asked again after this
 MAX_ATTEMPTS = 3           # ...but not forever
-MAX_TRACEBACK = 5000       # characters of traceback in the issue (browsers cap URL length)
+MAX_TRACEBACK = 5000       # characters of traceback sent (the server keeps at most 6000)
+SHOWN_TRACEBACK = 900      # characters of it shown in the dialog (the rest is in the saved file)
 TITLE = "NumpadControl crashed"
 
 _installed = set()
@@ -167,27 +171,27 @@ def _spawn_dialog(path):
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def _message(report):
-    return (f"NumpadControl's {report.get('component', 'program')} crashed:\n\n"
-            f"{report.get('error', '')}\n\n"
-            "Do you want to report it?\n\n"
-            "Yes opens a GitHub page in your browser with the details filled in. Read it, "
-            "then press the green \"Submit new issue\" button there to send it (you need a "
-            "GitHub account). Nothing is sent unless you press that button.")
-
-
-def issue_url(report):
+def payload(report):
+    """Exactly what is sent: nothing else about you or your computer leaves it."""
     tb_text = report.get("traceback", "")
     if len(tb_text) > MAX_TRACEBACK:
         tb_text = "…\n" + tb_text[-MAX_TRACEBACK:]
-    body = (f"**What I was doing when it crashed:**\n\n\n\n"
-            f"---\n"
-            f"Crash report (sent by me, from the crash dialog)\n\n"
-            f"- Part: {report.get('component')}\n- Version: {report.get('version')}\n"
-            f"- System: {report.get('system')}, Python {report.get('python')}\n\n"
-            f"```\n{tb_text}```\n")
-    title = f"Crash: {report.get('error', '')}"[:120]
-    return f"{ISSUE_URL}?{urllib.parse.urlencode({'title': title, 'body': body, 'labels': 'crash'})}"
+    return {"component": report.get("component"), "version": report.get("version"),
+            "system": report.get("system"), "python": report.get("python"),
+            "error": report.get("error", ""), "traceback": tb_text, "signature": report.get("signature"), "note": ""}
+
+
+def _message(report):
+    sent = payload(report)
+    tb_text = sent["traceback"]
+    shown = tb_text if len(tb_text) <= SHOWN_TRACEBACK else "…\n" + tb_text[-SHOWN_TRACEBACK:]
+    return (f"NumpadControl's {report.get('component', 'program')} crashed:\n\n"
+            f"{report.get('error', '')}\n\n"
+            "Do you want to report it?\n\n"
+            "Yes sends the details below to numpad.ahmedabdou.net (no account needed), where "
+            "crashes are listed on the Issues page. No sends nothing.\n\n"
+            f"Sent: part {sent['component']}, version {sent['version']}, {sent['system']}, "
+            f"Python {sent['python']}, and where in the code it failed:\n\n{shown}")
 
 
 def _dialog(text):
@@ -216,20 +220,22 @@ def _dialog(text):
     return None
 
 
-def _open_issue(report):
-    """True only if a browser really was started with the pre-filled issue."""
+def _send(report):
+    """True only if the website confirmed it saved the report."""
+    request = urllib.request.Request(REPORT_URL, data=json.dumps(payload(report)).encode("utf-8"), method="POST",
+                                     headers={"Content-Type": "application/json", "User-Agent": "NumpadControl-crash"})
     try:
-        return bool(webbrowser.open(issue_url(report)))
-    except Exception:
+        with urllib.request.urlopen(request, timeout=SEND_TIMEOUT) as answer:
+            return answer.status == 201
+    except (OSError, urllib.error.URLError, ValueError):
         return False
 
 
-def _save_issue_text(path, report):
-    """The issue's title and text in a plain file next to the crash file; returns its path (or '')."""
-    url = urllib.parse.parse_qs(urllib.parse.urlparse(issue_url(report)).query)
-    target = Path(path).with_suffix(".issue.txt")
+def _save_report_text(path, report):
+    """The report in a plain file next to the crash file (to read, or to send by hand); returns its path (or '')."""
+    target = Path(path).with_suffix(".report.txt")
     try:
-        target.write_text(f"{url['title'][0]}\n\n{url['body'][0]}", encoding="utf-8")
+        target.write_text(json.dumps(payload(report), indent=1), encoding="utf-8")
     except OSError:
         return ""
     return str(target)
@@ -295,13 +301,12 @@ def ask(path):
     if answer is None:
         report["state"] = "pending"  # no desktop to ask on: ask at the next start
     elif answer:
-        if _open_issue(report):
+        if _send(report):
             report["state"] = "reported"
-        else:  # no browser could be opened: keep the report, say where its text is, ask again at the next start
+        else:  # offline, or the website is down: keep the report, say where its text is, ask again at the next start
             report["state"] = "pending"
-            _notice(f"Couldn't open a browser, so nothing was reported.\n\n"
-                    f"The report is saved in this file, for you to read or paste into a new issue at\n"
-                    f"{ISSUE_URL}\n\n{_save_issue_text(path, report)}\n\n"
+            _notice("Couldn't send the report (no connection, or the website is busy), so nothing was sent.\n\n"
+                    f"It is saved in this file, for you to read:\n{_save_report_text(path, report)}\n\n"
                     "You will be asked again the next time NumpadControl starts.")
     else:
         report["state"] = "declined"

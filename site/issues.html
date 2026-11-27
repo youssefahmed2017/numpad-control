@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Issues · NumpadControl</title>
+<meta name="description" content="Crashes people have reported from NumpadControl, how often each happened, and whether it is fixed.">
+<meta name="theme-color" content="#fff7fa">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="preload" href="assets/fonts/roboto-flex-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/beer/beer.min.css">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/palettes.js"></script>
+<script src="assets/theme.js"></script>
+<script type="module" src="assets/beer/beer.min.js"></script>
+<script src="assets/site.js" defer></script>
+</head>
+<body>
+<header class="fixed np-bar"></header>
+<main class="np">
+<section class="np-page-head np-narrow"><span class="np-label">Issues</span><h1>Crashes people reported</h1>
+<p class="np-lead">When NumpadControl crashes and someone presses <b>Send</b> in the crash dialog, the report lands here, with no account
+needed. The same crash is listed once, with a count. A report holds the error, where in the code it happened, the version and the
+operating system, and nothing else. <a href="privacy.html">What is sent</a>.</p></section>
+<section class="np np-faq" id="issues"><p id="np-status">Loading…</p></section>
+</main>
+<footer class="np-foot"></footer>
+<script>
+(function () {
+  const box = document.getElementById("issues");
+  const status = document.getElementById("np-status");
+  const label = { open: "Open", fixed: "Fixed", wontfix: "Won't fix", duplicate: "Duplicate" };
+  const el = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; };
+  const day = (iso) => new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+
+  fetch("/api/issues").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(({ issues }) => {
+    if (!issues.length) { status.textContent = "No crashes reported yet."; return; }
+    status.remove();
+    for (const i of issues) {
+      const d = el("details");
+      const s = el("summary");
+      s.append(el("span", `${i.title}`));
+      s.append(el("span", `${label[i.status] || i.status} · ${i.count}×`, "np-label"));
+      d.append(s);
+      const meta = `Part: ${i.component} · first ${day(i.first_seen)} · last ${day(i.last_seen)}`
+        + (i.versions && i.versions.length ? ` · versions ${i.versions.join(", ")}` : "")
+        + (i.fixed_in ? ` · fixed in ${i.fixed_in}` : "");
+      d.append(el("p", meta));
+      d.append(el("pre", i.traceback));
+      box.append(d);
+    }
+  }).catch(() => { status.textContent = "The list couldn't be loaded right now. Try again in a moment."; });
+})();
+</script>
+</body>
+</html>

@@ -10,9 +10,11 @@ The only times it uses the network:
    (or set it to only tell you) with "updates": "off" or "notify" in config.json.
  - If you open Profile > Browse library, it downloads the list of profiles and
    the profile you pick from GitHub. Nothing about you is sent.
- - If a crash happens, it asks whether to report it. Yes opens a pre-filled
-   GitHub issue in your browser, so you read everything before it is sent; No
-   sends nothing.
+ - If a crash happens, it asks whether to report it. The dialog shows what
+   would be sent (the error, where in the program it happened, the version and
+   your operating system, with your user name and home folder taken out). Yes
+   sends it to numpad.ahmedabdou.net, where it is listed on the public Issues
+   page without any account or address; No sends nothing.
 
 The program is free and open source (GPL-3.0). Full privacy page:
 https://numpad.ahmedabdou.net/privacy.html

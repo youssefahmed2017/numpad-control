@@ -6,12 +6,16 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
 
 ## [Unreleased]
 
+### Changed
+- **Crash reports go to our own Issues page, with no GitHub account.** The crash dialog shows what would be sent and Yes
+  sends it to numpad.ahmedabdou.net (`api/`, a small Vercel function with a Neon database). Each crash is listed once, with
+  a count, on the new [Issues page](https://numpad.ahmedabdou.net/issues.html). Offline, the report waits and you are asked
+  again at the next start. Your IP address is never stored.
+
 ### Fixed
-- **Crash reports no longer get lost when no browser opens.** Pressing Yes in the crash dialog marked the crash as
-  reported even if the browser could not be started (for example when none was running). Now the report stays
-  waiting, its text is saved in a `.issue.txt` file next to the crash file, a message says where it is, and you are asked
-  again at the next start. The dialog now also says that you must press the green "Submit new issue" button on the
-  GitHub page to send it, since Yes only opens the page.
+- **Crash reports no longer get lost.** Pressing Yes used to mark the crash as reported even if nothing was delivered
+  (no browser running). Now a crash counts as reported only once the website confirmed it; otherwise it stays waiting,
+  its text is saved in a `.report.txt` file next to the crash file, and you are asked again at the next start.
 - **A slow notification daemon can no longer crash the service.** `notify-send` taking more than 5 seconds (for
   example for "Numpad not found") raised `TimeoutExpired` and took the service down. The notification is now skipped
   instead, in the service and in the Run Python sandbox.
