@@ -1,6 +1,6 @@
 // POST /api/report: a problem or idea typed on the website's Issues page. No account needed.
 import { neon } from "@neondatabase/serverless";
-import { MAX_BODY, MAX_FEEDBACK_PER_HOUR, addressHash, clientAddress, ensureTables, json, validateFeedback } from "./_lib.js";
+import { MAX_BODY, MAX_FEEDBACK_PER_HOUR, addressHash, clientAddress, ensureTables, hashToken, json, newManageToken, validateFeedback } from "./_lib.js";
 
 export async function handleReport(request, sql, env) {
   if (request.method !== "POST") return json({ error: "POST only" }, 405, { allow: "POST" });
@@ -17,9 +17,10 @@ export async function handleReport(request, sql, env) {
   const [{ n }] = await sql`SELECT count(*)::int AS n FROM crash_rate WHERE h = ${who} AND t > now() - interval '1 hour'`;
   if (n >= MAX_FEEDBACK_PER_HOUR) return json({ error: "that is a lot of reports: please try again in an hour" }, 429, { "retry-after": "3600" });
   await sql`INSERT INTO crash_rate (h) VALUES (${who})`;
-  const [row] = await sql`INSERT INTO feedback (kind, title, body, contact) VALUES (${feedback.kind}, ${feedback.title}, ${feedback.body}, ${feedback.contact})
-                          RETURNING id`;
-  return json({ ok: true, id: row?.id ?? null }, 201);
+  const token = newManageToken();  // shown once: the browser keeps it, so its owner can close or reopen the report
+  const [row] = await sql`INSERT INTO feedback (kind, title, body, contact, manage_hash)
+                          VALUES (${feedback.kind}, ${feedback.title}, ${feedback.body}, ${feedback.contact}, ${hashToken(token)}) RETURNING id`;
+  return json({ ok: true, id: row?.id ?? null, token }, 201);
 }
 
 export async function POST(request) {

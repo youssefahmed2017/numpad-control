@@ -1,11 +1,12 @@
 // Shared code of the crash-report API. Plain functions, no framework, so the tests can call them
 // with a fake database: handleX(request, sql, env) -> Response.
 
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 export const MAX_BODY = 20000;        // bytes of a report we accept
 export const MAX_PER_HOUR = 10;       // reports from one address per hour
-export const STATUSES = ["open", "fixed", "wontfix", "duplicate", "hidden"];
+export const STATUSES = ["open", "closed", "fixed", "wontfix", "duplicate", "hidden"];
+export const OWNER_STATUSES = ["open", "closed"];  // what the person who wrote a report may set it to
 export const KINDS = ["bug", "feature", "question"];
 export const MAX_FEEDBACK_PER_HOUR = 3;  // problem reports typed by hand, per address
 
@@ -83,6 +84,7 @@ export async function ensureTables(sql) {
     await sql`CREATE TABLE IF NOT EXISTS feedback (
       id bigserial PRIMARY KEY, kind text NOT NULL, title text NOT NULL, body text NOT NULL, contact text NOT NULL DEFAULT '',
       status text NOT NULL DEFAULT 'open', fixed_in text, created timestamptz NOT NULL DEFAULT now())`;
+    await sql`ALTER TABLE feedback ADD COLUMN IF NOT EXISTS manage_hash text`;
     await sql`CREATE INDEX IF NOT EXISTS crash_rate_h ON crash_rate (h, t)`;
     await sql`CREATE INDEX IF NOT EXISTS crash_reports_sig ON crash_reports (signature)`;
   })().catch((error) => { ready = undefined; throw error; });
@@ -94,4 +96,14 @@ export function resetForTests() { ready = undefined; }
 export function sameSecret(given, wanted) {
   const a = Buffer.from(String(given)), b = Buffer.from(String(wanted));
   return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/** The key a browser keeps to close or reopen its own report. Only its hash is stored. */
+export function newManageToken() { return randomBytes(24).toString("hex"); }
+export function hashToken(token) { return createHash("sha256").update(String(token)).digest("hex"); }
+
+/** True when the request carries the maintainer's token (and the server has a strong one configured). */
+export function isAdmin(request, env) {
+  const given = (request.headers.get("authorization") || "").replace(/^Bearer /i, "");
+  return Boolean(env.ADMIN_TOKEN) && env.ADMIN_TOKEN.length >= 24 && sameSecret(given, env.ADMIN_TOKEN);
 }

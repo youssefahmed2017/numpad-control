@@ -17,6 +17,12 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
   what people reported next to the crashes. Spam is held back by a hidden field, a minimum time on the page, a limit of 3 a
   hour and 2 links per report; the maintainer can hide or close a report.
 
+- **Filters, closing and reopening on the Issues page.** Filter by Open / Closed / All, by type (bugs, ideas, questions,
+  crashes) and by a search. The person who wrote a report can close and reopen it from the same browser (a private key
+  kept in the browser, only its hash on the server). The maintainer has a "Maintainer" mode (the admin token, kept for the
+  tab only) to set any item to open, closed, fixed (with the version), won't fix, duplicate or hidden, and to see the
+  contact lines; hidden items are only visible there.
+
 ### Fixed
 - **Crash reports no longer get lost.** Pressing Yes used to mark the crash as reported even if nothing was delivered
   (no browser running). Now a crash counts as reported only once the website confirmed it; otherwise it stays waiting,

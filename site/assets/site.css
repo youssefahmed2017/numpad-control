@@ -94,3 +94,8 @@ footer.np-foot .np-fine { max-width: 1240px; margin: 28px auto 0; color: var(--o
 main .np-fine { color: var(--on-surface-variant); font-size: .85rem; margin: 4px 0 16px; }
 #np-form nav { gap: 12px; align-items: center; }
 #np-result { color: var(--on-surface-variant); }
+.np-filters { display: grid; gap: 8px; margin-bottom: 8px; }
+.np-filters .wrap { gap: 6px; }
+.np-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.np-admin { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 10px 0 14px; }
+.np-admin select, .np-admin input { min-width: 0; }

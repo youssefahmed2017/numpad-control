@@ -38,69 +38,168 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
 </section>
 
 <section class="np np-faq" id="issues">
-  <h2>Reported by people</h2><div id="np-reports"><p>Loading…</p></div>
-  <h2>Crashes</h2><div id="np-crashes"><p>Loading…</p></div>
+  <div id="np-filters" class="np-filters" role="group" aria-label="Filter the list">
+    <nav class="wrap" id="np-status-chips"></nav>
+    <nav class="wrap" id="np-kind-chips"></nav>
+    <div class="field label border small"><input id="np-search" type="search" autocomplete="off"><label>Search</label></div>
+  </div>
+  <h2>Reported by people <span id="np-reports-count" class="np-label"></span></h2><div id="np-reports"><p>Loading…</p></div>
+  <h2>Crashes <span id="np-crashes-count" class="np-label"></span></h2><div id="np-crashes"><p>Loading…</p></div>
+  <p class="np-fine"><a href="#" id="np-admin-link">Maintainer</a></p>
 </section>
 </main>
 <footer class="np-foot"></footer>
 <script>
 (function () {
-  const label = { open: "Open", fixed: "Fixed", wontfix: "Won't fix", duplicate: "Duplicate" };
-  const kind = { bug: "Bug", feature: "Idea", question: "Question" };
+  const STATUS = { open: "Open", closed: "Closed", fixed: "Fixed", wontfix: "Won't fix", duplicate: "Duplicate", hidden: "Hidden" };
+  const KIND = { bug: "Bug", feature: "Idea", question: "Question" };
+  const DONE = ["closed", "fixed", "wontfix", "duplicate", "hidden"];
   const el = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; };
   const day = (iso) => new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   const loaded = Date.now();
+  const $ = (id) => document.getElementById(id);
 
-  function show(into, items, empty, build) {
+  // ---- what this browser remembers: the keys of its own reports, and the maintainer's token (this tab only) ----
+  const store = {
+    get(area, key) { try { return JSON.parse(window[area].getItem(key)); } catch (e) { return null; } },
+    set(area, key, value) { try { window[area].setItem(key, JSON.stringify(value)); } catch (e) { /* private window: it still works */ } },
+    drop(area, key) { try { window[area].removeItem(key); } catch (e) { /* nothing to do */ } },
+  };
+  const mine = () => store.get("localStorage", "np-mine") || {};
+  let admin = store.get("sessionStorage", "np-admin");
+  let contacts = {};
+  let data = { issues: [], reports: [] };
+  const filter = { status: "open", kind: "all", q: "" };
+
+  // ---- the filters ----
+  function chips(into, options, key) {
     into.replaceChildren();
-    if (!items.length) { into.append(el("p", empty)); return; }
+    for (const [value, text] of options) {
+      const b = el("button", text, "chip small round " + (filter[key] === value ? "fill" : "border"));
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(filter[key] === value));
+      b.addEventListener("click", () => { filter[key] = value; draw(); });
+      into.append(b);
+    }
+  }
+  const statusMatch = (status) => filter.status === "all" || (filter.status === "open" ? status === "open" : DONE.includes(status));
+  const textMatch = (...parts) => !filter.q || parts.join(" ").toLowerCase().includes(filter.q.toLowerCase());
+
+  // ---- talking to the server ----
+  async function call(url, body, headers) {
+    const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...(headers || {}) }, body: JSON.stringify(body) });
+    const answer = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(answer.error || "That didn't work. Please try again.");
+    return answer;
+  }
+  const bearer = () => ({ authorization: "Bearer " + admin });
+
+  async function ownerSet(report, status) {
+    try { await call("/api/report-status", { id: Number(report.id), token: mine()[report.id], status }); report.status = status; draw(); }
+    catch (e) { alert(e.message); }
+  }
+  async function adminSet(body, item, status, fixedIn) {
+    try { await call("/api/issue-status", { ...body, status, fixed_in: fixedIn || null }, bearer()); item.status = status; item.fixed_in = fixedIn || null; draw(); }
+    catch (e) { alert(e.message); }
+  }
+
+  // ---- drawing the lists ----
+  function adminBox(item, body) {
+    const box = el("div", undefined, "np-admin");
+    const select = el("select");
+    for (const [value, text] of Object.entries(STATUS)) { const o = el("option", text); o.value = value; o.selected = value === item.status; select.append(o); }
+    const fixed = el("input"); fixed.placeholder = "fixed in (e.g. 1.0.3)"; fixed.value = item.fixed_in || ""; fixed.maxLength = 40;
+    const apply = el("button", "Apply", "small round"); apply.type = "button";
+    apply.addEventListener("click", () => adminSet(body, item, select.value, fixed.value.trim()));
+    box.append(select, fixed, apply);
+    return box;
+  }
+
+  function reportItem(r) {
+    const d = el("details"), s = el("summary");
+    const own = Boolean(mine()[r.id]);
+    s.append(el("span", r.title), el("span", `${KIND[r.kind] || r.kind} · ${STATUS[r.status] || r.status}`, "np-label"));
+    d.append(s, el("p", `${day(r.created)}${r.fixed_in ? " · fixed in " + r.fixed_in : ""}${own ? " · yours" : ""}`), el("p", r.body, "np-text"));
+    if (admin && contacts[r.id]) d.append(el("p", "Contact: " + contacts[r.id], "np-fine"));
+    if (own && (r.status === "open" || r.status === "closed")) {
+      const b = el("button", r.status === "open" ? "Close this" : "Reopen this", "small round border"); b.type = "button";
+      b.addEventListener("click", () => ownerSet(r, r.status === "open" ? "closed" : "open"));
+      d.append(b);
+    }
+    if (admin) d.append(adminBox(r, { id: Number(r.id) }));
+    return d;
+  }
+
+  function crashItem(i) {
+    const d = el("details"), s = el("summary");
+    s.append(el("span", i.title), el("span", `${STATUS[i.status] || i.status} · ${i.count}×`, "np-label"));
+    d.append(s, el("p", `Part: ${i.component} · first ${day(i.first_seen)} · last ${day(i.last_seen)}`
+      + (i.versions && i.versions.length ? ` · versions ${i.versions.join(", ")}` : "") + (i.fixed_in ? ` · fixed in ${i.fixed_in}` : "")), el("pre", i.traceback));
+    if (admin) d.append(adminBox(i, { signature: i.signature }));
+    return d;
+  }
+
+  function fill(into, counter, items, build, emptyAll, emptyFiltered) {
+    into.replaceChildren();
+    counter.textContent = items.length ? String(items.length) : "";
+    if (!items.length) into.append(el("p", emptyAll ? emptyFiltered : "Nothing yet."));
     for (const item of items) into.append(build(item));
   }
 
-  function load() {
-    fetch("/api/issues").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(({ issues, reports }) => {
-      show(document.getElementById("np-reports"), reports || [], "Nothing yet. Be the first.", (r) => {
-        const d = el("details"), s = el("summary");
-        s.append(el("span", r.title), el("span", `${kind[r.kind] || r.kind} · ${label[r.status] || r.status}`, "np-label"));
-        d.append(s, el("p", `${day(r.created)}${r.fixed_in ? " · fixed in " + r.fixed_in : ""}`), el("p", r.body));
-        return d;
-      });
-      show(document.getElementById("np-crashes"), issues || [], "No crashes reported yet.", (i) => {
-        const d = el("details"), s = el("summary");
-        s.append(el("span", i.title), el("span", `${label[i.status] || i.status} · ${i.count}×`, "np-label"));
-        d.append(s, el("p", `Part: ${i.component} · first ${day(i.first_seen)} · last ${day(i.last_seen)}`
-          + (i.versions && i.versions.length ? ` · versions ${i.versions.join(", ")}` : "")
-          + (i.fixed_in ? ` · fixed in ${i.fixed_in}` : "")), el("pre", i.traceback));
-        return d;
-      });
-    }).catch(() => {
-      for (const id of ["np-reports", "np-crashes"]) document.getElementById(id).replaceChildren(el("p", "The list couldn't be loaded right now. Try again in a moment."));
-    });
+  function draw() {
+    const counts = (list) => ({ open: list.filter((x) => x.status === "open").length, done: list.filter((x) => DONE.includes(x.status)).length });
+    const all = [...data.reports, ...data.issues];
+    const c = counts(all);
+    chips($("np-status-chips"), [["open", `Open (${c.open})`], ["closed", `Closed (${c.done})`], ["all", "All"]], "status");
+    chips($("np-kind-chips"), [["all", "Everything"], ["bug", "Bugs"], ["feature", "Ideas"], ["question", "Questions"], ["crash", "Crashes"]], "kind");
+    const reports = data.reports.filter((r) => statusMatch(r.status) && (filter.kind === "all" || filter.kind === r.kind) && textMatch(r.title, r.body));
+    const crashes = data.issues.filter((i) => statusMatch(i.status) && (filter.kind === "all" || filter.kind === "crash") && textMatch(i.title, i.traceback, i.component));
+    const filtered = filter.status !== "all" || filter.kind !== "all" || filter.q;
+    fill($("np-reports"), $("np-reports-count"), reports, reportItem, filtered, "Nothing matches these filters.");
+    fill($("np-crashes"), $("np-crashes-count"), crashes, crashItem, filtered, "Nothing matches these filters.");
+    $("np-reports").parentElement.classList.toggle("np-admin-on", Boolean(admin));
+    $("np-admin-link").textContent = admin ? "Leave maintainer mode" : "Maintainer";
   }
 
-  const form = document.getElementById("np-form"), result = document.getElementById("np-result"), button = document.getElementById("np-send");
+  function load() {
+    fetch("/api/issues", admin ? { headers: bearer() } : undefined).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then((json) => { data = { issues: json.issues || [], reports: json.reports || [] }; return admin ? loadContacts() : null; })
+      .then(draw)
+      .catch(() => { for (const id of ["np-reports", "np-crashes"]) $(id).replaceChildren(el("p", "The list couldn't be loaded right now. Try again in a moment.")); });
+  }
+  async function loadContacts() {
+    const r = await fetch("/api/issue-status?feedback=1", { headers: bearer() });
+    if (r.status === 401) { admin = null; store.drop("sessionStorage", "np-admin"); return; }
+    contacts = Object.fromEntries(((await r.json()).reports || []).filter((x) => x.contact).map((x) => [x.id, x.contact]));
+  }
+
+  $("np-search").addEventListener("input", (e) => { filter.q = e.target.value.trim(); draw(); });
+  $("np-admin-link").addEventListener("click", (e) => {
+    e.preventDefault();
+    if (admin) { admin = null; contacts = {}; store.drop("sessionStorage", "np-admin"); load(); return; }
+    const token = window.prompt("Maintainer token:");
+    if (!token) return;
+    admin = token.trim();
+    store.set("sessionStorage", "np-admin", admin);
+    load();
+  });
+
+  // ---- the form ----
+  const form = $("np-form"), result = $("np-result"), button = $("np-send");
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     result.textContent = "";
     button.disabled = true;
-    fetch("/api/report", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        kind: document.getElementById("np-kind").value, title: document.getElementById("np-title").value,
-        body: document.getElementById("np-body").value, contact: document.getElementById("np-contact").value,
-        website: document.getElementById("np-website").value, elapsed: Date.now() - loaded,
-      }),
-    }).then(async (r) => {
-      const data = await r.json().catch(() => ({}));
-      if (r.ok) {
-        result.textContent = " Thank you! It will show below within a minute.";
-        form.reset();
-        setTimeout(load, 61000);
-      } else {
-        result.textContent = " " + (data.error || "That didn't work. Please try again.");
-        button.disabled = false;
-      }
-    }).catch(() => { result.textContent = " No connection. Please try again."; button.disabled = false; });
+    call("/api/report", {
+      kind: $("np-kind").value, title: $("np-title").value, body: $("np-body").value, contact: $("np-contact").value,
+      website: $("np-website").value, elapsed: Date.now() - loaded,
+    }).then((answer) => {
+      if (answer.id && answer.token) { const keys = mine(); keys[answer.id] = answer.token; store.set("localStorage", "np-mine", keys); }
+      result.textContent = " Thank you! It will show in the list within a minute. You can close it yourself when it's sorted.";
+      form.reset();
+      button.disabled = false;
+      setTimeout(load, 61000);
+    }).catch((error) => { result.textContent = " " + error.message; button.disabled = false; });
   });
   load();
 })();

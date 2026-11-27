@@ -137,3 +137,74 @@ test("the maintainer can hide a typed report by id", async () => {
   assert.equal((await handleStatus(req({ id: "7; DROP", status: "hidden" }), fakeSql(), env)).status, 400);
   assert.equal((await handleStatus(req({ id: 7, status: "hidden" }), fakeSql({ updated: [] }), env)).status, 404);
 });
+
+// ---- closing and reopening ----
+import { handleReportStatus } from "../../api/report-status.js";
+import { hashToken } from "../../api/_lib.js";
+
+function ownerSql(row) {
+  const calls = [];
+  const sql = async (strings, ...values) => {
+    const text = strings.join("?").replace(/\s+/g, " ").trim();
+    calls.push({ text, values });
+    if (text.startsWith("SELECT status, manage_hash")) return row ? [row] : [];
+    return [];
+  };
+  sql.calls = calls;
+  return sql;
+}
+const ownerReq = (body) => new Request("https://x/api/report-status", { method: "POST", body: JSON.stringify(body) });
+
+test("a new report returns a key, and only its hash is stored", async () => {
+  const sql = fakeSql();
+  const res = await handleReport(send(typed()), sql, {});
+  const { token } = await res.json();
+  assert.match(token, /^[0-9a-f]{48}$/);
+  const insert = sql.calls.find((c) => c.text.startsWith("INSERT INTO feedback"));
+  assert.ok(insert.values.includes(hashToken(token)));
+  assert.ok(!insert.values.includes(token));
+});
+
+test("the owner can close and reopen with the key, nobody else can", async () => {
+  const row = { status: "open", manage_hash: hashToken("secret-key") };
+  const sql = ownerSql(row);
+  assert.equal((await handleReportStatus(ownerReq({ id: 7, token: "secret-key", status: "closed" }), sql)).status, 200);
+  assert.ok(sql.calls.some((c) => c.text.startsWith("UPDATE feedback SET status")));
+  for (const bad of [{ token: "wrong" }, { token: "" }]) {
+    const s2 = ownerSql(row);
+    assert.equal((await handleReportStatus(ownerReq({ id: 7, status: "closed", ...bad }), s2)).status, bad.token === "" ? 403 : 403);
+    assert.ok(!s2.calls.some((c) => c.text.startsWith("UPDATE")));
+  }
+  assert.equal((await handleReportStatus(ownerReq({ id: 7, token: "k", status: "closed" }), ownerSql(null))).status, 403);  // no such report: same answer
+  assert.equal((await handleReportStatus(ownerReq({ id: 7, token: "secret-key", status: "fixed" }), ownerSql(row))).status, 400);
+  assert.equal((await handleReportStatus(ownerReq({ id: 0, token: "x", status: "open" }), ownerSql(row))).status, 400);
+});
+
+test("a report the maintainer settled can't be reopened by its owner", async () => {
+  for (const status of ["fixed", "wontfix", "duplicate", "hidden"]) {
+    const sql = ownerSql({ status, manage_hash: hashToken("k") });
+    assert.equal((await handleReportStatus(ownerReq({ id: 1, token: "k", status: "open" }), sql)).status, 409);
+    assert.ok(!sql.calls.some((c) => c.text.startsWith("UPDATE")));
+  }
+});
+
+test("the maintainer can set closed as well", async () => {
+  const env = { ADMIN_TOKEN: "t".repeat(32) };
+  const req = new Request("https://x/api/issue-status", { method: "POST", body: JSON.stringify({ id: 7, status: "closed" }), headers: { authorization: `Bearer ${"t".repeat(32)}` } });
+  assert.equal((await handleStatus(req, fakeSql(), env)).status, 200);
+});
+
+test("hidden items stay out of the public list, and only the maintainer sees them", async () => {
+  const env = { ADMIN_TOKEN: "t".repeat(32) };
+  const run = async (headers) => {
+    const sql = fakeSql();
+    const res = await handleIssues(new Request("https://x/api/issues", { headers }), sql, env);
+    return { cache: res.headers.get("cache-control"), flags: sql.calls.filter((c) => /hidden/.test(c.text)).map((c) => c.values[0]) };
+  };
+  const anyone = await run({}), admin = await run({ authorization: `Bearer ${"t".repeat(32)}` }), wrong = await run({ authorization: "Bearer nope" });
+  assert.deepEqual(anyone.flags, [false, false]);
+  assert.deepEqual(wrong.flags, [false, false]);
+  assert.deepEqual(admin.flags, [true, true]);
+  assert.match(anyone.cache, /s-maxage/);
+  assert.equal(admin.cache, "no-store");
+});

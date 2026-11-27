@@ -5,15 +5,10 @@
 // GET with the same header and ?signature=... returns the private notes of a crash's reports; ?feedback=1 returns the
 // contact lines of the typed reports.
 import { neon } from "@neondatabase/serverless";
-import { STATUSES, ensureTables, json, sameSecret } from "./_lib.js";
-
-function authorised(request, env) {
-  const given = (request.headers.get("authorization") || "").replace(/^Bearer /i, "");
-  return Boolean(env.ADMIN_TOKEN) && env.ADMIN_TOKEN.length >= 24 && sameSecret(given, env.ADMIN_TOKEN);
-}
+import { STATUSES, ensureTables, isAdmin, json } from "./_lib.js";
 
 export async function handleStatus(request, sql, env) {
-  if (!authorised(request, env)) return json({ error: "not allowed" }, 401);
+  if (!isAdmin(request, env)) return json({ error: "not allowed" }, 401);
   await ensureTables(sql);
   if (request.method === "GET") {
     if (new URL(request.url).searchParams.get("feedback")) {
