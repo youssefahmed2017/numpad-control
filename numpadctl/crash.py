@@ -171,8 +171,9 @@ def _message(report):
     return (f"NumpadControl's {report.get('component', 'program')} crashed:\n\n"
             f"{report.get('error', '')}\n\n"
             "Do you want to report it?\n\n"
-            "Yes opens a GitHub issue in your browser with the details, for you to read "
-            "before sending. Nothing is sent unless you choose to.")
+            "Yes opens a GitHub page in your browser with the details filled in. Read it, "
+            "then press the green \"Submit new issue\" button there to send it (you need a "
+            "GitHub account). Nothing is sent unless you press that button.")
 
 
 def issue_url(report):
