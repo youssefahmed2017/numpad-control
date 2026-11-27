@@ -12,6 +12,11 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
   a count, on the new [Issues page](https://numpad.ahmedabdou.net/issues.html). Offline, the report waits and you are asked
   again at the next start. Your IP address is never stored.
 
+- **A form for problems and ideas, no GitHub account needed.** The new [Issues page](https://numpad.ahmedabdou.net/issues.html) has a
+  "Report a problem" form (a bug, an idea or a question; title and text are public, an optional contact line is private) and lists
+  what people reported next to the crashes. Spam is held back by a hidden field, a minimum time on the page, a limit of 3 a
+  hour and 2 links per report; the maintainer can hide or close a report.
+
 ### Fixed
 - **Crash reports no longer get lost.** Pressing Yes used to mark the crash as reported even if nothing was delivered
   (no browser running). Now a crash counts as reported only once the website confirmed it; otherwise it stays waiting,

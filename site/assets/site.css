@@ -90,3 +90,7 @@ footer.np-foot .np-fine { max-width: 1240px; margin: 28px auto 0; color: var(--o
 .np-swatches { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 18px; }
 .np-swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; padding: 0; }
 .np-swatch[aria-pressed="true"] { border-color: var(--on-surface); }
+
+main .np-fine { color: var(--on-surface-variant); font-size: .85rem; margin: 4px 0 16px; }
+#np-form nav { gap: 12px; align-items: center; }
+#np-result { color: var(--on-surface-variant); }

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Issues · NumpadControl</title>
-<meta name="description" content="Crashes people have reported from NumpadControl, how often each happened, and whether it is fixed.">
+<title>Report a problem · NumpadControl</title>
+<meta name="description" content="Report a problem or an idea for NumpadControl without an account, and see what others reported and what is fixed.">
 <meta name="theme-color" content="#fff7fa">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
@@ -19,38 +19,90 @@
 <body>
 <header class="fixed np-bar"></header>
 <main class="np">
-<section class="np-page-head np-narrow"><span class="np-label">Issues</span><h1>Crashes people reported</h1>
-<p class="np-lead">When NumpadControl crashes and someone presses <b>Send</b> in the crash dialog, the report lands here, with no account
-needed. The same crash is listed once, with a count. A report holds the error, where in the code it happened, the version and the
-operating system, and nothing else. <a href="privacy.html">What is sent</a>.</p></section>
-<section class="np np-faq" id="issues"><p id="np-status">Loading…</p></section>
+<section class="np-page-head np-narrow"><span class="np-label">Issues</span><h1>Report a problem, or an idea</h1>
+<p class="np-lead">No account needed. Tell us what went wrong or what you would like, and it appears below. When the app crashes, the crash
+dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</p></section>
+
+<section class="np np-narrow">
+  <form id="np-form" class="np-prose" novalidate>
+    <div class="field label border"><select id="np-kind" required>
+      <option value="bug">Something is broken</option><option value="feature">An idea or a feature</option><option value="question">A question</option></select><label>What is it?</label></div>
+    <div class="field label border"><input id="np-title" maxlength="120" required><label>Title (a short summary)</label></div>
+    <div class="field textarea label border"><textarea id="np-body" rows="6" maxlength="3000" required></textarea><label>What happened? Which computer and desktop? What did you expect?</label></div>
+    <div class="field label border"><input id="np-contact" maxlength="200" autocomplete="off"><label>How can we reach you? (optional, never shown)</label></div>
+    <div style="position:absolute;left:-9999px" aria-hidden="true"><input id="np-website" tabindex="-1" autocomplete="off"></div>
+    <p class="np-fine">Your title and text are <b>public</b> on this page, so please leave out passwords and personal details. The contact line is
+    private and used only to answer you.</p>
+    <nav><button class="round" type="submit" id="np-send">Send</button><span id="np-result" role="status"></span></nav>
+  </form>
+</section>
+
+<section class="np np-faq" id="issues">
+  <h2>Reported by people</h2><div id="np-reports"><p>Loading…</p></div>
+  <h2>Crashes</h2><div id="np-crashes"><p>Loading…</p></div>
+</section>
 </main>
 <footer class="np-foot"></footer>
 <script>
 (function () {
-  const box = document.getElementById("issues");
-  const status = document.getElementById("np-status");
   const label = { open: "Open", fixed: "Fixed", wontfix: "Won't fix", duplicate: "Duplicate" };
+  const kind = { bug: "Bug", feature: "Idea", question: "Question" };
   const el = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; };
   const day = (iso) => new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  const loaded = Date.now();
 
-  fetch("/api/issues").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(({ issues }) => {
-    if (!issues.length) { status.textContent = "No crashes reported yet."; return; }
-    status.remove();
-    for (const i of issues) {
-      const d = el("details");
-      const s = el("summary");
-      s.append(el("span", `${i.title}`));
-      s.append(el("span", `${label[i.status] || i.status} · ${i.count}×`, "np-label"));
-      d.append(s);
-      const meta = `Part: ${i.component} · first ${day(i.first_seen)} · last ${day(i.last_seen)}`
-        + (i.versions && i.versions.length ? ` · versions ${i.versions.join(", ")}` : "")
-        + (i.fixed_in ? ` · fixed in ${i.fixed_in}` : "");
-      d.append(el("p", meta));
-      d.append(el("pre", i.traceback));
-      box.append(d);
-    }
-  }).catch(() => { status.textContent = "The list couldn't be loaded right now. Try again in a moment."; });
+  function show(into, items, empty, build) {
+    into.replaceChildren();
+    if (!items.length) { into.append(el("p", empty)); return; }
+    for (const item of items) into.append(build(item));
+  }
+
+  function load() {
+    fetch("/api/issues").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(({ issues, reports }) => {
+      show(document.getElementById("np-reports"), reports || [], "Nothing yet. Be the first.", (r) => {
+        const d = el("details"), s = el("summary");
+        s.append(el("span", r.title), el("span", `${kind[r.kind] || r.kind} · ${label[r.status] || r.status}`, "np-label"));
+        d.append(s, el("p", `${day(r.created)}${r.fixed_in ? " · fixed in " + r.fixed_in : ""}`), el("p", r.body));
+        return d;
+      });
+      show(document.getElementById("np-crashes"), issues || [], "No crashes reported yet.", (i) => {
+        const d = el("details"), s = el("summary");
+        s.append(el("span", i.title), el("span", `${label[i.status] || i.status} · ${i.count}×`, "np-label"));
+        d.append(s, el("p", `Part: ${i.component} · first ${day(i.first_seen)} · last ${day(i.last_seen)}`
+          + (i.versions && i.versions.length ? ` · versions ${i.versions.join(", ")}` : "")
+          + (i.fixed_in ? ` · fixed in ${i.fixed_in}` : "")), el("pre", i.traceback));
+        return d;
+      });
+    }).catch(() => {
+      for (const id of ["np-reports", "np-crashes"]) document.getElementById(id).replaceChildren(el("p", "The list couldn't be loaded right now. Try again in a moment."));
+    });
+  }
+
+  const form = document.getElementById("np-form"), result = document.getElementById("np-result"), button = document.getElementById("np-send");
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    result.textContent = "";
+    button.disabled = true;
+    fetch("/api/report", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        kind: document.getElementById("np-kind").value, title: document.getElementById("np-title").value,
+        body: document.getElementById("np-body").value, contact: document.getElementById("np-contact").value,
+        website: document.getElementById("np-website").value, elapsed: Date.now() - loaded,
+      }),
+    }).then(async (r) => {
+      const data = await r.json().catch(() => ({}));
+      if (r.ok) {
+        result.textContent = " Thank you! It will show below within a minute.";
+        form.reset();
+        setTimeout(load, 61000);
+      } else {
+        result.textContent = " " + (data.error || "That didn't work. Please try again.");
+        button.disabled = false;
+      }
+    }).catch(() => { result.textContent = " No connection. Please try again."; button.disabled = false; });
+  });
+  load();
 })();
 </script>
 </body>
