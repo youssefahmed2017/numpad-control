@@ -12,3 +12,4 @@ graphify-out/
 # secrets: never committed
 .env
 node_modules/
+.env*
