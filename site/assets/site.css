@@ -108,3 +108,8 @@ main .np-fine { color: var(--on-surface-variant); font-size: .85rem; margin: 4px
 .np-fab-tonal { background: var(--secondary-container) !important; color: var(--on-secondary-container) !important; }
 .np-icon-link { display: inline-flex; align-items: center; gap: 6px; }
 .np-icon-link i { font-size: 1.1rem; }
+
+/* The icon of the active tab switches from outline to filled (BeerCSS does this for a.active > i; the font keeps the FILL axis for it).
+   The same for the current page in the header and for a chosen filter chip, with a short fade between the two. */
+:is(a, button, .chip) > i { transition: font-variation-settings .22s ease, color .22s ease; }
+.np-bar a[aria-current="page"] > i, .chip.fill > i, .np-os-tabs a.active > i { font-variation-settings: "FILL" 1; }
