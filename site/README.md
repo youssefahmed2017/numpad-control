@@ -44,4 +44,5 @@ GoatCounter counts page views and button clicks (`data-track`). Nothing else is 
 The pictures on `docs.html` are the ones in `docs/screenshots/`. The Docs screenshots workflow redraws them from the
 app's code when `numpadctl_ui/` changes, and Vercel copies them into the site while it builds (`vercel.json`,
 `site/img/screenshots/`). The demo video on the home page is `video/numpad-demo.mp4` with its poster
-`img/demo-poster.jpg`: a real numpad filmed on a desk, cut, with the pressed key labelled.
+`img/demo-poster.jpg`: a real numpad filmed on a desk, cut, with the pressed key labelled. Beside it is the vertical
+(9:16) cut, `video/numpad-tiktok.mp4` with `img/tiktok-poster.jpg`, made from the same footage with the app's own design tokens.

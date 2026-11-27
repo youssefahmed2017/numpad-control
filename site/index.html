@@ -56,14 +56,26 @@
   </div>
 </section>
 
-<section class="np">
+<section class="np" id="video">
   <span class="np-label">See it work</span><h2 style="margin:6px 0 16px">Real numpad, real keys</h2>
   <p class="np-lead">A cheap numpad, filmed on a desk: the browser opens, the volume moves, and one key runs a whole macro. Each key is labelled when it's pressed.</p>
-  <div class="np-frame" style="margin-top:16px">
-    <video controls preload="metadata" playsinline poster="img/demo-poster.jpg" width="1920" height="1080">
-      <source src="video/numpad-demo.mp4" type="video/mp4">
-      Your browser can't play this video. <a href="video/numpad-demo.mp4">Download it</a>.
-    </video>
+  <div class="grid" style="margin-top:16px;align-items:center">
+    <div class="s12 l8">
+      <div class="np-frame">
+        <video controls preload="metadata" playsinline poster="img/demo-poster.jpg" width="1920" height="1080">
+          <source src="video/numpad-demo.mp4" type="video/mp4">
+          Your browser can't play this video. <a href="video/numpad-demo.mp4">Download it</a>.
+        </video>
+      </div>
+    </div>
+    <div class="s12 l4">
+      <div class="np-frame" style="max-width:360px;margin:0 auto">
+        <video controls preload="none" playsinline poster="img/tiktok-poster.jpg" width="1080" height="1920" style="width:100%;height:auto;display:block">
+          <source src="video/numpad-tiktok.mp4" type="video/mp4">
+          Your browser can't play this video. <a href="video/numpad-tiktok.mp4">Download it</a>.
+        </video>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -113,6 +125,16 @@
   </div>
 </section>
 
+<section class="np" id="profiles">
+  <span class="np-label">Profile library</span><h2 style="margin:6px 0 16px">Ready-made profiles you can add in seconds</h2>
+  <p class="np-lead">In the app, open <b>Profile ⋯ → Browse library…</b>, pick one, and see what it will do before it is added. Actions that run programs, press keys for you or power the PC off are marked with a warning first. Each profile switches on by itself when its app is in front.</p>
+  <div class="grid"><div class="s12 m6 l4"><article class="np-card round border"><div class="np-icon"><i aria-hidden="true">videocam</i></div><h6 class="small">Streaming (OBS)</h6><p>Go live, record, clip and mute in OBS.</p></article></div><div class="s12 m6 l4"><article class="np-card round border"><div class="np-icon"><i aria-hidden="true">volume_up</i></div><h6 class="small">Media and volume</h6><p>Play, skip, volume and the microphone.</p></article></div><div class="s12 m6 l4"><article class="np-card round border"><div class="np-icon"><i aria-hidden="true">headphones</i></div><h6 class="small">Spotify</h6><p>Play and pause, skip, Spotify-only volume, shuffle, repeat and like.</p></article></div><div class="s12 m6 l4"><article class="np-card round border"><div class="np-icon"><i aria-hidden="true">mic_off</i></div><h6 class="small">Discord</h6><p>Mute, deafen and the quick switcher.</p></article></div><div class="s12 m6 l4"><article class="np-card round border"><div class="np-icon"><i aria-hidden="true">videocam</i></div><h6 class="small">Zoom</h6><p>Mute, camera, share screen, chat, participants, raise hand and leave.</p></article></div><div class="s12 m6 l4"><article class="np-card round border"><div class="np-icon"><i aria-hidden="true">code</i></div><h6 class="small">VS Code</h6><p>Command palette, quick open and the terminal.</p></article></div><div class="s12 m6 l4"><article class="np-card round border"><div class="np-icon"><i aria-hidden="true">widgets</i></div><h6 class="small">Blender</h6><p>Blender with a working numpad, while Blender is in front.</p></article></div><div class="s12 m6 l4"><article class="np-card round border"><div class="np-icon"><i aria-hidden="true">language</i></div><h6 class="small">Web browser</h6><p>For Firefox, Chrome, Chromium, Edge and Brave.</p></article></div><div class="s12 m6 l4"><article class="np-card round border"><div class="np-icon"><i aria-hidden="true">content_copy</i></div><h6 class="small">Editing</h6><p>Copy, paste, cut, undo, redo, save, select all and screenshots.</p></article></div><div class="s12 m6 l4"><article class="np-card round border"><div class="np-icon"><i aria-hidden="true">sports_esports</i></div><h6 class="small">Gaming quick actions</h6><p>Between rounds: mute the mic, do not disturb and screenshots.</p></article></div><div class="s12 m6 l4"><article class="np-card round border"><div class="np-icon"><i aria-hidden="true">layers</i></div><h6 class="small">Hyprland workspaces</h6><p>The number keys go to workspaces 1 to 9, and 0 to 10.</p></article></div></div>
+  <p style="margin-top:18px" class="row wrap">
+    <a class="button round transparent" href="https://github.com/youssefahmed2017/numpad-controllib/blob/main/CATALOG.md"><i aria-hidden="true">keyboard</i><span>See every key map</span></a>
+    <a class="button round transparent" href="https://github.com/youssefahmed2017/numpad-controllib"><i aria-hidden="true">code</i><span>The library on GitHub</span></a>
+  </p>
+</section>
+
 <section class="np">
   <span class="np-label">Features</span><h2 style="margin:6px 0 16px">Everything a streamer or editor reaches for</h2><p class="np-lead">The things you'd buy a $150 deck for, on keys you can feel.</p>
   <div class="grid"><div class="s12 m6 l4"><a class="np-card round border" href="features.html#stream"><div class="np-icon"><i aria-hidden="true">videocam</i></div><h6 class="small">OBS control</h6><p>Scenes, recording, streaming, the replay buffer, sources and mics, all on real keys.</p></a></div><div class="s12 m6 l4"><a class="np-card round border" href="features.html#sound"><div class="np-icon"><i aria-hidden="true">volume_up</i></div><h6 class="small">Volume &amp; media</h6><p>System and per-app volume, play/pause, tracks and your audio output.</p></a></div><div class="s12 m6 l4"><a class="np-card round border" href="features.html#keys"><div class="np-icon"><i aria-hidden="true">bolt</i></div><h6 class="small">Macros</h6><p>One key, many steps: switch the scene, wait, go live.</p></a></div><div class="s12 m6 l4"><a class="np-card round border" href="features.html#smart"><div class="np-icon"><i aria-hidden="true">web_asset</i></div><h6 class="small">Per-app profiles</h6><p>Different keys in OBS, Premiere or Blender: the right set follows the app in front.</p></a></div><div class="s12 m6 l4"><a class="np-card round border" href="features.html#smart"><div class="np-icon"><i aria-hidden="true">sports_esports</i></div><h6 class="small">Game-safe</h6><p>No driver, and it lets go by itself while Valorant, Fortnite and co. are running.</p></a></div><div class="s12 m6 l4"><a class="np-card round border" href="features.html#open"><div class="np-icon"><i aria-hidden="true">lock</i></div><h6 class="small">Private by design</h6><p>It collects nothing and needs no account. The code is open, so you can check.</p></a></div></div>
@@ -128,6 +150,7 @@
       <tr><td>Cost</td><td>About $150</td><td>A subscription, or a spare phone</td><td class="us">A $10 numpad. NumpadControl is free</td></tr>
       <tr><td>Keys</td><td>15</td><td>On a touchscreen</td><td class="us">19 real keys, ×3 with hold and double-tap</td></tr>
       <tr><td>Linux</td><td>No official software</td><td>Depends</td><td class="us"><span class="np-yes">✓</span> First-class</td></tr>
+      <tr><td>Key labels</td><td>A small screen on each key, for the page you are on</td><td>On the phone screen</td><td class="us">A big on-screen map of every key, for the app you are in, with the layer next to it</td></tr>
       <tr><td>Keys you can feel</td><td><span class="np-yes">✓</span></td><td>No</td><td class="us"><span class="np-yes">✓</span></td></tr>
     </table>
   </div>

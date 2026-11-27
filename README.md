@@ -10,6 +10,8 @@ You set it up in a settings window, no code needed. Free and open source (GPL-3.
 
 ![A real numpad running actions: open the browser, volume down, a macro that starts a terminal session](docs/screenshots/demo.gif)
 
+[![Watch the 25-second vertical demo: a real numpad opens the browser, changes the volume and runs a macro](docs/screenshots/tiktok-poster.jpg)](https://numpad.ahmedabdou.net/#video)
+
 ![The settings window: a numpad on the left, the selected key's "Go live" macro on the right](docs/screenshots/macro.png)
 
 ## Why use it
