@@ -6,6 +6,8 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-11-27
+
 ### Changed
 - **Crash reports go to our own Issues page, with no GitHub account.** The crash dialog shows what would be sent and Yes
   sends it to numpad.ahmedabdou.net (`api/`, a small Vercel function with a Neon database). Each crash is listed once, with
@@ -176,7 +178,8 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
 ## [0.1.0] - 2026-10-27
 - First release.
 
-[Unreleased]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/youssefahmed2017/numpad-control/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/youssefahmed2017/numpad-control/compare/v0.3.1...v1.0.0
