@@ -78,6 +78,17 @@ microphone, EasyEffects and its preset file even if it fails. They need `obs`, `
   pad. Known limits: 32-bit apps and apps running as administrator don't load the
   DLL, so the numpad's keys still type there (their actions still run), and NumLock on
   the numpad still switches NumLock.
+  **Experimental alternative:** `"windows_blocking": "lowlevel"` in `config.json` uses a `WH_KEYBOARD_LL`
+  hook in the service itself instead of the DLL: nothing is loaded into other programs (so 32-bit
+  apps are covered and games see no injected DLL). It only works when a key's Raw Input is already
+  waiting when the hook runs; if not, that key types as usual and is never swallowed, so the main
+  keyboard cannot lose keys. Administrator apps stay uncovered (Windows only shows their keys to a
+  hook of the same privilege). Check a PC first with
+  `python -m numpadctl.platform.windows_rawinput --ll-probe`: it prints, for each numpad-type key you
+  press, whether the keyboard was known in time, blocks nothing, and says whether to try the mode.
+  The service logs how it did (and warns, once, if under 90% of keys were known in time). The default
+  stays `"dll"` until real PCs confirm the ordering. It is not a way past anti-cheat: the step-aside
+  list for games (`pause_for_games`) works the same way in both modes.
   [`tools/windows-poc/`](../tools/windows-poc/) has the tests for a Windows PC.
   Working: reading the numpad, the background service, a tray app
   (`numpad-control.pyw`: Settings…, Edit settings file, Pause, Start at login, Show

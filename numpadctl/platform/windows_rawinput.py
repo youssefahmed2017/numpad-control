@@ -17,8 +17,18 @@ so it can't know the keyboard. Known gaps: 32-bit apps and apps running as
 administrator don't load the DLL, so the numpad still types there (its actions work).
 Same interface as linux_numpad.py.
 
+Experimental second way (setting "windows_blocking": "lowlevel"): a WH_KEYBOARD_LL hook in this
+process instead of the DLL. It needs no DLL in other programs, so 32-bit apps are covered and
+nothing is loaded into games. It can only work if Raw Input for a key is already waiting in
+the message queue when the hook is called: the hook then reads it (like the DLL's question
+does) and knows the keyboard. A key whose Raw Input isn't there yet is never swallowed, so the
+main keyboard can't lose keys; it only means the numpad types that key. Administrator apps
+still don't get the numpad's keys hidden either way (Windows only lets a hook of the same
+or a higher privilege see them). Measure it on a real PC: python -m numpadctl.platform.windows_rawinput --ll-probe
+
     python -m numpadctl.platform.windows_rawinput          prints keys from the configured numpad
     python -m numpadctl.platform.windows_rawinput --all    prints every key from every keyboard
+    python -m numpadctl.platform.windows_rawinput --ll-probe   measures whether the low-level hook can tell the keyboards apart
 """
 
 import asyncio
@@ -35,7 +45,8 @@ from .windows_numpad import IGNORED, KEY_CODES, PRESENCE_CHECK_SECONDS, PRESENCE
 
 log = logging.getLogger("numpadctl")
 
-WH_KEYBOARD = 2
+WH_KEYBOARD, WH_KEYBOARD_LL = 2, 13
+LLKHF_INJECTED, LLKHF_UP = 0x10, 0x80
 WM_QUIT, WM_TIMER, WM_INPUT = 0x0012, 0x0113, 0x00FF
 WM_APP = 0x8000
 QUERY_MESSAGE = WM_APP + 0x4E50  # numpadhook.dll asks "was this key the numpad's?" (same number in the C file)
@@ -56,6 +67,23 @@ USHORT, DWORD, UINT, ULONG = ctypes.c_uint16, ctypes.c_uint32, ctypes.c_uint32, 
 LRESULT = ctypes.c_ssize_t
 _FUNCTYPE = getattr(ctypes, "WINFUNCTYPE", ctypes.CFUNCTYPE)  # (CFUNCTYPE: tests on Linux)
 WNDPROC = _FUNCTYPE(LRESULT, wintypes.HWND, ctypes.c_uint, wintypes.WPARAM, wintypes.LPARAM)
+HOOKPROC = _FUNCTYPE(LRESULT, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)
+
+BLOCKING = "dll"  # "dll" (default) or "lowlevel" (experimental), set from the settings by configure()
+LL_MIN_SAMPLE = 20      # numpad-type keys seen before the log says how the low-level hook is doing
+LL_GOOD_SHARE = 0.9     # below this share of keys whose keyboard was known in time, it warns
+LL_STALE_SECONDS = 1.0  # Windows silently drops a hook that answered too slowly: noticed after this long
+
+
+def configure(cfg):
+    """Take the Windows-only options from the settings (the service calls this before opening the numpad)."""
+    global BLOCKING
+    BLOCKING = "lowlevel" if str(cfg.get("windows_blocking", "dll")).lower() == "lowlevel" else "dll"
+
+
+class KBDLLHOOKSTRUCT(ctypes.Structure):
+    _fields_ = [("vkCode", DWORD), ("scanCode", DWORD), ("flags", DWORD), ("time", DWORD),
+                ("dwExtraInfo", ctypes.c_size_t)]
 
 
 class RAWINPUTDEVICE(ctypes.Structure):
@@ -116,6 +144,8 @@ def _api():
     u.SetWindowsHookExW.argtypes = [ctypes.c_int, ctypes.c_void_p, wintypes.HINSTANCE, wintypes.DWORD]
     u.SetWindowsHookExW.restype = wintypes.HHOOK
     u.UnhookWindowsHookEx.argtypes = [wintypes.HHOOK]
+    u.CallNextHookEx.argtypes = [wintypes.HHOOK, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM]
+    u.CallNextHookEx.restype = LRESULT
     u.RegisterClassExW.argtypes = [ctypes.POINTER(WNDCLASSEXW)]
     u.RegisterClassExW.restype = wintypes.ATOM
     u.CreateWindowExW.argtypes = [wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
@@ -229,6 +259,11 @@ class KeyRouter:
         if from_numpad and key and self.repeats.passes(key, not up, now):
             self.emit((key, not up))
 
+    def knows(self, scan, up, now):
+        """Raw Input for this key (which keyboard it came from) has already arrived."""
+        _, when = self.source.get((scan, up), (False, -FRESH - 1.0))
+        return now - when <= FRESH
+
     def should_block(self, scan, up, now):
         if not self.grab:
             return False
@@ -299,17 +334,29 @@ class _Listener:
     Everything runs on the thread that calls run(): Windows delivers Raw Input and the
     DLL's questions to the window's thread while it waits for messages."""
 
-    def __init__(self, on_raw, on_tick, router=None, everything=False):
+    def __init__(self, on_raw, on_tick, router=None, everything=False, lowlevel=False, probe=None):
         self.on_raw, self.on_tick, self.router = on_raw, on_tick, router
         self.everything = everything  # on_raw also gets the extra info and virtual key (the --all test)
+        self.lowlevel = lowlevel      # block with a WH_KEYBOARD_LL hook instead of the DLL
+        self.probe = probe            # --ll-probe: a callback(key info), and the hook never blocks
         self.thread_id = None
         self.stopped = threading.Event()
+        self.hwnd = None
+        self.ll_hook = None
+        self.ll_proc = None           # kept alive while hooked
+        self.ll_block_injected = False  # tests only: SendInput keys count as the numpad's (real ones never are)
+        self.ll_stats = {"known": 0, "late": 0, "blocked": 0}
+        self.raw_seen = self.ll_seen = 0  # numpad-type keys that arrived by Raw Input / reached the hook
+        self.ll_behind_since = None
+        self.ll_warned = False
 
     def _raw(self, lparam):
         raw = _read_raw(lparam)
         if raw is None:
             return
         device, scan, e0, up = raw[:4]
+        if self.lowlevel and scan in NUMPAD_SCANS:
+            self.raw_seen += 1
         if self.router is not None:
             self.router.raw(device, scan, e0, up, time.monotonic())
             if device:
@@ -339,10 +386,82 @@ class _Listener:
             scan, up = _query_key(wparam, lparam)
             return 1 if self.router.should_block(scan, up, time.monotonic()) else 0
         if message == WM_TIMER:
+            now = time.monotonic()
+            if self.lowlevel:
+                self._watch_ll_hook(now)
+                if self.ll_stats["known"] + self.ll_stats["late"] >= LL_MIN_SAMPLE:
+                    self._report_ll()
             if self.on_tick(time.monotonic()):
                 _api().PostQuitMessage(0)
             return 0
         return None
+
+    def _ll_callback(self, code, wparam, lparam):
+        """The WH_KEYBOARD_LL hook: runs on this thread while it waits for messages. Never raises into Windows."""
+        try:
+            if code == 0:  # HC_ACTION
+                info = KBDLLHOOKSTRUCT.from_address(lparam)
+                scan, up = info.scanCode, bool(info.flags & LLKHF_UP)
+                if scan in NUMPAD_SCANS:
+                    self.ll_seen += 1
+                    # Our own actions (SendInput) are never the numpad's; a probe never blocks.
+                    if self.router is not None and (self.probe or self.ll_block_injected or not info.flags & LLKHF_INJECTED):
+                        self._drain_raw_input(self.hwnd)
+                        now = time.monotonic()
+                        known = self.router.knows(scan, up, now)
+                        self.ll_stats["known" if known else "late"] += 1
+                        block = known and not self.probe and self.router.should_block(scan, up, now)
+                        if self.probe:
+                            self.probe(scan, up, known, self.router.source.get((scan, up), (False, 0.0))[0] if known else None)
+                        if block:
+                            self.ll_stats["blocked"] += 1
+                            return 1
+        except Exception:
+            log.exception("low-level keyboard hook")
+        return _api().CallNextHookEx(None, code, wparam, lparam)
+
+    def _install_ll_hook(self):
+        if self.ll_hook:
+            _api().UnhookWindowsHookEx(self.ll_hook)
+            self.ll_hook = None
+        self.ll_proc = HOOKPROC(self._ll_callback)
+        hook = _api().SetWindowsHookExW(WH_KEYBOARD_LL, ctypes.cast(self.ll_proc, ctypes.c_void_p).value,
+                                        _kernel().GetModuleHandleW(None), 0)
+        if not hook:
+            raise OSError(f"Windows refused the low-level keyboard hook (error {ctypes.get_last_error()})")
+        self.ll_hook = hook
+        return hook
+
+    def _watch_ll_hook(self, now):
+        """Windows drops a low-level hook that answers too slowly, without telling anyone. If keys keep
+        arriving by Raw Input but the hook hears nothing, put it back (and say so once)."""
+        if not self.ll_hook or self.probe:
+            return
+        behind = self.raw_seen - self.ll_seen
+        if behind <= 0:
+            self.ll_behind_since = None
+            return
+        if self.ll_behind_since is None:
+            self.ll_behind_since = now
+        elif now - self.ll_behind_since > LL_STALE_SECONDS:
+            log.warning("the low-level keyboard hook stopped hearing keys (Windows removes a hook that answers too slowly): "
+                        "installing it again")
+            self.ll_seen = self.raw_seen
+            self.ll_behind_since = None
+            self._install_ll_hook()
+
+    def _report_ll(self, final=False):
+        """Warn once if the low-level hook is doing badly; with final=True also say how it did overall."""
+        known, late = self.ll_stats["known"], self.ll_stats["late"]
+        total = known + late
+        if total >= LL_MIN_SAMPLE and known / total < LL_GOOD_SHARE:
+            if self.ll_warned:
+                return
+            self.ll_warned = True
+            log.warning("low-level hook: the keyboard of a key was known in time for only %d of %d numpad-type keys, so the others "
+                        "type as usual; set \"windows_blocking\": \"dll\" in config.json to go back to the DLL", known, total)
+        elif final and total:
+            log.info("low-level hook: keyboard known in time for %d of %d numpad-type keys, %d blocked", known, total, self.ll_stats["blocked"])
 
     def _install_hook(self):
         if not DLL_PATH.exists():
@@ -376,7 +495,10 @@ class _Listener:
             device = RAWINPUTDEVICE(0x01, 0x06, RIDEV_INPUTSINK, hwnd)  # generic desktop / keyboard
             if not u.RegisterRawInputDevices(ctypes.byref(device), 1, ctypes.sizeof(device)):
                 raise OSError(f"Windows refused Raw Input (error {ctypes.get_last_error()})")
-            if self.router is not None and self.router.grab:
+            self.hwnd = hwnd
+            if self.router is not None and (self.router.grab or self.probe) and self.lowlevel:
+                self._install_ll_hook()
+            elif self.router is not None and self.router.grab:
                 hook = self._install_hook()
             u.SetTimer(hwnd, 1, TICK_MS, None)
             if self.router is not None:
@@ -391,6 +513,10 @@ class _Listener:
                     _numpad_listener = None
             if hook:
                 u.UnhookWindowsHookEx(hook)
+            if self.ll_hook:
+                u.UnhookWindowsHookEx(self.ll_hook)
+                self.ll_hook = None
+                self._report_ll(final=True)
             if hwnd:
                 _windows.pop(hwnd, None)
                 u.DestroyWindow(hwnd)
@@ -486,7 +612,7 @@ class Numpad:
                     return True
             return False
 
-        return _Listener(lambda *raw: False, on_tick, router)
+        return _Listener(lambda *raw: False, on_tick, router, lowlevel=BLOCKING == "lowlevel")
 
     def _read(self, listener, emit):
         """Reader thread: the window, the hook and the message loop."""
@@ -530,6 +656,44 @@ def open_numpad(spec, grab):
     return Numpad(wanted, devices, grab) if devices else None
 
 
+def _ll_probe(spec, seconds=40):
+    """--ll-probe: for each numpad-type key, was its keyboard already known when the low-level hook ran?
+    The hook only watches here: nothing is blocked, every key types as usual."""
+    wanted = (spec["vendor"].lower(), spec["product"].lower())
+    cache = {}
+
+    def is_numpad(device):
+        if device not in cache:
+            cache[device] = parse_ids(_device_name(device)) == wanted
+        return cache[device]
+
+    names = {code: name for (code, e0), name in KEY_CODES.items()}
+    results = []
+
+    def show(scan, up, known, from_numpad):
+        results.append(known)
+        who = "numpad" if from_numpad else ("other keyboard" if known else "?")
+        print(f"  {names.get(scan, hex(scan)):<10} {'up  ' if up else 'down'}  {who:<15} "
+              f"{'Raw Input was already there' if known else 'Raw Input came LATE'}", flush=True)
+
+    deadline = time.monotonic() + seconds
+    router = KeyRouter(is_numpad, False, lambda item: None)
+    print(f"\nLow-level hook probe for {seconds} s. Press numpad keys, and the same keys on your main keyboard's "
+          "number pad if it has one. Nothing is blocked. Ctrl+C stops.\n", flush=True)
+    try:
+        _Listener(lambda *raw: False, lambda now: now >= deadline, router, lowlevel=True, probe=show).run()
+    except KeyboardInterrupt:
+        pass
+    total = len(results)
+    if not total:
+        print("\nNo numpad-type key was pressed.")
+        return
+    share = sum(results) / total
+    print(f"\nRaw Input was already there for {sum(results)} of {total} keys ({share:.0%}).")
+    print("Promising: the low-level hook can tell the keyboards apart. Try \"windows_blocking\": \"lowlevel\"." if share >= LL_GOOD_SHARE
+          else "Not reliable here: keep the default DLL (\"windows_blocking\": \"dll\").")
+
+
 def _show_everything(spec):
     """--all: every key from every keyboard, exactly as Windows reports it (nothing is swallowed)."""
     import re
@@ -558,6 +722,9 @@ if __name__ == "__main__":
 
     spec = config.load()["device"]
     print("Keyboards:", *[f"  {n}: {name}" for n, _, _, name in list_devices()], sep="\n", flush=True)
+    if "--ll-probe" in sys.argv:
+        _ll_probe(spec)
+        sys.exit(0)
     if "--all" in sys.argv:
         try:
             _show_everything(spec)

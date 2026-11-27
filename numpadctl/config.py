@@ -45,6 +45,7 @@ DEFAULT_CONFIG = {
     "appearance": "auto",  # settings window: "auto" (follow the system), "light" or "dark"
     "updates": "auto",          # install new releases by themselves; "notify" only says so; "off"
     "pause_for_games": "auto",  # with a game with anti-cheat running: "hook" = drop only the keyboard hook, "full" = let go of the numpad (auto: hook on Windows)
+    "windows_blocking": "dll",  # Windows: how the numpad's keys are kept from typing: "dll" (default) or "lowlevel" (experimental, see windows_rawinput.py)
     "protected_games": [],      # more program names for that, e.g. ["MyGame.exe"] (games.py has the list)
     "welcomed": False,  # the first-run welcome has been seen
     "hud": {"enabled": True, "opacity": 90},  # the key map shown while the layer key is held (opacity in %)

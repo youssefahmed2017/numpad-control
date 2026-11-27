@@ -18,10 +18,15 @@ import os
 
 from . import IS_WINDOWS
 
+
+def configure(cfg):
+    """Pass the backend options of the settings on (only Windows' Raw Input backend has any)."""
+
+
 if IS_WINDOWS and os.environ.get("NUMPADCTL_WINDOWS_BACKEND", "").lower() == "interception":
     from .windows_numpad import detect_device, list_devices, open_numpad  # noqa: F401
 elif IS_WINDOWS:
-    from .windows_rawinput import detect_device, list_devices, open_numpad  # noqa: F401
+    from .windows_rawinput import configure, detect_device, list_devices, open_numpad  # noqa: F401,F811
 else:
     from .linux_numpad import detect_device, list_devices, open_device, open_numpad  # noqa: F401
 

@@ -860,6 +860,7 @@ class Daemon:
             if game and not hook_only:
                 await asyncio.sleep(GAME_CHECK_SECONDS)
                 continue
+            numpad_input.configure(self.cfg)
             numpad = numpad_input.open_numpad(self.cfg["device"], self.cfg["grab"] and not game)
             if numpad is None:
                 if not waiting_logged:

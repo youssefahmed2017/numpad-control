@@ -172,6 +172,104 @@ class WindowHandlingTest(unittest.TestCase):
             self.assertEqual(wr._window_proc(1234, wr.QUERY_MESSAGE, 0, 0), 0)
 
 
+class LowLevelHookTest(unittest.TestCase):
+    """The experimental WH_KEYBOARD_LL mode, with Windows mocked out: the hook asks Raw Input first, like the DLL does."""
+
+    def listener(self, raws=(), probe=None):
+        self.emitted = []
+        router = wr.KeyRouter(lambda device: device == NUMPAD, True, self.emitted.append)
+        listener = wr._Listener(lambda *raw: False, lambda now: False, router, lowlevel=True, probe=probe)
+        listener.hwnd = 1234
+        pending = list(raws)
+        self.api = mock.Mock(**{"PeekMessageW.side_effect": lambda *a: 1 if pending else 0,
+                                "DefWindowProcW.return_value": 0, "CallNextHookEx.return_value": 77})
+        return listener, lambda lparam: pending.pop(0)
+
+    def press(self, listener, read, scan, up=False, injected=False):
+        info = wr.KBDLLHOOKSTRUCT(vkCode=0x65, scanCode=scan, flags=(wr.LLKHF_UP if up else 0) | (wr.LLKHF_INJECTED if injected else 0))
+        with mock.patch.object(wr, "_api", return_value=self.api), mock.patch.object(wr, "_read_raw", read):
+            return listener._ll_callback(0, 0x100, ctypes.addressof(info))
+
+    def test_a_numpad_key_whose_raw_input_is_waiting_is_swallowed(self):
+        listener, read = self.listener([(NUMPAD, SCAN["5"], False, False, 0, 0x65)])
+        self.assertEqual(self.press(listener, read, SCAN["5"]), 1)
+        self.assertEqual(self.emitted, [("5", True)])
+        self.assertEqual(listener.ll_stats, {"known": 1, "late": 0, "blocked": 1})
+        self.api.CallNextHookEx.assert_not_called()
+
+    def test_the_main_keyboards_key_is_passed_on(self):
+        listener, read = self.listener([(MAIN, SCAN["5"], False, False, 0, 0x65)])
+        self.assertEqual(self.press(listener, read, SCAN["5"]), 77, "CallNextHookEx's answer: the key goes on")
+        self.assertEqual((listener.ll_stats["known"], listener.ll_stats["blocked"]), (1, 0))
+
+    def test_a_key_whose_raw_input_is_not_there_yet_is_never_swallowed(self):
+        listener, read = self.listener([])
+        self.assertEqual(self.press(listener, read, SCAN["5"]), 77)
+        self.assertEqual(listener.ll_stats, {"known": 0, "late": 1, "blocked": 0})
+
+    def test_programs_keys_and_other_keys_are_ignored(self):
+        listener, read = self.listener([(NUMPAD, SCAN["5"], False, False, 0, 0x65)])
+        self.assertEqual(self.press(listener, read, SCAN["5"], injected=True), 77, "our own SendInput actions pass")
+        self.assertEqual(self.press(listener, read, SCAN["a"]), 77, "not a numpad-type key: not even looked at")
+        self.assertEqual(listener.ll_stats, {"known": 0, "late": 0, "blocked": 0})
+        self.api.PeekMessageW.assert_not_called()
+
+    def test_a_probe_looks_but_never_blocks(self):
+        seen = []
+        listener, read = self.listener([(NUMPAD, SCAN["5"], False, False, 0, 0x65)], probe=lambda *a: seen.append(a))
+        self.assertEqual(self.press(listener, read, SCAN["5"]), 77)
+        self.assertEqual(seen, [(SCAN["5"], False, True, True)])
+
+    def test_a_failure_inside_the_hook_still_lets_the_key_through(self):
+        listener, read = self.listener([(NUMPAD, SCAN["5"], False, False, 0, 0x65)])
+        listener.router.should_block = mock.Mock(side_effect=ZeroDivisionError)
+        with self.assertLogs("numpadctl", "ERROR"):
+            self.assertEqual(self.press(listener, read, SCAN["5"]), 77)
+
+    def test_a_hook_windows_dropped_is_put_back(self):
+        listener, _ = self.listener()
+        listener.ll_hook = 99
+        listener._install_ll_hook = mock.Mock()
+        listener.raw_seen, listener.ll_seen = 3, 3
+        listener._watch_ll_hook(10.0)
+        self.assertIsNone(listener.ll_behind_since)
+        listener.raw_seen = 4                      # a key arrived by Raw Input but the hook never heard it
+        listener._watch_ll_hook(11.0)
+        listener._watch_ll_hook(11.5)
+        listener._install_ll_hook.assert_not_called()   # a moment of grace: it may only be late
+        with self.assertLogs("numpadctl", "WARNING"):
+            listener._watch_ll_hook(12.2)
+        listener._install_ll_hook.assert_called_once()
+
+    def test_a_bad_share_is_warned_about_once(self):
+        listener, _ = self.listener()
+        listener.ll_stats.update(known=5, late=20)
+        with self.assertLogs("numpadctl", "WARNING") as logs:
+            listener._report_ll()
+            listener._report_ll()
+        self.assertEqual(len(logs.output), 1)
+        self.assertIn("windows_blocking", logs.output[0])
+
+    def test_the_setting_chooses_the_method(self):
+        try:
+            wr.configure({"windows_blocking": "lowlevel"})
+            self.assertEqual(wr.BLOCKING, "lowlevel")
+            wr.configure({"windows_blocking": "nonsense"})
+            self.assertEqual(wr.BLOCKING, "dll", "anything else is the default")
+            wr.configure({})
+            self.assertEqual(wr.BLOCKING, "dll")
+        finally:
+            wr.BLOCKING = "dll"
+
+    def test_the_router_knows_whether_a_keys_raw_input_arrived(self):
+        router = wr.KeyRouter(lambda device: device == NUMPAD, True, lambda item: None)
+        self.assertFalse(router.knows(SCAN["5"], False, 100.0))
+        router.raw(NUMPAD, SCAN["5"], False, False, 100.0)
+        self.assertTrue(router.knows(SCAN["5"], False, 100.5))
+        self.assertFalse(router.knows(SCAN["5"], True, 100.5), "the release is a different event")
+        self.assertFalse(router.knows(SCAN["5"], False, 100.0 + wr.FRESH + 1))
+
+
 class DllTest(unittest.TestCase):
     def test_the_c_file_matches_the_python_side(self):
         source = (wr.DLL_PATH.parent / "numpadhook" / "numpadhook.c").read_text().lower()
@@ -205,13 +303,15 @@ class StructureSizeTest(unittest.TestCase):
         self.assertEqual(ctypes.sizeof(wr.RAWKEYBOARD), 16)
         self.assertEqual(ctypes.sizeof(wr.RAWINPUTDEVICELIST), 16)
         self.assertEqual(ctypes.sizeof(wr.WNDCLASSEXW), 80)
+        self.assertEqual(ctypes.sizeof(wr.KBDLLHOOKSTRUCT), 24)
 
 
 @unittest.skipUnless(sys.platform == "win32", "needs real Windows")
 class RealWindowsTest(unittest.TestCase):
     """The real DLL, hook and Raw Input on a real Windows desktop (GitHub's Windows runner)."""
 
-    def test_raw_input_arrives_and_the_dll_blocks_what_the_router_says(self):
+    def run_real(self, lowlevel):
+        """Press keys with SendInput while a real hook (the DLL, or the low-level one) runs; returns what happened."""
         from ctypes import wintypes
         from numpadctl.platform import windows_system as ws
         u = ctypes.WinDLL("user32", use_last_error=True)
@@ -229,10 +329,14 @@ class RealWindowsTest(unittest.TestCase):
             def raw(self, device, scan, e0, up, now):
                 raw_seen.append((scan, up))
 
+            def knows(self, scan, up, now):
+                return (scan, up) in raw_seen
+
             def should_block(self, scan, up, now):
                 return scan == 0x4C
 
-        listener = wr._Listener(lambda *raw: False, lambda now: False, Router())
+        listener = wr._Listener(lambda *raw: False, lambda now: False, Router(), lowlevel=lowlevel)
+        listener.ll_block_injected = True  # SendInput's keys stand in for the numpad's here
         service = threading.Thread(target=listener.run, daemon=True)
         service.start()
         time.sleep(0.5)
@@ -281,12 +385,29 @@ class RealWindowsTest(unittest.TestCase):
         listener.stop()
         service.join(3)
 
-        print(f"\nRaw Input seen: {raw_seen}\nkeys the window received: {[hex(k) for k in received]}")
+        print(f"\nRaw Input seen: {raw_seen}\nkeys the window received: {[hex(k) for k in received]}"
+              f"\nlow-level stats: {listener.ll_stats}")
+        return raw_seen, received, listener
+
+    def test_raw_input_arrives_and_the_dll_blocks_what_the_router_says(self):
+        raw_seen, received, _ = self.run_real(lowlevel=False)
         self.assertIn((0x4C, False), raw_seen, "Raw Input reached the service's window")
         if not received:
             self.skipTest("the test window never got keyboard focus on this runner")
         self.assertIn(0x66, received, "a key the router lets through arrives")
         self.assertNotIn(0x65, received, "the DLL blocked the key the router said to block")
+
+    def test_the_low_level_hook_runs_and_never_swallows_what_the_router_lets_through(self):
+        """Measures, on a real Windows desktop, whether Raw Input is already waiting when the hook runs.
+        The printed stats are the answer; only what must always hold is asserted."""
+        raw_seen, received, listener = self.run_real(lowlevel=True)
+        stats = listener.ll_stats
+        self.assertGreater(stats["known"] + stats["late"], 0, "the hook was called for the numpad-type keys")
+        if not received:
+            self.skipTest("the test window never got keyboard focus on this runner")
+        self.assertIn(0x66, received, "a key the router lets through arrives")
+        if stats["blocked"]:
+            self.assertNotIn(0x65, received, "the hook blocked the key the router said to block")
 
 
 if __name__ == "__main__":

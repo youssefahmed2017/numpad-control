@@ -6,6 +6,13 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
 
 ## [Unreleased]
 
+### Added
+- **Experimental low-level keyboard hook on Windows** (`"windows_blocking": "lowlevel"` in `config.json`, default `"dll"`).
+  It keeps the numpad's keys from typing with a `WH_KEYBOARD_LL` hook in the service instead of the hook DLL, so nothing is
+  loaded into other programs and 32-bit apps are covered. A key whose keyboard isn't known in time is never swallowed, and a
+  hook Windows silently drops is put back. `python -m numpadctl.platform.windows_rawinput --ll-probe` measures a PC without
+  blocking anything. Administrator apps are still not covered, and the games' step-aside list works the same in both modes.
+
 ## [1.0.3] - 2026-11-27
 
 ### Changed
