@@ -6,6 +6,15 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
 
 ## [Unreleased]
 
+### Fixed
+- **Crash reports no longer get lost when no browser opens.** Pressing Yes in the crash dialog marked the crash as
+  reported even if the browser could not be started (for example when none was running). Now the report stays
+  waiting, its text is saved in a `.issue.txt` file next to the crash file, a message says where it is, and you are asked
+  again at the next start.
+- **A slow notification daemon can no longer crash the service.** `notify-send` taking more than 5 seconds (for
+  example for "Numpad not found") raised `TimeoutExpired` and took the service down. The notification is now skipped
+  instead, in the service and in the Run Python sandbox.
+
 ## [1.0.2] - 2026-11-21
 
 ### Changed

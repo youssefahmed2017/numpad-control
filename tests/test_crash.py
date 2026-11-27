@@ -65,6 +65,20 @@ class CrashTest(unittest.TestCase):
         self.assertEqual(query["title"], ["Crash: ValueError: boom"])
         self.assertIn("raise ValueError", query["body"][0])
 
+    def test_yes_without_a_working_browser_keeps_the_report_and_says_where_it_is(self):
+        for failure in ({"return_value": False}, {"side_effect": OSError("no browser")}):
+            with self.subTest(failure=failure):
+                crash.report("service", exc_info(f"boom {len(failure)} {list(failure)}"))
+                path = self.spawned[-1]
+                with mock.patch.object(crash, "_dialog", return_value=True), \
+                        mock.patch.object(crash, "_notice") as notice, \
+                        mock.patch.object(crash.webbrowser, "open", **failure):
+                    crash.ask(path)
+                self.assertEqual(crash._load(path)["state"], "pending")  # not "reported": it never was
+                saved = path.with_suffix(".issue.txt")
+                self.assertIn("raise ValueError", saved.read_text(encoding="utf-8"))
+                self.assertIn(str(saved), notice.call_args.args[0])
+
     def test_no_sends_nothing(self):
         crash.report("service", exc_info())
         with mock.patch.object(crash, "_dialog", return_value=False):

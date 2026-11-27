@@ -58,6 +58,12 @@ class LinuxSystemTest(unittest.TestCase):
             linux_system.notify("--hint=string:x:y", "body")
         self.assertEqual(run.call_args.args[0], ["notify-send", "-a", "NumpadControl", "--", "--hint=string:x:y", "body"])
 
+    def test_a_slow_notification_daemon_does_not_crash_the_caller(self):
+        self.tools()
+        for error in (linux_system.subprocess.TimeoutExpired("notify-send", 5), OSError("gone")):
+            with mock.patch.object(linux_system.subprocess, "run", side_effect=error):
+                linux_system.notify("Numpad not found", "Plug your numpad in")  # must not raise
+
     def test_volume_uses_swayosd_when_its_server_runs(self):
         fake = self.tools()
         linux_system.change_volume(+5)

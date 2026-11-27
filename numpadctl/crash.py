@@ -215,6 +215,47 @@ def _dialog(text):
     return None
 
 
+def _open_issue(report):
+    """True only if a browser really was started with the pre-filled issue."""
+    try:
+        return bool(webbrowser.open(issue_url(report)))
+    except Exception:
+        return False
+
+
+def _save_issue_text(path, report):
+    """The issue's title and text in a plain file next to the crash file; returns its path (or '')."""
+    url = urllib.parse.parse_qs(urllib.parse.urlparse(issue_url(report)).query)
+    target = Path(path).with_suffix(".issue.txt")
+    try:
+        target.write_text(f"{url['title'][0]}\n\n{url['body'][0]}", encoding="utf-8")
+    except OSError:
+        return ""
+    return str(target)
+
+
+def _notice(text):
+    """A plain 'OK' message, best effort (the crash handler must never fail because of it)."""
+    try:
+        if IS_WINDOWS:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(None, text, TITLE, 0x0 | 0x40 | 0x10000 | 0x40000)
+            return
+        _find_display()
+        if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+            return
+        import shutil
+        choices = [["zenity", "--info", "--title", TITLE, "--text", text, "--width", "420"],
+                   ["kdialog", "--title", TITLE, "--msgbox", text],
+                   ["xmessage", "-center", _wrap(text)]]
+        for argv in choices:
+            if shutil.which(argv[0]):
+                subprocess.run(argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return
+    except Exception:
+        pass
+
+
 def _wrap(text, width=64):
     """xmessage doesn't wrap lines itself."""
     import textwrap
@@ -253,8 +294,14 @@ def ask(path):
     if answer is None:
         report["state"] = "pending"  # no desktop to ask on: ask at the next start
     elif answer:
-        webbrowser.open(issue_url(report))
-        report["state"] = "reported"
+        if _open_issue(report):
+            report["state"] = "reported"
+        else:  # no browser could be opened: keep the report, say where its text is, ask again at the next start
+            report["state"] = "pending"
+            _notice(f"Couldn't open a browser, so nothing was reported.\n\n"
+                    f"The report is saved in this file, for you to read or paste into a new issue at\n"
+                    f"{ISSUE_URL}\n\n{_save_issue_text(path, report)}\n\n"
+                    "You will be asked again the next time NumpadControl starts.")
     else:
         report["state"] = "declined"
     _store(path, report)

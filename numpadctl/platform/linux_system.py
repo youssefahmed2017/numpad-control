@@ -68,8 +68,11 @@ def refresh_session():
 
 def notify(title, body=""):
     if shutil.which("notify-send"):
-        subprocess.run(["notify-send", "-a", "NumpadControl", "--", title, body],
-                       check=False, timeout=5)
+        try:
+            subprocess.run(["notify-send", "-a", "NumpadControl", "--", title, body],
+                           check=False, timeout=5)
+        except (subprocess.TimeoutExpired, OSError):
+            pass  # a slow or missing notification daemon must never take the service down
 
 
 # ---------------------------------------------------------------- opening things

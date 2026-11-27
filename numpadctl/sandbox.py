@@ -202,8 +202,11 @@ def _default_open_url(url):
 
 def _default_notify(title, body):
     import subprocess
-    subprocess.run(["notify-send", "-a", "NumpadControl", "--", title, body],
-                   check=False, timeout=5)  # "--": a title like "--hint=..." is text, not an option
+    try:  # "--": a title like "--hint=..." is text, not an option
+        subprocess.run(["notify-send", "-a", "NumpadControl", "--", title, body],
+                       check=False, timeout=5)
+    except (subprocess.TimeoutExpired, OSError):
+        pass  # a slow or missing notification daemon must not fail the snippet
 
 
 def run(code, on_open_url=_default_open_url, on_notify=_default_notify):
