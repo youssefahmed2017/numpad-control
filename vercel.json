@@ -5,5 +5,11 @@
   "framework": null,
   "installCommand": "npm ci --omit=dev",
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- site docs/screenshots vercel.json api package.json package-lock.json",
-  "cleanUrls": false
+  "cleanUrls": false,
+  "rewrites": [
+    {
+      "source": "/issues-attachments/:name",
+      "destination": "/api/attachment?name=:name"
+    }
+  ]
 }

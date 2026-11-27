@@ -107,7 +107,8 @@ test("a typed report is saved, and the contact line is kept private", async () =
   assert.ok(sql.calls.some((c) => c.text.startsWith("INSERT INTO feedback")));
   const list = await handleIssues(new Request("https://x/api/issues"), fakeSql());
   const listQuery = fakeSql(); await handleIssues(new Request("https://x/api/issues"), listQuery);
-  assert.ok(!listQuery.calls.find((c) => c.text.includes("FROM feedback") && c.text.startsWith("SELECT id, kind")).text.includes("contact"));
+  const feedbackQuery = listQuery.calls.find((c) => c.text.includes("FROM feedback f")).text;
+  assert.ok(!/contact|manage_hash/.test(feedbackQuery));
   assert.equal(list.status, 200);
 });
 

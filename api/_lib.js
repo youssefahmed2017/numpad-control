@@ -85,6 +85,10 @@ export async function ensureTables(sql) {
       id bigserial PRIMARY KEY, kind text NOT NULL, title text NOT NULL, body text NOT NULL, contact text NOT NULL DEFAULT '',
       status text NOT NULL DEFAULT 'open', fixed_in text, created timestamptz NOT NULL DEFAULT now())`;
     await sql`ALTER TABLE feedback ADD COLUMN IF NOT EXISTS manage_hash text`;
+    await sql`CREATE TABLE IF NOT EXISTS attachments (
+      id bigserial PRIMARY KEY, report_id bigint NOT NULL, name text UNIQUE NOT NULL, mime text NOT NULL, size integer NOT NULL,
+      data bytea NOT NULL, approved boolean NOT NULL DEFAULT false, h text NOT NULL, created timestamptz NOT NULL DEFAULT now())`;
+    await sql`CREATE INDEX IF NOT EXISTS attachments_report ON attachments (report_id)`;
     await sql`CREATE INDEX IF NOT EXISTS crash_rate_h ON crash_rate (h, t)`;
     await sql`CREATE INDEX IF NOT EXISTS crash_reports_sig ON crash_reports (signature)`;
   })().catch((error) => { ready = undefined; throw error; });
@@ -107,3 +111,22 @@ export function isAdmin(request, env) {
   const given = (request.headers.get("authorization") || "").replace(/^Bearer /i, "");
   return Boolean(env.ADMIN_TOKEN) && env.ADMIN_TOKEN.length >= 24 && sameSecret(given, env.ADMIN_TOKEN);
 }
+
+// ---- attachments: pictures only, checked by their first bytes, hidden until the maintainer approves them ----
+export const MAX_FILE = 4_000_000;            // bytes; Vercel refuses request bodies over about 4.5 MB
+export const MAX_FILES_PER_REPORT = 3;
+export const MAX_DAILY_BYTES = 20_000_000;    // from one address
+export const MAX_STORED_BYTES = 300_000_000;  // everything kept, so the database can't be filled
+export const MAX_PENDING = 30;                // waiting for review, in total
+export const ATTACHMENT_NAME = /^[0-9a-f]{32}\.(png|jpg|gif|webp)$/;
+
+/** What a file really is, from its first bytes (the name and the declared type are not trusted), or null. */
+export function sniff(bytes) {
+  const at = (i, text) => text.split("").every((c, k) => bytes[i + k] === c.charCodeAt(0));
+  if (bytes.length > 12 && bytes[0] === 0x89 && at(1, "PNG") && bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a) return { ext: "png", mime: "image/png" };
+  if (bytes.length > 12 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return { ext: "jpg", mime: "image/jpeg" };
+  if (bytes.length > 12 && (at(0, "GIF87a") || at(0, "GIF89a"))) return { ext: "gif", mime: "image/gif" };
+  if (bytes.length > 12 && at(0, "RIFF") && at(8, "WEBP")) return { ext: "webp", mime: "image/webp" };
+  return null;
+}
+export function newAttachmentName(ext) { return randomBytes(16).toString("hex") + "." + ext; }

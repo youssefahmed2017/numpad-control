@@ -29,15 +29,19 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
       <option value="bug">Something is broken</option><option value="feature">An idea or a feature</option><option value="question">A question</option></select><label>What is it?</label></div>
     <div class="field label border"><input id="np-title" maxlength="120" required><label>Title (a short summary)</label></div>
     <div class="field textarea label border"><textarea id="np-body" rows="6" maxlength="3000" required></textarea><label>What happened? Which computer and desktop? What did you expect?</label></div>
+    <p class="np-fine"><label for="np-files"><b>Pictures</b> (optional): up to 3 screenshots or GIFs, PNG, JPG, GIF or WEBP, 4 MB each.</label><br>
+      <input id="np-files" type="file" multiple accept="image/png,image/jpeg,image/gif,image/webp"></p>
     <div class="field label border"><input id="np-contact" maxlength="200" autocomplete="off"><label>How can we reach you? (optional, never shown)</label></div>
     <div style="position:absolute;left:-9999px" aria-hidden="true"><input id="np-website" tabindex="-1" autocomplete="off"></div>
-    <p class="np-fine">Your title and text are <b>public</b> on this page, so please leave out passwords and personal details. The contact line is
+    <p class="np-fine">Your title and text are <b>public</b> on this page, so please leave out passwords and personal details. Pictures are looked at by the
+    maintainer before they appear; take screenshots rather than camera photos, which can hold your location. The contact line is
     private and used only to answer you.</p>
     <nav><button class="round" type="submit" id="np-send">Send</button><span id="np-result" role="status"></span></nav>
   </form>
 </section>
 
 <section class="np np-faq" id="issues">
+  <div id="np-pending"></div>
   <div id="np-filters" class="np-filters" role="group" aria-label="Filter the list">
     <nav class="wrap" id="np-status-chips"></nav>
     <nav class="wrap" id="np-kind-chips"></nav>
@@ -120,6 +124,13 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
     const own = Boolean(mine()[r.id]);
     s.append(el("span", r.title), el("span", `${KIND[r.kind] || r.kind} · ${STATUS[r.status] || r.status}`, "np-label"));
     d.append(s, el("p", `${day(r.created)}${r.fixed_in ? " · fixed in " + r.fixed_in : ""}${own ? " · yours" : ""}`), el("p", r.body, "np-text"));
+    for (const name of r.files || []) {
+      const a = el("a"), img = el("img");
+      a.href = "/issues-attachments/" + name; a.target = "_blank"; a.rel = "noopener";
+      img.src = a.href; img.alt = "Picture sent with this report"; img.loading = "lazy"; img.className = "np-shot";
+      a.append(img); d.append(a);
+    }
+    if (r.pending_files && (own || admin)) d.append(el("p", `${r.pending_files} picture${r.pending_files > 1 ? "s" : ""} waiting to be looked at`, "np-fine"));
     if (admin && contacts[r.id]) d.append(el("p", "Contact: " + contacts[r.id], "np-fine"));
     if (own && (r.status === "open" || r.status === "closed")) {
       const b = el("button", r.status === "open" ? "Close this" : "Reopen this", "small round border"); b.type = "button";
@@ -158,12 +169,41 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
     fill($("np-reports"), $("np-reports-count"), reports, reportItem, filtered, "Nothing matches these filters.");
     fill($("np-crashes"), $("np-crashes-count"), crashes, crashItem, filtered, "Nothing matches these filters.");
     $("np-reports").parentElement.classList.toggle("np-admin-on", Boolean(admin));
+    drawPending();
     $("np-admin-link").textContent = admin ? "Leave maintainer mode" : "Maintainer";
+  }
+
+  async function pendingAction(name, action) {
+    try { await call("/api/issue-status", { attachment: name, action }, bearer()); await loadPending(); draw(); if (action === "approve") load(); }
+    catch (e) { alert(e.message); }
+  }
+  async function loadPending() {
+    data.pending = [];
+    if (!admin) return;
+    const r = await fetch("/api/issue-status?pending=1", { headers: bearer() });
+    if (r.ok) data.pending = (await r.json()).pending || [];
+  }
+  function drawPending() {
+    const box = $("np-pending");
+    box.replaceChildren();
+    if (!admin || !(data.pending || []).length) return;
+    box.append(el("h2", `Pictures waiting for review (${data.pending.length})`));
+    for (const p of data.pending) {
+      const card = el("div", undefined, "np-admin"), img = el("img", undefined, "np-shot");
+      img.alt = "Waiting for review";
+      fetch("/issues-attachments/" + p.name, { headers: bearer() }).then((r) => r.blob()).then((b) => { img.src = URL.createObjectURL(b); });
+      const ok = el("button", "Approve", "small round"), no = el("button", "Delete", "small round border");
+      ok.type = no.type = "button";
+      ok.addEventListener("click", () => pendingAction(p.name, "approve"));
+      no.addEventListener("click", () => pendingAction(p.name, "delete"));
+      card.append(img, el("span", `${p.title} · ${(p.size / 1024).toFixed(0)} KB`), ok, no);
+      box.append(card);
+    }
   }
 
   function load() {
     fetch("/api/issues", admin ? { headers: bearer() } : undefined).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then((json) => { data = { issues: json.issues || [], reports: json.reports || [] }; return admin ? loadContacts() : null; })
+      .then((json) => { data = { issues: json.issues || [], reports: json.reports || [] }; return admin ? Promise.all([loadContacts(), loadPending()]) : null; })
       .then(draw)
       .catch(() => { for (const id of ["np-reports", "np-crashes"]) $(id).replaceChildren(el("p", "The list couldn't be loaded right now. Try again in a moment.")); });
   }
@@ -185,17 +225,37 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
   });
 
   // ---- the form ----
+  const MAX_FILE = 4000000, MAX_FILES = 3;
+  async function uploadFiles(answer, files) {
+    const failed = [];
+    for (const file of files) {
+      try {
+        const r = await fetch("/api/attachment", { method: "POST", body: file,
+          headers: { "x-report-id": String(answer.id), "x-manage-token": answer.token, "content-type": file.type || "application/octet-stream" } });
+        if (!r.ok) failed.push(`${file.name}: ${((await r.json().catch(() => ({}))).error) || "it didn't work"}`);
+      } catch (e) { failed.push(`${file.name}: no connection`); }
+    }
+    return failed;
+  }
+
   const form = $("np-form"), result = $("np-result"), button = $("np-send");
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     result.textContent = "";
+    const files = Array.from($("np-files").files);
+    if (files.length > MAX_FILES) { result.textContent = ` At most ${MAX_FILES} pictures, please.`; return; }
+    const big = files.find((f) => f.size > MAX_FILE);
+    if (big) { result.textContent = ` ${big.name} is over 4 MB.`; return; }
     button.disabled = true;
     call("/api/report", {
       kind: $("np-kind").value, title: $("np-title").value, body: $("np-body").value, contact: $("np-contact").value,
       website: $("np-website").value, elapsed: Date.now() - loaded,
-    }).then((answer) => {
+    }).then(async (answer) => {
       if (answer.id && answer.token) { const keys = mine(); keys[answer.id] = answer.token; store.set("localStorage", "np-mine", keys); }
-      result.textContent = " Thank you! It will show in the list within a minute. You can close it yourself when it's sorted.";
+      const failed = answer.id && answer.token && files.length ? await uploadFiles(answer, files) : [];
+      result.textContent = " Thank you! It will show in the list within a minute. You can close it yourself when it's sorted."
+        + (files.length - failed.length > 0 ? " Your pictures appear once the maintainer has looked at them." : "")
+        + (failed.length ? " Your report is saved, but: " + failed.join("; ") : "");
       form.reset();
       button.disabled = false;
       setTimeout(load, 61000);

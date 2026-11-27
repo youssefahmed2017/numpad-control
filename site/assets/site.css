@@ -99,3 +99,4 @@ main .np-fine { color: var(--on-surface-variant); font-size: .85rem; margin: 4px
 .np-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .np-admin { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 10px 0 14px; }
 .np-admin select, .np-admin input { min-width: 0; }
+.np-shot { max-width: min(100%, 420px); max-height: 320px; border-radius: 12px; display: block; margin: 8px 0; }
