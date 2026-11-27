@@ -130,6 +130,37 @@
     setTimeout(() => press(9, false), 900);
   }
 
+  // ---- the key map overlay on the home page: two see-through pads fading in over a desktop ----
+  const LAYER = { "7": "Mute mic", "8": "Hold: Screenshot", "9": "Next track", "4": "Volume down", "5": "Play / pause",
+                  "6": "Volume up", "+": "Privacy panic", "1": "Open browser", "⏎": "Shows this map" };
+  function wireOverlay() {
+    const root = document.getElementById("ov-demo");
+    if (!root) return;
+    const pad = (layer) => `<div class="np-ov-pad">${KEYS.map(([label, short, , , , tall]) => {
+      const text = layer ? (LAYER[label] || "") : (label === "Num" ? "Layer key" : label === "⏎" ? "" : short);
+      return `<div class="np-ov-key${tall ? " tall" : ""}${text ? "" : " off"}"><b>${label}</b><small>${text || "·"}</small></div>`;
+    }).join("")}</div>`;
+    root.querySelector(".np-ov-panel").innerHTML =
+      `<div><h6 class="small">Normally</h6>${pad(false)}</div><div><h6 class="small">With Num held</h6>${pad(true)}</div>`;
+    const toggle = document.getElementById("ov-toggle");
+    let timer;
+    const set = (on) => { root.classList.toggle("show", on); toggle.setAttribute("aria-pressed", String(on)); };
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) { set(true); }
+    else {
+      let on = false, manual = false;
+      const tick = () => { if (!manual && !document.hidden) { on = !on; set(on); } };
+      setTimeout(() => { on = true; set(true); }, 1200);
+      timer = setInterval(tick, 3800);
+      toggle.addEventListener("click", () => {
+        manual = true; on = !root.classList.contains("show"); set(on);
+        clearTimeout(manual.t); setTimeout(() => { manual = false; }, 9000);
+        count("overlay-demo-toggle");
+      });
+    }
+    if (reduced) toggle.addEventListener("click", () => set(!root.classList.contains("show")));
+  }
+
   // ---- download page: OS tabs and copy buttons ----
   function wireDownload() {
     document.querySelectorAll(".np-os-tabs").forEach(tabs => tabs.addEventListener("click", (e) => {
@@ -192,6 +223,7 @@
     wireChrome();
     wireFabs();
     wireDemo();
+    wireOverlay();
     wireDownload();
     wireCounting();
   });

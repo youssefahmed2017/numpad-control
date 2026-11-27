@@ -113,3 +113,26 @@ main .np-fine { color: var(--on-surface-variant); font-size: .85rem; margin: 4px
    The same for the current page in the header and for a chosen filter chip, with a short fade between the two. */
 :is(a, button, .chip) > i { transition: font-variation-settings .22s ease, color .22s ease; }
 .np-bar a[aria-current="page"] > i, .chip.fill > i, .np-os-tabs a.active > i { font-variation-settings: "FILL" 1; }
+
+/* The key map overlay demo: two see-through pads that fade in over a fake desktop. */
+.np-ov { position: relative; border-radius: 28px; overflow: hidden; background: var(--surface-container-low); }
+.np-ov-desk { height: 400px; padding: 22px; display: grid; align-content: start; gap: 12px;
+  background: linear-gradient(135deg, var(--primary-container), var(--tertiary-container, var(--secondary-container))); }
+.np-ov-desk span { display: block; height: 14px; border-radius: 8px; background: color-mix(in srgb, var(--on-surface) 22%, transparent); }
+.np-ov-desk span:nth-child(1) { width: 38%; height: 20px; } .np-ov-desk span:nth-child(2) { width: 82%; }
+.np-ov-desk span:nth-child(3) { width: 70%; } .np-ov-desk span:nth-child(4) { width: 88%; } .np-ov-desk span:nth-child(5) { width: 55%; }
+.np-ov-panel { position: absolute; inset: 20px 20px 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px;
+  border-radius: 22px; background: color-mix(in srgb, var(--surface) 70%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid color-mix(in srgb, var(--on-surface) 14%, transparent);
+  opacity: 0; transform: scale(.97); transition: opacity .45s ease, transform .45s ease; pointer-events: none; }
+.np-ov.show .np-ov-panel { opacity: 1; transform: none; }
+.np-ov-panel h6 { margin: 0 0 8px; color: var(--primary); }
+.np-ov-pad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.np-ov-key { border-radius: 10px; padding: 5px 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  background: color-mix(in srgb, var(--secondary-container) 85%, transparent); color: var(--on-secondary-container); min-width: 0; }
+.np-ov-key.tall { grid-row: span 2; }
+.np-ov-key b { font-size: .8rem; } .np-ov-key small { font-size: .52rem; line-height: 1.1; }
+.np-ov-key.off { background: color-mix(in srgb, var(--surface-container-highest) 55%, transparent); color: var(--on-surface-variant); opacity: .7; }
+.np-ov-cap { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; padding: 12px 20px; font-size: .85rem; color: var(--on-surface-variant);
+  background: var(--surface-container-low); }
+@media (max-width: 600px) { .np-ov-desk { height: 520px; } .np-ov-panel { grid-template-columns: 1fr; inset: 12px 12px 44px; } .np-ov-key small { font-size: .5rem; } }

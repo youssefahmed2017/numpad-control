@@ -38,6 +38,7 @@
       </div>
       <div class="row wrap" style="margin-top:20px">
         <span class="chip" data-icon="keyboard">Works next to your keyboard</span>
+        <span class="chip" data-icon="layers"><a href="#overlay" style="color:inherit">Key map overlay</a></span>
         <span class="chip" data-icon="sports_esports">Steps aside for anti-cheat games</span>
       </div>
     </div>
@@ -63,6 +64,27 @@
       <source src="video/numpad-demo.mp4" type="video/mp4">
       Your browser can't play this video. <a href="video/numpad-demo.mp4">Download it</a>.
     </video>
+  </div>
+</section>
+
+<section class="np" id="overlay">
+  <div class="grid" style="align-items:center">
+    <div class="s12 l5">
+      <span class="np-label">Key map overlay</span>
+      <h2 style="margin:6px 0 12px">Never forget what a key does</h2>
+      <p class="np-lead">Hold your layer key and press Enter. A see-through copy of your numpad fades onto the screen: what every key does now, and what it does with the layer held. Let go, and it's gone.</p>
+      <p>It never takes focus and every click goes straight through it, so it can't get in your way in OBS, a game or an editor. It shows the keys for the app you're in, and it costs nothing until you set a layer key.</p>
+      <div class="row wrap" style="margin-top:16px">
+        <button class="button round" id="ov-toggle" type="button"><i aria-hidden="true">layers</i><span>Show it, hide it</span></button>
+      </div>
+    </div>
+    <div class="s12 l7">
+      <div class="np-ov" id="ov-demo" aria-label="A demo of the key map overlay on top of a desktop">
+        <div class="np-ov-desk" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="np-ov-panel" role="img" aria-label="Two numpads: what each key does normally, and what it does with the layer key held"></div>
+        <p class="np-ov-cap">In this demo the layer key is Num. Hold it and press Enter.</p>
+      </div>
+    </div>
   </div>
 </section>
 
