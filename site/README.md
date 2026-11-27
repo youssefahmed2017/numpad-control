@@ -7,7 +7,10 @@ Plain HTML, CSS and JavaScript: no build step, no libraries. Vercel serves it at
 ## Pages
 
 `index.html` (home, with the live numpad demo), `features.html`, `docs.html` (guides and the app screenshots), `pricing.html` ("Why free"),
-`download.html`, `faq.html`, `privacy.html` and `404.html`. Every page has the same skeleton:
+`download.html`, `faq.html`, `issues.html` (the crash reports people sent, read from `/api/issues`), `privacy.html` and `404.html`.
+
+The crash-report API lives in `../api/` (Vercel functions + a Neon database: `DATABASE_URL`; `ADMIN_TOKEN` marks issues fixed;
+`RATE_SALT` salts the daily address hash). `npm test` runs its tests. Every page has the same skeleton:
 an empty `<header class="appbar">` and `<footer class="site">`, which `assets/site.js` fills
 with the navigation, the colour picker, the phone drawer and the footer. To add a page, copy
 one, then add it to `PAGES` in `site.js`.
