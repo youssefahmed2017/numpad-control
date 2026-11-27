@@ -15,7 +15,7 @@ You set it up in a settings window, no code needed. Free and open source (GPL-3.
 ## Why use it
 A Stream Deck costs $150 and a numpad costs $10. NumpadControl gives the numpad the same job, and a few things more:
 
-- **Every key does three things.** Press, hold and double tap are separate actions, so 19 keys give you 57. Hold a
+- **Every key does three things.** Press, hold and double tap are separate actions, so 19 keys give you more than 50. Hold a
   layer key and you get a second set on top.
 - **It changes with the app you are in.** Per-app profiles swap the whole pad when a window is focused (OBS, your
   editor, a game), and profile sets switch whole setups ("Coding", "Streaming") from one key.
