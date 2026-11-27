@@ -70,7 +70,16 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
     drop(area, key) { try { window[area].removeItem(key); } catch (e) { /* nothing to do */ } },
   };
   const mine = () => store.get("localStorage", "np-mine") || {};
-  let admin = store.get("sessionStorage", "np-admin");
+  // The maintainer stays signed in on this browser for 30 days (or until "Leave maintainer mode"), so closing the tab doesn't log out.
+  const ADMIN_DAYS = 30;
+  function savedAdmin() {
+    const saved = store.get("localStorage", "np-admin");
+    if (saved && saved.token && saved.until > Date.now()) return saved.token;
+    store.drop("localStorage", "np-admin");
+    return null;
+  }
+  const rememberAdmin = (token) => store.set("localStorage", "np-admin", { token, until: Date.now() + ADMIN_DAYS * 86400000 });
+  let admin = savedAdmin();
   let contacts = {};
   let data = { issues: [], reports: [] };
   const filter = { status: "open", kind: "all", q: "" };
@@ -209,18 +218,18 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
   }
   async function loadContacts() {
     const r = await fetch("/api/issue-status?feedback=1", { headers: bearer() });
-    if (r.status === 401) { admin = null; store.drop("sessionStorage", "np-admin"); return; }
+    if (r.status === 401) { admin = null; store.drop("localStorage", "np-admin"); return; }
     contacts = Object.fromEntries(((await r.json()).reports || []).filter((x) => x.contact).map((x) => [x.id, x.contact]));
   }
 
   $("np-search").addEventListener("input", (e) => { filter.q = e.target.value.trim(); draw(); });
   $("np-admin-link").addEventListener("click", (e) => {
     e.preventDefault();
-    if (admin) { admin = null; contacts = {}; store.drop("sessionStorage", "np-admin"); load(); return; }
+    if (admin) { admin = null; contacts = {}; store.drop("localStorage", "np-admin"); load(); return; }
     const token = window.prompt("Maintainer token:");
     if (!token) return;
     admin = token.trim();
-    store.set("sessionStorage", "np-admin", admin);
+    rememberAdmin(admin);
     load();
   });
 

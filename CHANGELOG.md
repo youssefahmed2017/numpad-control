@@ -23,6 +23,14 @@ what is planned is in [ROADMAP.md](ROADMAP.md). Dates are the day the release wa
   tab only) to set any item to open, closed, fixed (with the version), won't fix, duplicate or hidden, and to see the
   contact lines; hidden items are only visible there.
 
+- **Pictures with a report.** The form takes up to 3 PNG, JPG, GIF or WEBP pictures of 4 MB each. They are checked by their real
+  contents (not their name), kept under random names (`numpad.ahmedabdou.net/issues-attachments/<hash>.png`), and stay hidden
+  until the maintainer approves them in Maintainer mode (which lists the waiting ones with Approve and Delete). Limits keep the
+  database from filling: 20 MB a day per address, 30 waiting in total, 300 MB overall. No videos: a single upload can't be
+  larger than about 4.5 MB on this host.
+- **Maintainer mode stays on for 30 days** in the browser where you entered the token (it used to end when the tab closed);
+  "Leave maintainer mode" ends it at once.
+
 ### Fixed
 - **Crash reports no longer get lost.** Pressing Yes used to mark the crash as reported even if nothing was delivered
   (no browser running). Now a crash counts as reported only once the website confirmed it; otherwise it stays waiting,

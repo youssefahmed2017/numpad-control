@@ -24,6 +24,8 @@ and the details are public afterwards.
 - **The service's connection.** Linux: a socket only your user can open. Windows: a localhost port
   that needs a random key kept in a file only your user can read. It accepts at most 16 clients
   and ignores or drops anything malformed. It can't run actions or change settings; only report keys.
+- **Pictures on the Issues page.** Up to 3 per report, PNG/JPG/GIF/WEBP only (checked by their first bytes; SVG and video are refused), 4 MB each, random names, served with `nosniff` and a sandboxing CSP, and hidden until the maintainer approves them. See `api/attachment.js`.
+- **Maintainer token in the browser.** Maintainer mode keeps the token in that browser's local storage for 30 days; use "Leave maintainer mode" on a shared computer. The page only ever writes server text into the page as plain text, so a report can't run script there.
 - **Crash reports.** Nothing is sent by itself. The crash dialog shows what would be sent and only Yes sends it, to `numpad.ahmedabdou.net/api/crash` (no account, no IP stored, listed on the Issues page). The endpoint is in `api/`: it checks size and shape, rate-limits, and keeps notes and system details private.
 - **Commands.** Every program NumpadControl starts gets its arguments as a list (never through a shell),
   with text kept apart from options.
