@@ -29,14 +29,14 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
       <option value="bug">Something is broken</option><option value="feature">An idea or a feature</option><option value="question">A question</option></select><label>What is it?</label></div>
     <div class="field label border"><input id="np-title" maxlength="120" required><label>Title (a short summary)</label></div>
     <div class="field textarea label border"><textarea id="np-body" rows="6" maxlength="3000" required></textarea><label>What happened? Which computer and desktop? What did you expect?</label></div>
-    <p class="np-fine"><label for="np-files"><b>Pictures</b> (optional): up to 3 screenshots or GIFs, PNG, JPG, GIF or WEBP, 4 MB each.</label><br>
+    <p class="np-fine"><label for="np-files"><i aria-hidden="true">add_photo_alternate</i> <b>Pictures</b> (optional): up to 3 screenshots or GIFs, PNG, JPG, GIF or WEBP, 4 MB each.</label><br>
       <input id="np-files" type="file" multiple accept="image/png,image/jpeg,image/gif,image/webp"></p>
     <div class="field label border"><input id="np-contact" maxlength="200" autocomplete="off"><label>How can we reach you? (optional, never shown)</label></div>
     <div style="position:absolute;left:-9999px" aria-hidden="true"><input id="np-website" tabindex="-1" autocomplete="off"></div>
     <p class="np-fine">Your title and text are <b>public</b> on this page, so please leave out passwords and personal details. Pictures are looked at by the
     maintainer before they appear; take screenshots rather than camera photos, which can hold your location. The contact line is
     private and used only to answer you.</p>
-    <nav><button class="round" type="submit" id="np-send">Send</button><span id="np-result" role="status"></span></nav>
+    <nav><button class="extend square round np-fab" type="submit" id="np-send"><i aria-hidden="true">send</i><span>Send</span></button><span id="np-result" role="status"></span></nav>
   </form>
 </section>
 
@@ -45,11 +45,11 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
   <div id="np-filters" class="np-filters" role="group" aria-label="Filter the list">
     <nav class="wrap" id="np-status-chips"></nav>
     <nav class="wrap" id="np-kind-chips"></nav>
-    <div class="field label border small"><input id="np-search" type="search" autocomplete="off"><label>Search</label></div>
+    <div class="field label prefix border small"><i aria-hidden="true">search</i><input id="np-search" type="search" autocomplete="off"><label>Search</label></div>
   </div>
   <h2>Reported by people <span id="np-reports-count" class="np-label"></span></h2><div id="np-reports"><p>Loading…</p></div>
   <h2>Crashes <span id="np-crashes-count" class="np-label"></span></h2><div id="np-crashes"><p>Loading…</p></div>
-  <p class="np-fine"><a href="#" id="np-admin-link">Maintainer</a></p>
+  <p class="np-fine"><a href="#" id="np-admin-link" class="np-icon-link"><i aria-hidden="true">admin_panel_settings</i><span>Maintainer</span></a></p>
 </section>
 </main>
 <footer class="np-foot"></footer>
@@ -62,6 +62,8 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
   const day = (iso) => new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   const loaded = Date.now();
   const $ = (id) => document.getElementById(id);
+  const glyph = (name) => { const i = el("i", name); i.setAttribute("aria-hidden", "true"); return i; };
+  const withIcon = (name, text, cls) => { const b = el("button", undefined, cls); b.type = "button"; b.append(glyph(name), el("span", text)); return b; };
 
   // ---- what this browser remembers: the keys of its own reports, and the maintainer's token (this tab only) ----
   const store = {
@@ -87,8 +89,9 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
   // ---- the filters ----
   function chips(into, options, key) {
     into.replaceChildren();
-    for (const [value, text] of options) {
-      const b = el("button", text, "chip small round " + (filter[key] === value ? "fill" : "border"));
+    for (const [value, text, icon] of options) {
+      const b = el("button", undefined, "chip small round " + (filter[key] === value ? "fill" : "border"));
+      b.append(glyph(icon), el("span", text));
       b.type = "button";
       b.setAttribute("aria-pressed", String(filter[key] === value));
       b.addEventListener("click", () => { filter[key] = value; draw(); });
@@ -122,7 +125,7 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
     const select = el("select");
     for (const [value, text] of Object.entries(STATUS)) { const o = el("option", text); o.value = value; o.selected = value === item.status; select.append(o); }
     const fixed = el("input"); fixed.placeholder = "fixed in (e.g. 1.0.3)"; fixed.value = item.fixed_in || ""; fixed.maxLength = 40;
-    const apply = el("button", "Apply", "small round"); apply.type = "button";
+    const apply = withIcon("check", "Apply", "small round");
     apply.addEventListener("click", () => adminSet(body, item, select.value, fixed.value.trim()));
     box.append(select, fixed, apply);
     return box;
@@ -142,7 +145,7 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
     if (r.pending_files && (own || admin)) d.append(el("p", `${r.pending_files} picture${r.pending_files > 1 ? "s" : ""} waiting to be looked at`, "np-fine"));
     if (admin && contacts[r.id]) d.append(el("p", "Contact: " + contacts[r.id], "np-fine"));
     if (own && (r.status === "open" || r.status === "closed")) {
-      const b = el("button", r.status === "open" ? "Close this" : "Reopen this", "small round border"); b.type = "button";
+      const b = withIcon(r.status === "open" ? "task_alt" : "replay", r.status === "open" ? "Close this" : "Reopen this", "small round border");
       b.addEventListener("click", () => ownerSet(r, r.status === "open" ? "closed" : "open"));
       d.append(b);
     }
@@ -170,8 +173,8 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
     const counts = (list) => ({ open: list.filter((x) => x.status === "open").length, done: list.filter((x) => DONE.includes(x.status)).length });
     const all = [...data.reports, ...data.issues];
     const c = counts(all);
-    chips($("np-status-chips"), [["open", `Open (${c.open})`], ["closed", `Closed (${c.done})`], ["all", "All"]], "status");
-    chips($("np-kind-chips"), [["all", "Everything"], ["bug", "Bugs"], ["feature", "Ideas"], ["question", "Questions"], ["crash", "Crashes"]], "kind");
+    chips($("np-status-chips"), [["open", `Open (${c.open})`, "radio_button_unchecked"], ["closed", `Closed (${c.done})`, "check_circle"], ["all", "All", "list"]], "status");
+    chips($("np-kind-chips"), [["all", "Everything", "apps"], ["bug", "Bugs", "bug_report"], ["feature", "Ideas", "lightbulb"], ["question", "Questions", "help"], ["crash", "Crashes", "report"]], "kind");
     const reports = data.reports.filter((r) => statusMatch(r.status) && (filter.kind === "all" || filter.kind === r.kind) && textMatch(r.title, r.body));
     const crashes = data.issues.filter((i) => statusMatch(i.status) && (filter.kind === "all" || filter.kind === "crash") && textMatch(i.title, i.traceback, i.component));
     const filtered = filter.status !== "all" || filter.kind !== "all" || filter.q;
@@ -179,7 +182,8 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
     fill($("np-crashes"), $("np-crashes-count"), crashes, crashItem, filtered, "Nothing matches these filters.");
     $("np-reports").parentElement.classList.toggle("np-admin-on", Boolean(admin));
     drawPending();
-    $("np-admin-link").textContent = admin ? "Leave maintainer mode" : "Maintainer";
+    const link = $("np-admin-link");
+    link.replaceChildren(glyph(admin ? "logout" : "admin_panel_settings"), el("span", admin ? "Leave maintainer mode" : "Maintainer"));
   }
 
   async function pendingAction(name, action) {
@@ -201,8 +205,7 @@ dialog sends its report here for you. <a href="privacy.html">What is sent</a>.</
       const card = el("div", undefined, "np-admin"), img = el("img", undefined, "np-shot");
       img.alt = "Waiting for review";
       fetch("/issues-attachments/" + p.name, { headers: bearer() }).then((r) => r.blob()).then((b) => { img.src = URL.createObjectURL(b); });
-      const ok = el("button", "Approve", "small round"), no = el("button", "Delete", "small round border");
-      ok.type = no.type = "button";
+      const ok = withIcon("check", "Approve", "small round"), no = withIcon("delete", "Delete", "small round border");
       ok.addEventListener("click", () => pendingAction(p.name, "approve"));
       no.addEventListener("click", () => pendingAction(p.name, "delete"));
       card.append(img, el("span", `${p.title} · ${(p.size / 1024).toFixed(0)} KB`), ok, no);

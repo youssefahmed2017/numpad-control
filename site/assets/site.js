@@ -6,9 +6,9 @@
   const KOFI = "https://ko-fi.com/youssefahmedabdou";  // the optional tip jar
 
   const PAGES = [
-    ["index.html", "Home"], ["features.html", "Features"], ["pricing.html", "Why free"],
-    ["download.html", "Get started"], ["docs.html", "Docs"], ["faq.html", "FAQ"],
-    ["issues.html", "Issues"],
+    ["index.html", "Home", "home"], ["features.html", "Features", "widgets"], ["pricing.html", "Why free", "favorite"],
+    ["download.html", "Get started", "rocket_launch"], ["docs.html", "Docs", "menu_book"], ["faq.html", "FAQ", "help"],
+    ["issues.html", "Issues", "bug_report"],
   ];
   const here = (location.pathname.split("/").pop() || "index.html");
   const icon = (name) => `<i aria-hidden="true">${name}</i>`;
@@ -20,8 +20,8 @@
 
   // ---- header, drawer, colour dialog, footer ----
   function buildChrome() {
-    const links = PAGES.map(([h, t]) =>
-      `<a class="button round ${h === here ? "secondary-container" : "transparent"}" href="${h}"${h === here ? ' aria-current="page"' : ""}>${t}</a>`).join("");
+    const links = PAGES.map(([h, t, i]) =>
+      `<a class="button round ${h === here ? "secondary-container" : "transparent"}" href="${h}"${h === here ? ' aria-current="page"' : ""}>${icon(i)}<span>${t}</span></a>`).join("");
     document.querySelector("header.np-bar").innerHTML = `
       <nav>
         <button class="circle transparent s" data-ui="#np-drawer" aria-label="Open the menu">${icon("menu")}</button>
@@ -36,9 +36,9 @@
         <nav class="drawer">
           <header><nav><a class="np-brand" href="index.html">${LOGO}NumpadControl</a><div class="max"></div>
             <button class="circle transparent" data-ui="#np-drawer" aria-label="Close">${icon("close")}</button></nav></header>
-          ${PAGES.map(([h, t]) => `<a href="${h}"${h === here ? ' class="active"' : ""}><span>${t}</span></a>`).join("")}
-          <a href="privacy.html"><span>Privacy</span></a>
-          <a href="${GITHUB}"><span>GitHub</span></a>
+          ${PAGES.map(([h, t, i]) => `<a href="${h}"${h === here ? ' class="active"' : ""}>${icon(i)}<span>${t}</span></a>`).join("")}
+          <a href="privacy.html">${icon("shield")}<span>Privacy</span></a>
+          <a href="${GITHUB}">${icon("code")}<span>GitHub</span></a>
         </nav>
       </dialog>
       <dialog id="np-colours" class="round">
@@ -47,9 +47,9 @@
           `<button class="np-swatch" style="background:${hex}" data-accent="${name}" aria-label="${name}" title="${name}" aria-pressed="false"></button>`).join("")}</div>
         <h6>Appearance</h6>
         <div class="row" role="group">${["auto", "light", "dark"].map(m =>
-          `<button class="chip" data-mode="${m}" aria-pressed="false">${m === "auto" ? "System" : m[0].toUpperCase() + m.slice(1)}</button>`).join("")}</div>
+          `<button class="chip" data-mode="${m}" aria-pressed="false">${icon({ auto: "brightness_auto", light: "light_mode", dark: "dark_mode" }[m])}<span>${m === "auto" ? "System" : m[0].toUpperCase() + m.slice(1)}</span></button>`).join("")}</div>
         <p class="small-text">The whole site re-tints from one colour, like the app does.</p>
-        <nav class="right-align"><button class="transparent link" data-ui="#np-colours">Close</button></nav>
+        <nav class="right-align"><button class="transparent link" data-ui="#np-colours">${icon("close")}<span>Close</span></button></nav>
       </dialog>`);
     document.querySelector("footer.np-foot").innerHTML = `
       <div class="np-cols">
@@ -175,10 +175,22 @@
     });
   }
 
+  // Extended FABs: an icon that grows to show its label on hover (BeerCSS .extend). A screen reader and a long press get the
+  // label as a name, and a touch screen, which can't hover, shows them open.
+  function wireFabs() {
+    const touch = window.matchMedia && window.matchMedia("(hover: none)").matches;
+    document.querySelectorAll(".extend").forEach((fab) => {
+      const label = fab.querySelector("span") && fab.querySelector("span").textContent.trim();
+      if (label) { fab.setAttribute("aria-label", label); fab.title = label; }
+      if (touch) fab.classList.add("active");
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     buildChrome();
     document.querySelectorAll("[data-icon]").forEach(el => { el.insertAdjacentHTML("afterbegin", icon(el.dataset.icon)); });
     wireChrome();
+    wireFabs();
     wireDemo();
     wireDownload();
     wireCounting();
